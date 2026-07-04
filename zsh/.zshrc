@@ -1,5 +1,5 @@
 # PATH
-export PATH="$HOME/.local/bin:$PATH"
+export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
 
 # History
 HISTFILE="$HOME/.zsh_history"
@@ -18,17 +18,21 @@ bindkey $'\e[1;5D' backward-word
 bindkey $'\e[1;5C' forward-word
 bindkey $'\e[5D' backward-word
 bindkey $'\e[5C' forward-word
+
 # Aliases shared from Bash, if compatible.
 [ -f "$HOME/.bash_aliases" ] && source "$HOME/.bash_aliases"
 
 # ls aliases
-
 alias ls='ls --color=auto'
-
 alias ll="ls -alF"
 alias la="ls -la"
 alias l="ls -CF"
 alias k="kubectl"
+
+# tmux aliases
+alias tns="tmux new-session -s"
+alias ta="tmux attach"
+alias tat="tmux attach -t"
 
 # Ghost suggestions and command highlighting.
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
@@ -37,7 +41,5 @@ ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
 
 # Prompt
 if command -v starship >/dev/null 2>&1; then
-    eval "$(starship init zsh)"
+  eval "$(starship init zsh)"
 fi
-# opencode
-export PATH=/home/dylan/.opencode/bin:$PATH

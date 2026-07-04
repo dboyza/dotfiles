@@ -2,7 +2,7 @@ local wezterm = require 'wezterm'
 local config = wezterm.config_builder()
 local mux = wezterm.mux
 
-local is_windows = os.getenv('OS') and os.getenv('OS'):lower():find('windows')
+local is_windows = os.getenv('OS') and os.getenv('OS'):lower():find('windows') ~= nil
 local is_macos = wezterm.target_triple:lower():find('darwin') ~= nil
 local launch_width = 1800
 local launch_height = 1200
@@ -95,6 +95,41 @@ end
 
 -- keys
 
+local function copy_or_send_to_tmux()
+  return wezterm.action_callback(function(window, pane)
+    local selection = window:get_selection_text_for_pane(pane)
+
+    if selection and selection ~= '' then
+      window:perform_action(wezterm.action.CopyTo('Clipboard'), pane)
+    else
+      window:perform_action(wezterm.action.SendKey({ key = 'c', mods = 'CTRL|SHIFT' }), pane)
+    end
+  end)
+end
+
+local function foreground_process_basename(pane)
+  local name = pane:get_foreground_process_name() or ''
+  return name:match('([^/\\]+)$') or name
+end
+
+local function should_send_scroll_key(pane)
+  local ok, in_alt_screen = pcall(function()
+    return pane:is_alt_screen_active()
+  end)
+  local title = pane:get_title() or ''
+  return (ok and in_alt_screen) or title:match('^tmux:') ~= nil or foreground_process_basename(pane):match('^tmux') ~= nil
+end
+
+local function scroll_or_send_key(key, mods, scroll_action)
+  return wezterm.action_callback(function(window, pane)
+    if should_send_scroll_key(pane) then
+      window:perform_action(wezterm.action.SendKey({ key = key, mods = mods }), pane)
+    else
+      window:perform_action(scroll_action, pane)
+    end
+  end)
+end
+
 config.leader = { key = 'Space', mods = 'CTRL' }
 config.keys = {
   {
@@ -130,7 +165,7 @@ config.keys = {
   {
     key = 'c',
     mods = 'CTRL|SHIFT',
-    action = wezterm.action.CopyTo('Clipboard'),
+    action = copy_or_send_to_tmux(),
   },
   {
     key = 'v',
@@ -169,13 +204,23 @@ config.keys = {
   },
   {
     key = 'PageUp',
-    mods = 'CTRL|SHIFT',
-    action = wezterm.action.ScrollByLine(-1),
+    mods = 'NONE',
+    action = scroll_or_send_key('PageUp', 'NONE', wezterm.action.ScrollByPage(-1)),
   },
   {
     key = 'PageDown',
-    mods = 'CTRL|SHIFT',
-    action = wezterm.action.ScrollByLine(1),
+    mods = 'NONE',
+    action = scroll_or_send_key('PageDown', 'NONE', wezterm.action.ScrollByPage(1)),
+  },
+  {
+    key = 'PageUp',
+    mods = 'CTRL',
+    action = scroll_or_send_key('PageUp', 'CTRL', wezterm.action.ScrollByLine(-1)),
+  },
+  {
+    key = 'PageDown',
+    mods = 'CTRL',
+    action = scroll_or_send_key('PageDown', 'CTRL', wezterm.action.ScrollByLine(1)),
   },
 }
 

@@ -68,12 +68,8 @@ local function move_word_forward_in_line()
   end
 end
 
-keymap({ "n", "x", "i" }, "<C-Left>", function()
-  move_word_back_in_line()
-end, { desc = "Move back one word on current line" })
-keymap({ "n", "x", "i" }, "<C-Right>", function()
-  move_word_forward_in_line()
-end, { desc = "Move forward one word on current line" })
+keymap({ "n", "x", "i" }, "<C-Left>", move_word_back_in_line, { desc = "Move back one word on current line" })
+keymap({ "n", "x", "i" }, "<C-Right>", move_word_forward_in_line, { desc = "Move forward one word on current line" })
 keymap({ "n", "x" }, "<C-Up>", "5<C-y>", { desc = "Scroll up 5 lines" })
 keymap({ "n", "x" }, "<C-Down>", "5<C-e>", { desc = "Scroll down 5 lines" })
 keymap("i", "<C-Up>", "<C-o>5<C-y>", { desc = "Scroll up 5 lines" })
@@ -91,12 +87,8 @@ keymap("n", "<A-j>", "<C-w>j", { desc = "Move to lower window" })
 keymap("n", "<A-k>", "<C-w>k", { desc = "Move to upper window" })
 keymap("n", "<A-l>", "<C-w>l", { desc = "Move to right window" })
 
-keymap({ "n", "x" }, "<C-h>", function()
-  move_word_back_in_line()
-end, { desc = "Move back one word on current line" })
-keymap({ "n", "x" }, "<C-l>", function()
-  move_word_forward_in_line()
-end, { desc = "Move forward one word on current line" })
+keymap({ "n", "x" }, "<C-h>", move_word_back_in_line, { desc = "Move back one word on current line" })
+keymap({ "n", "x" }, "<C-l>", move_word_forward_in_line, { desc = "Move forward one word on current line" })
 keymap({ "n", "x" }, "<C-j>", "5j", { desc = "Move down 5 lines" })
 keymap({ "n", "x" }, "<C-k>", "5k", { desc = "Move up 5 lines" })
 
@@ -128,7 +120,7 @@ if not vim.uv.fs_stat(lazypath) then
   end
 end
 
-vim.opt.rtp:prepend(lazypath)
+opt.rtp:prepend(lazypath)
 
 require("lazy").setup({
   {
@@ -166,9 +158,7 @@ require("lazy").setup({
       { "<leader>fb", "<cmd>Telescope buffers<cr>", desc = "Find buffers" },
       { "<leader>fh", "<cmd>Telescope help_tags<cr>", desc = "Help tags" },
     },
-    config = function()
-      require("telescope").setup({})
-    end,
+    opts = {},
   },
   {
     "MeanderingProgrammer/render-markdown.nvim",
