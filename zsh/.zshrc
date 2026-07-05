@@ -21,6 +21,16 @@ setopt append_history share_history hist_ignore_dups hist_ignore_space hist_redu
 mkdir -p "$HOME/.cache/zsh"
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$HOME/.cache/zsh/zcompcache"
+for completion_dir in /usr/share/zsh/vendor-completions; do
+  [ -d "$completion_dir" ] || continue
+  for completion_file in "$completion_dir"/_*(N); do
+    if [ ! -r "$completion_file" ]; then
+      fpath=("${(@)fpath:#$completion_dir}")
+      break
+    fi
+  done
+done
+unset completion_dir completion_file
 autoload -Uz compinit
 compinit -d "$HOME/.cache/zsh/zcompdump"
 zstyle ':completion:*' menu select
@@ -52,7 +62,11 @@ alias ta="tmux attach"
 alias tat="tmux attach -t"
 
 # batcat
-alias cat="batcat"
+if command -v batcat >/dev/null 2>&1; then
+  alias cat="batcat --plain --paging=never"
+elif command -v bat >/dev/null 2>&1; then
+  alias cat="bat --plain --paging=never"
+fi
 
 # Ghost suggestions and command highlighting.
 ZSH_AUTOSUGGEST_USE_ASYNC=true
