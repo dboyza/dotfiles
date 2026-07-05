@@ -41,7 +41,6 @@ These are not installed by the repo, but the configs are better with them presen
 - `node`, used by Mason-installed language tooling such as `bash-language-server`, `pyright`, and `typescript-language-server`.
 - `make` and `cc`, used only when building Telescope's native fzf extension.
 - `Hack Nerd Font`, used by WezTerm and by completion icons in Neovim.
-- `batcat` or `bat`, used by the copy-paste friendly `cat` alias when available.
 
 ### Optional Integrations
 
@@ -182,6 +181,8 @@ WezTerm uses the Rose Pine Moon color scheme, Hack Nerd Font, a steady bar curso
 On Windows, the config enables Acrylic background settings and prefers the `WSL:Ubuntu-24.04` domain when WezTerm reports it.
 If that exact WSL domain is not available, it uses the first WSL domain reported by WezTerm.
 Outside Windows, no default domain override is set.
+On startup, Windows WezTerm opens WSL in `/home/dylan` and attaches to the `main` tmux session.
+New tabs opened with the configured tab keys or the new-tab button open a WSL login shell in `/home/dylan`.
 
 The WezTerm leader key is `Ctrl-Space`.
 Copy behavior is tmux-aware for `Ctrl-Shift-c`: if text is selected, it copies the selection; otherwise, it sends `Ctrl-Shift-c` through to the pane.
@@ -190,10 +191,6 @@ Copy behavior is tmux-aware for `Ctrl-Shift-c`: if text is selected, it copies t
 
 The zsh config prepends `~/.local/bin` and `~/.opencode/bin` to `PATH` when those directories exist.
 It enables shared history, cached completion, Emacs keybindings, word movement bindings, a few common aliases, optional shell suggestions, optional syntax highlighting, and Starship when installed.
-
-The `cat` alias uses `batcat --plain --paging=never` when `batcat` is available.
-If the binary is named `bat`, it uses `bat --plain --paging=never` instead.
-That keeps output free of line numbers, headers, grid borders, and pager behavior so terminal selection stays copy-paste friendly.
 
 ## Key Reference
 
@@ -258,9 +255,9 @@ That keeps output free of line numbers, headers, grid borders, and pager behavio
 | `Ctrl-Shift-f` | Search scrollback. |
 | `Ctrl-Shift-k` | Clear scrollback only. |
 | `Alt-Enter` | Toggle fullscreen. |
-| `Ctrl-Shift-t` | Spawn tab. |
+| `Ctrl-Shift-t` | Spawn a WSL login shell tab when a WSL domain is available. |
 | `Ctrl-Shift-w` | Close current tab with confirmation. |
-| `leader` + `c` | Spawn tab in the default domain. |
+| `leader` + `c` | Spawn a WSL login shell tab when a WSL domain is available. |
 | `Ctrl-Shift-c` | Copy selected text, or send the key through when nothing is selected. |
 | `Ctrl-Shift-v` | Paste from clipboard. |
 | `Ctrl-Insert` / `Shift-Insert` | Copy or paste. |
