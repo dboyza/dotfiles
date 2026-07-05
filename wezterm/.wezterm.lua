@@ -4,8 +4,15 @@ local mux = wezterm.mux
 
 local is_windows = os.getenv('OS') and os.getenv('OS'):lower():find('windows') ~= nil
 local is_macos = wezterm.target_triple:lower():find('darwin') ~= nil
-local launch_width = 1800
-local launch_height = 1200
+local launch_max_width = 1800
+local launch_max_height = 1200
+local launch_width_ratio = 0.88
+local launch_height_ratio = 0.84
+
+local function launch_size(screen)
+  return math.min(launch_max_width, math.max(1, math.floor(screen.width * launch_width_ratio))),
+    math.min(launch_max_height, math.max(1, math.floor(screen.height * launch_height_ratio)))
+end
 
 -- ui
 config.color_scheme = 'rose-pine-moon'
@@ -17,6 +24,9 @@ config.initial_cols = 140
 config.initial_rows = 36
 config.default_cursor_style = 'SteadyBar'
 config.audible_bell = 'Disabled'
+config.scrollback_lines = 20000
+config.hide_mouse_cursor_when_typing = true
+config.switch_to_last_active_tab_when_closing_tab = true
 config.enable_csi_u_key_encoding = true
 
 config.enable_tab_bar = true
@@ -155,7 +165,7 @@ config.keys = {
   {
     key = 't',
     mods = 'CTRL|SHIFT',
-    action = wezterm.action.SpawnTab('CurrentPaneDomain'),
+    action = wezterm.action.SpawnTab('DefaultDomain'),
   },
   {
     key = 'w',
@@ -195,12 +205,12 @@ config.keys = {
   {
     key = 'v',
     mods = 'CMD',
-    action = wezterm.action({ PasteFrom = 'Clipboard' }),
+    action = wezterm.action.PasteFrom('Clipboard'),
   },
   {
     key = 'c',
     mods = 'LEADER',
-    action = wezterm.action.SpawnTab('CurrentPaneDomain'),
+    action = wezterm.action.SpawnTab('DefaultDomain'),
   },
   {
     key = 'PageUp',
@@ -243,10 +253,12 @@ wezterm.on('gui-startup', function(cmd)
   local gui_window = window:gui_window()
   local screen = wezterm.gui.screens().active
 
-  gui_window:set_inner_size(launch_width, launch_height)
+  local width, height = launch_size(screen)
+
+  gui_window:set_inner_size(width, height)
   gui_window:set_position(
-    screen.x + math.max(0, math.floor((screen.width - launch_width) / 2)),
-    screen.y + math.max(0, math.floor((screen.height - launch_height) / 2))
+    screen.x + math.max(0, math.floor((screen.width - width) / 2)),
+    screen.y + math.max(0, math.floor((screen.height - height) / 2))
   )
 end)
 return config

@@ -1,19 +1,33 @@
 # PATH
-export PATH="$HOME/.opencode/bin:$HOME/.local/bin:$PATH"
+path_prepend() {
+  [ -d "$1" ] || return
+  case ":$PATH:" in
+    *":$1:"*) ;;
+    *) PATH="$1:$PATH" ;;
+  esac
+}
+path_prepend "$HOME/.local/bin"
+path_prepend "$HOME/.opencode/bin"
+unfunction path_prepend
+export PATH
 
 # History
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
-setopt append_history share_history hist_ignore_dups hist_reduce_blanks
+setopt append_history share_history hist_ignore_dups hist_ignore_space hist_reduce_blanks
 
 # Completion
+mkdir -p "$HOME/.cache/zsh"
+zstyle ':completion:*' use-cache on
+zstyle ':completion:*' cache-path "$HOME/.cache/zsh/zcompcache"
 autoload -Uz compinit
-compinit
+compinit -d "$HOME/.cache/zsh/zcompdump"
 zstyle ':completion:*' menu select
 
 # Keys
 bindkey -e
+export KEYTIMEOUT=1
 bindkey $'\e[1;5D' backward-word
 bindkey $'\e[1;5C' forward-word
 bindkey $'\e[5D' backward-word
@@ -23,7 +37,10 @@ bindkey $'\e[5C' forward-word
 [ -f "$HOME/.bash_aliases" ] && source "$HOME/.bash_aliases"
 
 # ls aliases
-alias ls='ls --color=auto'
+case $(uname -s 2>/dev/null) in
+  Darwin*) alias ls='ls -G' ;;
+  *) alias ls='ls --color=auto' ;;
+esac
 alias ll="ls -alF"
 alias la="ls -la"
 alias l="ls -CF"
@@ -34,10 +51,23 @@ alias tns="tmux new-session -s"
 alias ta="tmux attach"
 alias tat="tmux attach -t"
 
+# batcat
+alias cat="batcat"
+
 # Ghost suggestions and command highlighting.
+ZSH_AUTOSUGGEST_USE_ASYNC=true
+ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=80
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
-[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ] && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ] && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+source_first() { local plugin; for plugin in "$@"; do [ -r "$plugin" ] && source "$plugin" && return; done; }
+source_first \
+  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+source_first \
+  /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+unfunction source_first
 
 # Prompt
 if command -v starship >/dev/null 2>&1; then
