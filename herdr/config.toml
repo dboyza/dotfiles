@@ -1,0 +1,21 @@
+[theme]
+name = "rose-pine"
+
+[keys]
+prefix = "ctrl+a"
+settings = ""
+detach = "prefix+d"
+reload_config = "prefix+r"
+workspace_picker = "prefix+s"
+new_tab = "prefix+c"
+rename_tab = "prefix+comma"
+close_tab = "prefix+ampersand"
+resize_mode = ""
+focus_pane_left = "alt+h"
+focus_pane_down = "alt+j"
+focus_pane_up = "alt+k"
+focus_pane_right = "alt+l"
+split_vertical = "prefix+backslash"
+split_horizontal = "prefix+minus"
+close_pane = "prefix+x"
+zoom = "prefix+z"

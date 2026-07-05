@@ -61,13 +61,6 @@ alias tns="tmux new-session -s"
 alias ta="tmux attach"
 alias tat="tmux attach -t"
 
-# batcat
-if command -v batcat >/dev/null 2>&1; then
-  alias cat="batcat --plain --paging=never"
-elif command -v bat >/dev/null 2>&1; then
-  alias cat="bat --plain --paging=never"
-fi
-
 # Ghost suggestions and command highlighting.
 ZSH_AUTOSUGGEST_USE_ASYNC=true
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=80

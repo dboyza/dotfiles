@@ -1,0 +1,61 @@
+palette = "rose_pine_moon"
+add_newline = false
+
+format = """
+$directory\
+$git_branch\
+$git_status\
+$cmd_duration\
+$line_break\
+$character"""
+
+[palettes.rose_pine_moon]
+base = "#232136"
+surface = "#2a273f"
+overlay = "#393552"
+muted = "#6e6a86"
+subtle = "#908caa"
+text = "#e0def4"
+love = "#eb6f92"
+gold = "#f6c177"
+rose = "#ea9a97"
+pine = "#3e8fb0"
+foam = "#9ccfd8"
+iris = "#c4a7e7"
+
+[directory]
+format = "[$path]($style) "
+style = "bold foam"
+truncation_length = 3
+truncation_symbol = ".../"
+read_only = " ro"
+
+[git_branch]
+format = "[$symbol$branch]($style) "
+style = "iris"
+symbol = "git:"
+
+[git_status]
+format = "([$all_status$ahead_behind]($style) )"
+style = "love"
+conflicted = "x${count}"
+ahead = "^${count}"
+behind = "v${count}"
+diverged = "^${ahead_count}v${behind_count}"
+untracked = "?${count}"
+stashed = "*${count}"
+modified = "!${count}"
+staged = "+${count}"
+renamed = ">${count}"
+deleted = "-${count}"
+
+[cmd_duration]
+min_time = 0
+show_milliseconds = true
+format = "[took $duration]($style) "
+style = "muted"
+
+[character]
+success_symbol = "[❯](iris)"
+error_symbol = "[❯](love)"
+vimcmd_symbol = "[❮](foam)"

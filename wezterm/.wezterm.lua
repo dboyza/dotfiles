@@ -67,7 +67,7 @@ config.colors = {
 
 if is_windows then
   config.win32_system_backdrop = 'Acrylic'
-  config.window_background_opacity = 0.7
+  config.window_background_opacity = 0.8
   config.window_frame.font_size = 10.0
 end
 
@@ -99,8 +99,18 @@ local function preferred_wsl_domain()
 end
 
 local wsl_domain = preferred_wsl_domain()
+local wsl_shell_prog = { 'zsh', '-l' }
+local wsl_cwd = '/home/dylan'
 if wsl_domain then
   config.default_domain = wsl_domain
+end
+
+local function wsl_tab_action()
+  if wsl_domain then
+    return wezterm.action.SpawnCommandInNewTab({ domain = { DomainName = wsl_domain }, cwd = wsl_cwd, args = wsl_shell_prog })
+  end
+
+  return wezterm.action.SpawnTab('DefaultDomain')
 end
 
 -- keys
@@ -165,7 +175,7 @@ config.keys = {
   {
     key = 't',
     mods = 'CTRL|SHIFT',
-    action = wezterm.action.SpawnTab('DefaultDomain'),
+    action = wsl_tab_action(),
   },
   {
     key = 'w',
@@ -210,7 +220,7 @@ config.keys = {
   {
     key = 'c',
     mods = 'LEADER',
-    action = wezterm.action.SpawnTab('DefaultDomain'),
+    action = wsl_tab_action(),
   },
   {
     key = 'PageUp',
@@ -248,8 +258,20 @@ config.mouse_bindings = {
 wezterm.on('format-window-title', function()
   return ' '
 end)
+
+wezterm.on('new-tab-button-click', function(window, pane, button)
+  if button == 'Left' then
+    window:perform_action(wsl_tab_action(), pane)
+    return false
+  end
+end)
 wezterm.on('gui-startup', function(cmd)
-  local _tab, _pane, window = mux.spawn_window(cmd or {})
+  local spawn_cmd = cmd
+  if not spawn_cmd and wsl_domain then
+    spawn_cmd = { domain = { DomainName = wsl_domain }, cwd = wsl_cwd, args = wsl_shell_prog }
+  end
+
+  local _tab, _pane, window = mux.spawn_window(spawn_cmd or {})
   local gui_window = window:gui_window()
   local screen = wezterm.gui.screens().active
 

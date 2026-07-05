@@ -12,7 +12,9 @@ Install the pieces you want by backing up any existing files and symlinking thes
 | Path | Purpose |
 | --- | --- |
 | `.gitattributes` | Repository attributes. |
+| `AGENTS.md` | Shared coding-agent instructions symlinked into Codex, Claude, and opencode. |
 | `README.md` | This operations guide. |
+| `herdr/config.toml` | Herdr configuration with Rose Pine theming and tmux-style keybindings. |
 | `nvim/` | Neovim configuration, including `init.lua` and `lazy-lock.json`. |
 | `tmux/.tmux.conf` | tmux configuration with a `C-a` prefix, vi copy mode, top status bar, clipboard helpers, and TPM plugins. |
 | `wezterm/.wezterm.lua` | WezTerm configuration with Rose Pine Moon colors, Hack Nerd Font, WSL domain selection on Windows, and custom keybindings. |
@@ -25,6 +27,7 @@ Install the pieces you want by backing up any existing files and symlinking thes
 Install the tools for the configs you plan to use:
 
 - `git`
+- `herdr`
 - `zsh`
 - `tmux`
 - `wezterm`
@@ -84,9 +87,13 @@ The symlink commands below are intentionally plain `ln -s` commands, so they wil
 ```sh
 stamp="$(date +%Y%m%d%H%M%S)"
 
+[ -e "$HOME/.codex/AGENTS.md" ] && mv "$HOME/.codex/AGENTS.md" "$HOME/.codex/AGENTS.md.backup.$stamp"
+[ -e "$HOME/.claude/CLAUDE.md" ] && mv "$HOME/.claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md.backup.$stamp"
+[ -e "$HOME/.config/opencode/AGENTS.md" ] && mv "$HOME/.config/opencode/AGENTS.md" "$HOME/.config/opencode/AGENTS.md.backup.$stamp"
 [ -e "$HOME/.zshrc" ] && mv "$HOME/.zshrc" "$HOME/.zshrc.backup.$stamp"
 [ -e "$HOME/.tmux.conf" ] && mv "$HOME/.tmux.conf" "$HOME/.tmux.conf.backup.$stamp"
 [ -e "$HOME/.wezterm.lua" ] && mv "$HOME/.wezterm.lua" "$HOME/.wezterm.lua.backup.$stamp"
+[ -e "$HOME/.config/herdr/config.toml" ] && mv "$HOME/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml.backup.$stamp"
 [ -e "$HOME/.config/nvim" ] && mv "$HOME/.config/nvim" "$HOME/.config/nvim.backup.$stamp"
 ```
 
@@ -96,7 +103,15 @@ Create the symlinks:
 repo="$HOME/github/dboyza/dotfiles"
 
 mkdir -p "$HOME/.config"
+mkdir -p "$HOME/.codex"
+mkdir -p "$HOME/.claude"
+mkdir -p "$HOME/.config/herdr"
+mkdir -p "$HOME/.config/opencode"
 
+ln -s "$repo/AGENTS.md" "$HOME/.codex/AGENTS.md"
+ln -s "$repo/AGENTS.md" "$HOME/.claude/CLAUDE.md"
+ln -s "$repo/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
+ln -s "$repo/herdr/config.toml" "$HOME/.config/herdr/config.toml"
 ln -s "$repo/zsh/.zshrc" "$HOME/.zshrc"
 ln -s "$repo/tmux/.tmux.conf" "$HOME/.tmux.conf"
 ln -s "$repo/wezterm/.wezterm.lua" "$HOME/.wezterm.lua"
@@ -174,6 +189,11 @@ Those plugins are not available until TPM exists at `~/.tmux/plugins/tpm/tpm` an
 Clipboard commands are selected from the host environment.
 tmux falls back to its own buffer when no external clipboard command is found.
 
+### Herdr
+
+Herdr uses the Rose Pine theme and mirrors the tmux prefix with `C-a`.
+The tracked config lives at `herdr/config.toml` and should be symlinked to `~/.config/herdr/config.toml`.
+
 ### WezTerm
 
 WezTerm uses the Rose Pine Moon color scheme, Hack Nerd Font, a steady bar cursor, high scrollback, hidden tab bar when only one tab is open, and centered startup sizing.
@@ -181,7 +201,7 @@ WezTerm uses the Rose Pine Moon color scheme, Hack Nerd Font, a steady bar curso
 On Windows, the config enables Acrylic background settings and prefers the `WSL:Ubuntu-24.04` domain when WezTerm reports it.
 If that exact WSL domain is not available, it uses the first WSL domain reported by WezTerm.
 Outside Windows, no default domain override is set.
-On startup, Windows WezTerm opens WSL in `/home/dylan` and attaches to the `main` tmux session.
+On startup, Windows WezTerm opens a WSL login shell in `/home/dylan`.
 New tabs opened with the configured tab keys or the new-tab button open a WSL login shell in `/home/dylan`.
 
 The WezTerm leader key is `Ctrl-Space`.
@@ -245,6 +265,23 @@ It enables shared history, cached completion, Emacs keybindings, word movement b
 | `prefix` + `s` / `w` | Choose session or window. |
 | `prefix` + `z` | Zoom pane. |
 | `prefix` + `Space` | Next layout. |
+
+### Herdr
+
+| Key | Action |
+| --- | --- |
+| `C-a` | Prefix. |
+| `prefix` + `d` | Detach. |
+| `prefix` + `r` | Reload Herdr config. |
+| `prefix` + `s` | Open workspace picker. |
+| `prefix` + `c` | New tab. |
+| `prefix` + `,` | Rename tab. |
+| `prefix` + `&` | Close tab. |
+| `prefix` + `\` | Split pane side by side. |
+| `prefix` + `-` | Split pane top and bottom. |
+| `prefix` + `x` | Close pane. |
+| `prefix` + `z` | Zoom pane. |
+| `Alt-h/j/k/l` | Move panes. |
 
 ### WezTerm
 
