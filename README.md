@@ -234,7 +234,7 @@ That keeps output free of line numbers, headers, grid borders, and pager behavio
 | --- | --- |
 | `C-a` | Prefix. |
 | `prefix` + `C-a` | Send prefix to the pane. |
-| `prefix` + `h/j/k/l` | Move between panes. |
+| `prefix` + `h/j/k/l` | Resize panes by 5 cells. |
 | `prefix` + `H/J/K/L` | Resize panes by 5 cells. |
 | `prefix` + `\` | Split pane horizontally in the current path. |
 | `prefix` + `-` or `_` | Split pane vertically in the current path. |
