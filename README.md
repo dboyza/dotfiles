@@ -16,6 +16,7 @@ Install the pieces you want by backing up any existing files and symlinking thes
 | `README.md` | This operations guide. |
 | `herdr/config.toml` | Herdr configuration with Rose Pine theming and tmux-style keybindings. |
 | `nvim/` | Neovim configuration, including `init.lua` and `lazy-lock.json`. |
+| `starship/starship.toml` | Starship prompt configuration with a Rose Pine Moon palette. |
 | `tmux/.tmux.conf` | tmux configuration with a `C-a` prefix, vi copy mode, top status bar, clipboard helpers, and TPM plugins. |
 | `wezterm/.wezterm.lua` | WezTerm configuration with Rose Pine Moon colors, Hack Nerd Font, WSL domain selection on Windows, and custom keybindings. |
 | `zsh/.zshrc` | zsh configuration for PATH, history, completion, aliases, optional highlighting, optional suggestions, and Starship. |
@@ -42,7 +43,8 @@ These are not installed by the repo, but the configs are better with them presen
 
 - `rg`, used by Neovim's `grepprg` and Telescope live grep.
 - `node`, used by Mason-installed language tooling such as `bash-language-server`, `pyright`, and `typescript-language-server`.
-- `make` and `cc`, used only when building Telescope's native fzf extension.
+- A C compiler such as `cc`, `gcc`, or `clang`, required to build Treesitter parsers and Telescope's native fzf extension.
+- `make`, used only when building Telescope's native fzf extension.
 - `Hack Nerd Font`, used by WezTerm and by completion icons in Neovim.
 
 ### Optional Integrations
@@ -65,8 +67,12 @@ Neovim bootstraps `lazy.nvim` on first launch if it is missing.
 After `lazy.nvim` is present, it installs the plugins declared in `nvim/init.lua` and uses `nvim/lazy-lock.json` to pin plugin revisions.
 
 Mason is managed inside Neovim.
-The config asks Mason to install `bash-language-server`, `lua-language-server`, `pyright`, `stylua`, `typescript-language-server`, `prettierd`, and `shfmt`.
+The config asks Mason to install `bash-language-server`, `lua-language-server`, `pyright`, `stylua`, `tree-sitter-cli`, `typescript-language-server`, `prettierd`, `shfmt`, and `uv`.
 These Mason packages still depend on external runtime support where applicable, especially `node`.
+
+Neovim also installs Treesitter parsers for Bash, JavaScript, JSON, Lua, Markdown, Python, and TypeScript.
+Parser installation starts when both the Mason-managed Tree-sitter CLI and a C compiler are available.
+Python formatting runs Ruff through the Mason-managed `uvx`, which downloads and caches Ruff on first use.
 
 tmux plugins are declared in `tmux/.tmux.conf`, but TPM itself is external.
 Install TPM into `~/.tmux/plugins/tpm` before expecting plugin bootstrapping to work.
@@ -95,6 +101,7 @@ stamp="$(date +%Y%m%d%H%M%S)"
 [ -e "$HOME/.wezterm.lua" ] && mv "$HOME/.wezterm.lua" "$HOME/.wezterm.lua.backup.$stamp"
 [ -e "$HOME/.config/herdr/config.toml" ] && mv "$HOME/.config/herdr/config.toml" "$HOME/.config/herdr/config.toml.backup.$stamp"
 [ -e "$HOME/.config/nvim" ] && mv "$HOME/.config/nvim" "$HOME/.config/nvim.backup.$stamp"
+[ -e "$HOME/.config/starship.toml" ] && mv "$HOME/.config/starship.toml" "$HOME/.config/starship.toml.backup.$stamp"
 ```
 
 Create the symlinks:
@@ -116,6 +123,7 @@ ln -s "$repo/zsh/.zshrc" "$HOME/.zshrc"
 ln -s "$repo/tmux/.tmux.conf" "$HOME/.tmux.conf"
 ln -s "$repo/wezterm/.wezterm.lua" "$HOME/.wezterm.lua"
 ln -s "$repo/nvim" "$HOME/.config/nvim"
+ln -s "$repo/starship/starship.toml" "$HOME/.config/starship.toml"
 ```
 
 Install TPM if you use the tmux config:

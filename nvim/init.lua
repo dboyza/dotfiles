@@ -451,9 +451,11 @@ require("lazy").setup({
         "lua-language-server",
         "pyright",
         "stylua",
+        "tree-sitter-cli",
         "typescript-language-server",
         "prettierd",
         "shfmt",
+        "uv",
       }
 
       for server, config in pairs(servers) do
@@ -491,9 +493,15 @@ require("lazy").setup({
         json = { "prettierd", "prettier", stop_after_first = true },
         lua = { "stylua" },
         markdown = { "prettierd", "prettier", stop_after_first = true },
-        python = { "ruff_format", "black", stop_after_first = true },
+        python = { "ruff_format" },
         sh = { "shfmt" },
         typescript = { "prettierd", "prettier", stop_after_first = true },
+      },
+      formatters = {
+        ruff_format = {
+          command = "uvx",
+          prepend_args = { "ruff" },
+        },
       },
       notify_on_error = false,
     },
@@ -576,7 +584,30 @@ require("lazy").setup({
     build = ":TSUpdate",
     lazy = false,
     config = function()
-      require("nvim-treesitter").setup({})
+      local treesitter = require("nvim-treesitter")
+      treesitter.setup({})
+      local parsers = {
+        "bash",
+        "javascript",
+        "json",
+        "lua",
+        "markdown",
+        "markdown_inline",
+        "python",
+        "typescript",
+      }
+      local function install_parsers()
+        local has_compiler = executable("cc") or executable("gcc") or executable("clang")
+        if executable("tree-sitter") and has_compiler then
+          treesitter.install(parsers)
+        end
+      end
+
+      install_parsers()
+      vim.api.nvim_create_autocmd("User", {
+        pattern = "MasonToolsUpdateCompleted",
+        callback = install_parsers,
+      })
 
       vim.api.nvim_create_autocmd("FileType", {
         callback = function()
