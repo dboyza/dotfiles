@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+for dependency in powershell.exe wslpath mktemp; do
+  if ! command -v "$dependency" >/dev/null 2>&1; then
+    printf 'win-copy: required command not found: %s\n' "$dependency" >&2
+    exit 1
+  fi
+done
+
+clipboard_file=$(mktemp "${TMPDIR:-/tmp}/win-copy.XXXXXX")
+cleanup() {
+  rm -f "$clipboard_file"
+}
+trap cleanup EXIT HUP INT TERM
+
+cat > "$clipboard_file"
+export WIN_COPY_PATH
+WIN_COPY_PATH=$(wslpath -w "$clipboard_file")
+case ":${WSLENV:-}:" in
+  *:WIN_COPY_PATH:*) ;;
+  *) export WSLENV="${WSLENV:+$WSLENV:}WIN_COPY_PATH" ;;
+esac
+
+# PowerShell expands these expressions after Bash passes the script verbatim.
+# shellcheck disable=SC2016
+powershell.exe -NoLogo -NoProfile -NonInteractive -Command '
+  $ErrorActionPreference = "Stop"
+  $utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+  $text = [System.IO.File]::ReadAllText($env:WIN_COPY_PATH, $utf8)
+  if ($text.Length -eq 0) {
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.Clipboard]::Clear()
+  } else {
+    Set-Clipboard -Value $text
+  }
+'

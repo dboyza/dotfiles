@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if ! command -v powershell.exe >/dev/null 2>&1; then
+  printf 'win-paste: required command not found: powershell.exe\n' >&2
+  exit 1
+fi
+
+# PowerShell expands these expressions after Bash passes the script verbatim.
+# shellcheck disable=SC2016
+powershell.exe -NoLogo -NoProfile -NonInteractive -Command '
+  $ErrorActionPreference = "Stop"
+  [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)
+  $text = Get-Clipboard -Raw
+  if ($null -ne $text) {
+    [Console]::Write($text)
+  }
+'

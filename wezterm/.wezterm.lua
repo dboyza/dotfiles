@@ -2,8 +2,9 @@ local wezterm = require 'wezterm'
 local config = wezterm.config_builder()
 local mux = wezterm.mux
 
-local is_windows = os.getenv('OS') and os.getenv('OS'):lower():find('windows') ~= nil
-local is_macos = wezterm.target_triple:lower():find('darwin') ~= nil
+local target_triple = wezterm.target_triple:lower()
+local is_windows = target_triple:find('windows') ~= nil
+local is_macos = target_triple:find('darwin') ~= nil
 local launch_max_width = 1800
 local launch_max_height = 1200
 local launch_width_ratio = 0.88
@@ -14,10 +15,42 @@ local function launch_size(screen)
     math.min(launch_max_height, math.max(1, math.floor(screen.height * launch_height_ratio)))
 end
 
+local function platform_font(weight)
+  local fonts = {
+    { family = 'Hack Nerd Font', weight = weight },
+  }
+
+  if is_windows then
+    table.insert(fonts, { family = 'Cascadia Mono', weight = weight })
+    table.insert(fonts, { family = 'Consolas', weight = weight })
+  elseif is_macos then
+    table.insert(fonts, { family = 'Menlo', weight = weight })
+  else
+    table.insert(fonts, { family = 'DejaVu Sans Mono', weight = weight })
+  end
+
+  return wezterm.font_with_fallback(fonts)
+end
+
+local function command_exists(program)
+  local probe
+  if is_windows then
+    probe = { 'where.exe', program }
+  else
+    probe = { '/bin/sh', '-c', 'command -v "$1" >/dev/null 2>&1', 'sh', program }
+  end
+
+  local called, found = pcall(function()
+    local success = wezterm.run_child_process(probe)
+    return success
+  end)
+  return called and found
+end
+
 -- ui
 config.color_scheme = 'rose-pine-moon'
 config.max_fps = 120
-config.font = wezterm.font('Hack Nerd Font', { weight = 'Regular' })
+config.font = platform_font('Regular')
 config.font_size = 12
 config.adjust_window_size_when_changing_font_size = false
 config.initial_cols = 140
@@ -27,13 +60,12 @@ config.audible_bell = 'Disabled'
 config.scrollback_lines = 20000
 config.hide_mouse_cursor_when_typing = true
 config.switch_to_last_active_tab_when_closing_tab = true
-config.enable_csi_u_key_encoding = true
 
 config.enable_tab_bar = true
 config.hide_tab_bar_if_only_one_tab = true
 config.window_decorations = 'RESIZE'
 config.window_frame = {
-  font = wezterm.font('Hack Nerd Font', { weight = 'Bold' }),
+  font = platform_font('Bold'),
   active_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
   inactive_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
   active_titlebar_fg = '#e0def4',
@@ -99,15 +131,42 @@ local function preferred_wsl_domain()
 end
 
 local wsl_domain = preferred_wsl_domain()
-local wsl_shell_prog = { 'zsh', '-l' }
-local wsl_cwd = '/home/dylan'
+local powershell_prog
+if is_windows then
+  if command_exists('pwsh.exe') then
+    powershell_prog = { 'pwsh.exe', '-NoLogo' }
+  else
+    powershell_prog = { 'powershell.exe', '-NoLogo' }
+  end
+elseif command_exists('pwsh') then
+  powershell_prog = { 'pwsh', '-NoLogo' }
+end
+
 if wsl_domain then
   config.default_domain = wsl_domain
+elseif is_windows then
+  config.default_prog = powershell_prog
 end
 
 local function wsl_tab_action()
   if wsl_domain then
-    return wezterm.action.SpawnCommandInNewTab({ domain = { DomainName = wsl_domain }, cwd = wsl_cwd, args = wsl_shell_prog })
+    return wezterm.action.SpawnCommandInNewTab({ domain = { DomainName = wsl_domain } })
+  end
+
+  return wezterm.action.SpawnTab('DefaultDomain')
+end
+
+local function powershell_tab_action()
+  if powershell_prog then
+    local spawn = {
+      domain = { DomainName = 'local' },
+      args = powershell_prog,
+    }
+    local home = is_windows and os.getenv('USERPROFILE') or os.getenv('HOME')
+    if home then
+      spawn.cwd = home
+    end
+    return wezterm.action.SpawnCommandInNewTab(spawn)
   end
 
   return wezterm.action.SpawnTab('DefaultDomain')
@@ -115,15 +174,25 @@ end
 
 -- keys
 
-local function copy_or_send_to_tmux()
+local function copy_or_send_to_shell()
   return wezterm.action_callback(function(window, pane)
     local selection = window:get_selection_text_for_pane(pane)
 
     if selection and selection ~= '' then
       window:perform_action(wezterm.action.CopyTo('Clipboard'), pane)
-    else
-      window:perform_action(wezterm.action.SendKey({ key = 'c', mods = 'CTRL|SHIFT' }), pane)
+      return
     end
+
+    local ok, domain_name = pcall(function()
+      return pane:get_domain_name()
+    end)
+
+    if not is_windows or (ok and type(domain_name) == 'string' and domain_name:match('^WSL:')) then
+      window:perform_action(wezterm.action.SendString('\x1b[99;6u'), pane)
+      return
+    end
+
+    window:perform_action(wezterm.action.SendKey({ key = 'c', mods = 'CTRL|SHIFT' }), pane)
   end)
 end
 
@@ -178,6 +247,11 @@ config.keys = {
     action = wsl_tab_action(),
   },
   {
+    key = 'p',
+    mods = 'CTRL|SHIFT',
+    action = powershell_tab_action(),
+  },
+  {
     key = 'w',
     mods = 'CTRL|SHIFT',
     action = wezterm.action.CloseCurrentTab({ confirm = true }),
@@ -185,7 +259,7 @@ config.keys = {
   {
     key = 'c',
     mods = 'CTRL|SHIFT',
-    action = copy_or_send_to_tmux(),
+    action = copy_or_send_to_shell(),
   },
   {
     key = 'v',
@@ -213,6 +287,26 @@ config.keys = {
     action = wezterm.action.ScrollByLine(5),
   },
   {
+    key = 'LeftArrow',
+    mods = 'CTRL|SHIFT',
+    action = wezterm.action.SendKey({ key = 'LeftArrow', mods = 'CTRL|SHIFT' }),
+  },
+  {
+    key = 'RightArrow',
+    mods = 'CTRL|SHIFT',
+    action = wezterm.action.SendKey({ key = 'RightArrow', mods = 'CTRL|SHIFT' }),
+  },
+  {
+    key = 'LeftArrow',
+    mods = 'SHIFT',
+    action = wezterm.action.SendKey({ key = 'LeftArrow', mods = 'SHIFT' }),
+  },
+  {
+    key = 'RightArrow',
+    mods = 'SHIFT',
+    action = wezterm.action.SendKey({ key = 'RightArrow', mods = 'SHIFT' }),
+  },
+  {
     key = 'v',
     mods = 'CMD',
     action = wezterm.action.PasteFrom('Clipboard'),
@@ -221,6 +315,11 @@ config.keys = {
     key = 'c',
     mods = 'LEADER',
     action = wsl_tab_action(),
+  },
+  {
+    key = 'p',
+    mods = 'LEADER',
+    action = powershell_tab_action(),
   },
   {
     key = 'PageUp',
@@ -268,12 +367,17 @@ end)
 wezterm.on('gui-startup', function(cmd)
   local spawn_cmd = cmd
   if not spawn_cmd and wsl_domain then
-    spawn_cmd = { domain = { DomainName = wsl_domain }, cwd = wsl_cwd, args = wsl_shell_prog }
+    spawn_cmd = { domain = { DomainName = wsl_domain } }
   end
 
   local _tab, _pane, window = mux.spawn_window(spawn_cmd or {})
   local gui_window = window:gui_window()
-  local screen = wezterm.gui.screens().active
+  local screens = wezterm.gui.screens()
+  local screen = screens.active or screens.main
+
+  if not gui_window or not screen then
+    return
+  end
 
   local width, height = launch_size(screen)
 
