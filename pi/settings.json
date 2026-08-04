@@ -1,0 +1,13 @@
+{
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.6-sol",
+  "defaultThinkingLevel": "high",
+  "theme": "rose-pine-moon",
+  "showHardwareCursor": true,
+  "hideThinkingBlock": false,
+  "externalEditor": "nvim",
+  "editorPaddingX": 1,
+  "autocompleteMaxVisible": 8,
+  "collapseChangelog": true,
+  "enabledModels": ["gpt-5.6-*"]
+}

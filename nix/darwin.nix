@@ -40,9 +40,9 @@
     enable = true;
     casks = [ "wezterm" ];
     onActivation = {
-      autoUpdate = false;
+      autoUpdate = true;
       cleanup = "none";
-      upgrade = false;
+      upgrade = true;
     };
   };
 

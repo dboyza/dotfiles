@@ -6,17 +6,16 @@ usage() {
   cat <<'EOF'
 Usage: ./bootstrap.sh [--check | --update]
 
-  --check  Evaluate and build the configuration without activating it.
-  --update Update all pinned inputs, then check and activate the configuration.
+  --check  Evaluate and build the pinned configuration without updating or activating it.
+  --update Update, check, and activate the configuration (the default behavior).
 EOF
 }
 
 check_only=false
-update_inputs=false
 case "${1:-}" in
   "") ;;
   --check) check_only=true ;;
-  --update) update_inputs=true ;;
+  --update) ;;
   -h|--help)
     usage
     exit 0
@@ -119,7 +118,7 @@ install_nix() {
 }
 
 install_homebrew() {
-  [[ "$os" == Darwin ]] || return
+  [[ "$os" == Darwin ]] || return 0
   if command -v brew >/dev/null 2>&1; then
     return
   fi
@@ -164,6 +163,11 @@ $HOME/.config/starship.toml
 $HOME/.codex/AGENTS.md
 $HOME/.claude/CLAUDE.md
 $HOME/.config/opencode/AGENTS.md
+$HOME/.pi/agent/AGENTS.md
+$HOME/.agents/skills
+$HOME/.pi/agent/extensions
+$HOME/.pi/agent/prompts
+$HOME/.pi/agent/themes
 $HOME/.tmux/plugins/tpm
 $HOME/.tmux/plugins/tmux-yank
 $HOME/.tmux/plugins/tmux-resurrect
@@ -175,9 +179,9 @@ EOF
 }
 
 install_windows_fonts() {
-  [[ "$DOTFILES_WSL" == 1 ]] || return
-  command -v powershell.exe >/dev/null 2>&1 || return
-  command -v wslpath >/dev/null 2>&1 || return
+  [[ "$DOTFILES_WSL" == 1 ]] || return 0
+  command -v powershell.exe >/dev/null 2>&1 || return 0
+  command -v wslpath >/dev/null 2>&1 || return 0
 
   local font_store font_source script_source
   font_store=$(nix "${nix_options[@]}" build \
@@ -192,7 +196,7 @@ install_windows_fonts() {
 }
 
 install_windows_wezterm() {
-  [[ "$DOTFILES_WSL" == 1 ]] || return
+  [[ "$DOTFILES_WSL" == 1 ]] || return 0
   if ! command -v powershell.exe >/dev/null 2>&1 || ! command -v wslpath >/dev/null 2>&1; then
     printf 'bootstrap: WSL interoperability is required to configure Windows WezTerm\n' >&2
     return 1
@@ -206,8 +210,8 @@ install_windows_wezterm() {
 }
 
 configure_linux_shell() {
-  [[ "$os" == Linux ]] || return
-  command -v apt-get >/dev/null 2>&1 || return
+  [[ "$os" == Linux ]] || return 0
+  command -v apt-get >/dev/null 2>&1 || return 0
 
   if [[ ! -x /usr/bin/zsh ]]; then
     sudo apt-get update
@@ -223,7 +227,7 @@ configure_linux_shell() {
 
 verify_installation() {
   local command_name missing=0
-  local expected_commands=(claude codex git herdr kubectl nvim node pre-commit rg starship terraform tmux uv zsh)
+  local expected_commands=(claude codex git herdr kubectl nvim node pi pre-commit rg starship terraform tmux uv zsh)
   export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/$DOTFILES_USER/bin:/run/current-system/sw/bin:$PATH"
 
   if [[ "$profile" != macos-x86_64 ]]; then
@@ -246,8 +250,8 @@ install_nix
 nix_options=(--extra-experimental-features "nix-command flakes")
 flake_ref="path:$repo_dir"
 
-if $update_inputs; then
-  printf 'Updating pinned Nix and plugin inputs...\n'
+if ! $check_only; then
+  printf 'Updating Nix packages and plugin inputs to their latest declared versions...\n'
   nix "${nix_options[@]}" flake update --flake "$flake_ref"
 fi
 

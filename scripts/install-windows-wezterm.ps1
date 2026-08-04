@@ -5,24 +5,29 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not (Get-Command wezterm.exe -ErrorAction SilentlyContinue)) {
-    $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
-    if (-not $winget) {
-        throw "WezTerm is missing and Winget is unavailable. Install WezTerm on Windows, then rerun bootstrap.sh."
-    }
+$winget = Get-Command winget.exe -ErrorAction SilentlyContinue
+if (-not $winget) {
+    throw "Winget is unavailable. Install or update App Installer on Windows, then rerun bootstrap.sh."
+}
 
-    & $winget.Source install `
-        --exact `
-        --id wez.wezterm `
-        --source winget `
-        --silent `
-        --disable-interactivity `
-        --accept-package-agreements `
-        --accept-source-agreements
+# Winget's install command upgrades an existing package unless --no-upgrade is used.
+& $winget.Source install `
+    --exact `
+    --id wez.wezterm `
+    --source winget `
+    --silent `
+    --disable-interactivity `
+    --accept-package-agreements `
+    --accept-source-agreements
 
-    if ($LASTEXITCODE -ne 0) {
-        throw "Winget failed to install WezTerm with exit code $LASTEXITCODE."
-    }
+$wingetExitCode = $LASTEXITCODE
+$noApplicableUpdate = -1978335189 # 0x8A15002B: APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE
+if ($wingetExitCode -ne 0 -and $wingetExitCode -ne $noApplicableUpdate) {
+    throw "Winget failed to install or upgrade WezTerm with exit code $wingetExitCode."
+}
+
+if ($wingetExitCode -eq $noApplicableUpdate) {
+    Write-Host "Windows WezTerm is already at the newest applicable version."
 }
 
 $target = Join-Path $HOME ".wezterm.lua"

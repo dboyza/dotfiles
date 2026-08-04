@@ -69,6 +69,7 @@ Choose exactly one installation section below.
 
    ```sh
    wezterm --version
+   pi --version
    nvim --version
    tmux -V
    zsh --version
@@ -188,6 +189,7 @@ Windows PowerShell and the Ubuntu terminal are different environments, so use th
 
    ```sh
    printf 'WSL is ready\n'
+   pi --version
    nvim --version
    tmux -V
    zsh --version
@@ -283,6 +285,7 @@ Then return to WezTerm and rerun `./bootstrap.sh` from the repository so the Win
 
    ```sh
    wezterm --version
+   pi --version
    nvim --version
    tmux -V
    zsh --version
@@ -346,17 +349,19 @@ Apply the current repository configuration:
 ./bootstrap.sh
 ```
 
-The command is safe to rerun.
+The command refreshes the declared Nix package and plugin sources, checks the result, and activates the newest available versions.
+It also installs or upgrades WezTerm through Winget on Windows or Homebrew on macOS.
+The command is safe to rerun, and an update may change `flake.lock`.
 
-Update the pinned Nix packages and plugin sources only when you intentionally want newer versions:
+The older explicit update form remains available as an alias for the same behavior:
 
 ```sh
 ./bootstrap.sh --update
 ```
 
-The update changes `flake.lock`, checks the result, and activates the updated configuration.
-It may select new software versions.
-Review and commit that file when the update is intentional.
+Review and commit `flake.lock` when a refresh is intentional.
+Packages with an explicit version in the repository remain at that version until the declaration is changed.
+This preserves reproducibility for software that needs packaging fixes or compatibility constraints.
 
 Remove unused Nix store files when disk space is needed:
 
@@ -441,7 +446,8 @@ Run `:Lazy sync` or `:Mason` inside Neovim if a download needs to be retried.
 The shared environment includes:
 
 - Git, zsh, tmux, Neovim, Starship, and Herdr.
-- Codex, Claude Code, and opencode.
+- Pi, Codex, Claude Code, and opencode.
+- Shared agent instructions and skills, plus Pi settings, prompts, extensions, and the Rosé Pine Moon theme.
 - ripgrep, fzf, bat, btop, jq, tree, curl, wget, DNS tools, and direnv.
 - Node.js, uv, pre-commit, GCC on Linux, Make, ShellCheck, and shfmt.
 - kubectl and Terraform.
@@ -453,6 +459,20 @@ Linux desktop installations receive WezTerm and common X11 and Wayland clipboard
 WSL receives Windows WezTerm plus UTF-8-safe Windows clipboard helpers.
 macOS receives WezTerm through Homebrew and system integration through nix-darwin.
 
+### Pi customizations
+
+Press `Alt+Shift+F` or run `/fast` to toggle Codex fast mode for the current session.
+The extension sends `service_tier: "priority"` only to the `openai-codex` provider and displays `⚡ fast` in the footer while enabled.
+The selected mode is stored in the Pi session and restored when that session resumes.
+
+Run `/status` to fetch the current OpenAI Codex rate-limit windows, reset times, credits, and Pi context usage.
+The command uses Pi's in-memory OAuth credentials and does not persist the token or usage response.
+
+Pi sends a desktop notification when a run takes at least ten seconds, fails after retries, or displays a project-trust prompt.
+Run `/notify-test`, then switch to another application during its three-second delay to verify delivery.
+Notifications are suppressed while a WezTerm window is focused because the relevant Pi prompt or result is already visible.
+Native Windows and WSL use Windows notifications with WezTerm's application identity, macOS uses Notification Center through JavaScript for Automation, and other environments fall back to WezTerm's OSC 777 protocol.
+
 ## Repository Layout
 
 | Path | Purpose |
@@ -461,8 +481,11 @@ macOS receives WezTerm through Homebrew and system integration through nix-darwi
 | `flake.nix` | Defines supported systems and platform profiles. |
 | `flake.lock` | Pins exact Nix, Home Manager, nix-darwin, Herdr, and tmux plugin revisions. |
 | `nix/home.nix` | Defines shared packages and home files. |
+| `nix/pi-coding-agent.nix` | Pins and packages Pi from its published npm release. |
 | `nix/darwin.nix` | Defines macOS system settings, fonts, and Homebrew applications. |
 | `agents/global/AGENTS.md` | Stores shared coding-agent instructions. |
+| `agents/skills/` | Stores portable skills shared through `~/.agents/skills`. |
+| `pi/` | Stores Pi settings, extensions, prompts, and themes. |
 | `herdr/config.toml` | Configures Herdr. |
 | `nvim/` | Configures Neovim and pins its plugins. |
 | `scripts/` | Contains WSL clipboard and Windows integration helpers. |
@@ -487,4 +510,5 @@ Run `./bootstrap.sh --check` before applying configuration changes.
 
 This repository manages intentional packages and configuration, not personal data or machine state.
 It does not copy SSH keys, cloud credentials, browser profiles, project files, Apple ID data, or other secrets.
+Pi authentication, trust decisions, package state, and session transcripts under `~/.pi/agent` remain untracked.
 Store those items in a separate encrypted backup.
