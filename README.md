@@ -19,14 +19,6 @@ Sections:
 - [Safe Checks and Updates](#safe-checks-and-updates)
   - [Automated compatibility checks](#automated-compatibility-checks)
 - [Recovery](#recovery)
-- [Troubleshooting](#troubleshooting)
-  - [The Repository Directory Already Exists](#the-repository-directory-already-exists)
-  - [A Password Does Not Appear While Typing](#a-password-does-not-appear-while-typing)
-  - [A Command Is Missing After Installation](#a-command-is-missing-after-installation)
-  - [WSL Cannot Find Winget](#wsl-cannot-find-winget)
-  - [WezTerm Does Not Open Ubuntu on Windows](#wezterm-does-not-open-ubuntu-on-windows)
-  - [WezTerm Uses the Wrong Font](#wezterm-uses-the-wrong-font)
-  - [The First Neovim Launch Takes Time](#the-first-neovim-launch-takes-time)
 - [What the Setup Manages](#what-the-setup-manages)
   - [Pi customizations](#pi-customizations)
 - [Repository Layout](#repository-layout)
@@ -439,59 +431,6 @@ On macOS, roll back the latest nix-darwin change with:
 ```sh
 sudo darwin-rebuild --rollback
 ```
-
-## Troubleshooting
-
-### The Repository Directory Already Exists
-
-Do not run `git clone` again.
-Enter the existing directory and run the installer:
-
-```sh
-cd "$HOME/dotfiles"
-./bootstrap.sh
-```
-
-### A Password Does Not Appear While Typing
-
-This is normal in Linux and macOS password prompts.
-Type the password carefully and press Enter.
-
-### A Command Is Missing After Installation
-
-Close every terminal window, open WezTerm, and try the command again.
-If it is still missing, enter the repository and rerun the installer:
-
-```sh
-cd "$HOME/dotfiles"
-./bootstrap.sh
-```
-
-### WSL Cannot Find Winget
-
-Open the Microsoft Store in Windows and install or update **App Installer**.
-Open a new PowerShell window and confirm that `winget --version` works, then rerun `./bootstrap.sh` inside Ubuntu.
-
-### WezTerm Does Not Open Ubuntu on Windows
-
-Open Windows PowerShell and run:
-
-```powershell
-wsl --list --verbose
-```
-
-Start Ubuntu once from the Start menu if it is not running correctly.
-Then rerun `./bootstrap.sh` inside Ubuntu and restart WezTerm.
-
-### WezTerm Uses the Wrong Font
-
-Rerun `./bootstrap.sh`, close every WezTerm window, and open WezTerm again.
-
-### The First Neovim Launch Takes Time
-
-Neovim downloads `lazy.nvim`, plugins, Mason tools, and Treesitter parsers on its first launch.
-Keep the network connected and allow it to finish.
-Run `:Lazy sync` or `:Mason` inside Neovim if a download needs to be retried.
 
 ## What the Setup Manages
 
