@@ -411,7 +411,6 @@ Run the complete local test suite with:
 ```
 
 The suite checks bootstrap update and backup behavior, WSL UTF-8 clipboard round trips, shell formatting and lint, JSON validity, rendered WezTerm Control+Arrow bindings, an isolated tmux server, Neovim core mappings, PowerShell syntax when PowerShell is available, and every Nix platform evaluation.
-GitHub Actions also builds the native x86_64 and ARM64 Linux and macOS profiles and validates the Windows integration scripts on x86_64 and ARM64 Windows runners.
 
 Remove unused Nix store files when disk space is needed:
 
@@ -554,11 +553,12 @@ Run `./bootstrap.sh --check` before applying configuration changes.
 ## Platform Limitations
 
 - Native Windows without WSL is not provisioned by Nix.
-- GitHub-hosted CI validates WSL profile evaluation and mocked UTF-8 interoperation, but a real Windows-to-WSL GUI and clipboard smoke test still requires a Windows 11 machine.
+- The local suite validates WSL profile evaluation and mocked UTF-8 interoperation, but a real Windows-to-WSL GUI and clipboard smoke test still requires a Windows 11 machine.
 - Apple ID data, App Store authentication, privacy permissions, and personal application data are not managed.
 - The upstream opencode package does not support Intel macOS, so opencode is omitted on Intel Macs.
 - Nixpkgs 26.05 is the final release supporting Intel macOS, so a future Nixpkgs upgrade may require removing the Intel profile.
-- Apple Silicon macOS receives local build and runtime validation, while GitHub Actions provides clean native builds for both Apple Silicon and Intel macOS.
+- Apple Silicon macOS receives local build and runtime validation.
+- Intel macOS and the Linux profiles receive static Nix evaluation unless they are checked on their native platforms manually.
 
 ## Personal Data and Secrets
 

@@ -153,7 +153,6 @@
             packages =
               with pkgs;
               [
-                actionlint
                 jq
                 neovim
                 ripgrep

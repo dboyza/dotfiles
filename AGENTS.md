@@ -35,7 +35,7 @@
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
 - Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
-- Keep `tests/run.sh` and the CI matrix covering x86_64 and ARM64 Linux and macOS, native Windows PowerShell validation, and WSL profile and clipboard behavior.
+- Keep `tests/run.sh` covering x86_64 and ARM64 Linux and macOS evaluation, native Windows PowerShell validation when PowerShell is available, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.
 - In `bootstrap.sh`, platform guards in functions called under `set -e` must return success when intentionally skipping another platform.
 - Before the first nix-darwin activation, preserve conflicting `/etc/bashrc` and `/etc/zshrc` files without overwriting existing `.before-nix-darwin` backups; leave established `/etc/static` links untouched.

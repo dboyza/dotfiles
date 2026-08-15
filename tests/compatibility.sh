@@ -43,10 +43,6 @@ if command -v jq >/dev/null 2>&1; then
   done < <(cd "$repo_dir" && rg --files -g '*.json')
 fi
 
-if command -v actionlint >/dev/null 2>&1; then
-  actionlint "$repo_dir"/.github/workflows/*.yml
-fi
-
 wezterm_command=
 if command -v wezterm >/dev/null 2>&1; then
   wezterm_command=$(command -v wezterm)
