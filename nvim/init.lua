@@ -257,6 +257,10 @@ vim.api.nvim_create_autocmd("LspAttach", {
   end,
 })
 
+if vim.env.DOTFILES_NVIM_CORE_ONLY == "1" then
+  return
+end
+
 local uv = vim.uv or vim.loop
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 

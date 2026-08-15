@@ -86,7 +86,20 @@ in
     if [[ -z "''${DRY_RUN_CMD:-}" ]]; then
       trap '${pkgs.coreutils}/bin/rm -f "$settings_temp"' EXIT
       if [[ -f "$settings_target" ]] && ${pkgs.jq}/bin/jq empty "$settings_target" >/dev/null 2>&1; then
-        ${pkgs.jq}/bin/jq -s '.[0] * .[1]' "$settings_target" ${../pi/settings.json} > "$settings_temp"
+        ${pkgs.jq}/bin/jq -s '
+          .[0] as $current
+          | .[1] as $managed
+          | ($current | del(
+              .autocompleteMaxVisible,
+              .defaultModel,
+              .defaultProvider,
+              .defaultThinkingLevel,
+              .editorPaddingX,
+              .enabledModels,
+              .externalEditor,
+              .showHardwareCursor
+            )) * $managed
+        ' "$settings_target" ${../pi/settings.json} > "$settings_temp"
       else
         ${pkgs.coreutils}/bin/cp ${../pi/settings.json} "$settings_temp"
       fi
@@ -111,8 +124,8 @@ in
     ".pi/agent/AGENTS.md" = managed ../agents/global/AGENTS.md;
     ".agents/skills" = managed ../agents/skills;
 
+    ".pi/agent/models.json" = managed ../pi/models.json;
     ".pi/agent/extensions" = managed ../pi/extensions;
-    ".pi/agent/prompts" = managed ../pi/prompts;
     ".pi/agent/themes" = managed ../pi/themes;
 
     ".tmux/plugins/tpm" = managed inputs.tpm;

@@ -3,6 +3,36 @@
 This repository recreates the same terminal and editor environment on Ubuntu, Windows 11 with WSL, and macOS.
 One script installs Nix, installs the configured tools, and puts the tracked configuration files in the correct locations.
 
+Sections:
+
+- [Read This First](#read-this-first)
+- [Ubuntu Linux](#ubuntu-linux)
+  - [Install on Ubuntu](#install-on-ubuntu)
+  - [Use on Ubuntu](#use-on-ubuntu)
+- [Windows 11 with WSL](#windows-11-with-wsl)
+  - [Install on Windows 11 with WSL](#install-on-windows-11-with-wsl)
+  - [Use on Windows 11 with WSL](#use-on-windows-11-with-wsl)
+- [macOS](#macos)
+  - [Install on macOS](#install-on-macos)
+  - [Use on macOS](#use-on-macos)
+- [Native Windows Without WSL](#native-windows-without-wsl)
+- [Safe Checks and Updates](#safe-checks-and-updates)
+  - [Automated compatibility checks](#automated-compatibility-checks)
+- [Recovery](#recovery)
+- [Troubleshooting](#troubleshooting)
+  - [The Repository Directory Already Exists](#the-repository-directory-already-exists)
+  - [A Password Does Not Appear While Typing](#a-password-does-not-appear-while-typing)
+  - [A Command Is Missing After Installation](#a-command-is-missing-after-installation)
+  - [WSL Cannot Find Winget](#wsl-cannot-find-winget)
+  - [WezTerm Does Not Open Ubuntu on Windows](#wezterm-does-not-open-ubuntu-on-windows)
+  - [WezTerm Uses the Wrong Font](#wezterm-uses-the-wrong-font)
+  - [The First Neovim Launch Takes Time](#the-first-neovim-launch-takes-time)
+- [What the Setup Manages](#what-the-setup-manages)
+  - [Pi customizations](#pi-customizations)
+- [Repository Layout](#repository-layout)
+- [Platform Limitations](#platform-limitations)
+- [Personal Data and Secrets](#personal-data-and-secrets)
+
 ## Read This First
 
 - You need an internet connection and an account that can install software.
@@ -12,6 +42,7 @@ One script installs Nix, installs the configured tools, and puts the tracked con
 - A password prompt may look frozen while you type because Linux and macOS do not display password characters.
 - Type your password anyway, then press Enter.
 - Existing managed configuration files are moved to files ending in `.backup.<timestamp>` before they are replaced.
+- On macOS, pre-existing `/etc/bashrc` and `/etc/zshrc` files are preserved with `.before-nix-darwin` backup names before nix-darwin takes ownership of them.
 - Leave the computer awake until the script prints `Bootstrap complete`.
 
 The examples clone the repository into `$HOME/dotfiles` for simplicity.
@@ -296,6 +327,12 @@ Then return to WezTerm and rerun `./bootstrap.sh` from the repository so the Win
 ### Use on macOS
 
 Open WezTerm from Spotlight or the Applications folder whenever you want to use the configured environment.
+The configuration disables the `Control+Arrow` keyboard shortcuts for Mission Control, Application Windows, and moving between Spaces so those keys reach terminal applications.
+The Mission Control key, trackpad gestures, and other macOS shortcuts remain available.
+On a MacBook keyboard, use `Command+Shift+Up` and `Command+Shift+Down` as Page Up and Page Down.
+Use `Command+Option+Up` and `Command+Option+Down` as Control+Page Up and Control+Page Down.
+Use `Command+C` and `Command+V` for clipboard operations.
+The tmux prefix is `Control+G`, while the Herdr prefix remains `Control+A`.
 
 To download repository changes and apply them, run these commands inside WezTerm:
 
@@ -320,9 +357,10 @@ brew upgrade --cask wezterm
 
 ## Native Windows Without WSL
 
-The one-script Nix installation does not support PowerShell-only or Command Prompt-only Windows environments.
-Follow the **Windows 11 with WSL** section above.
-That path installs the Windows WezTerm application automatically and uses Ubuntu for the reproducible command-line environment.
+The reproducible command-line environment requires Nix and is not provisioned in a PowerShell-only or Command Prompt-only Windows environment.
+Follow the **Windows 11 with WSL** section above for the complete setup.
+Native Windows remains a supported host-integration target for WezTerm, fonts, PowerShell 7 with a Windows PowerShell 5.1 fallback, and the Windows side of WSL clipboard handling.
+The bootstrap process installs those Windows components from WSL and verifies the copied WezTerm configuration by SHA256.
 
 ## Safe Checks and Updates
 
@@ -352,6 +390,7 @@ Apply the current repository configuration:
 The command refreshes the declared Nix package and plugin sources, checks the result, and activates the newest available versions.
 It also installs or upgrades WezTerm through Winget on Windows or Homebrew on macOS.
 The command is safe to rerun, and an update may change `flake.lock`.
+After activation, it verifies the managed Nix-store links, Pi settings and version, the tmux prefix, the WezTerm configuration, and the macOS Control+Arrow shortcut state where applicable.
 
 The older explicit update form remains available as an alias for the same behavior:
 
@@ -363,6 +402,17 @@ Review and commit `flake.lock` when a refresh is intentional.
 Packages with an explicit version in the repository remain at that version until the declaration is changed.
 This preserves reproducibility for software that needs packaging fixes or compatibility constraints.
 
+### Automated compatibility checks
+
+Run the complete local test suite with:
+
+```sh
+./tests/run.sh
+```
+
+The suite checks bootstrap update and backup behavior, WSL UTF-8 clipboard round trips, shell formatting and lint, JSON validity, rendered WezTerm Control+Arrow bindings, an isolated tmux server, Neovim core mappings, PowerShell syntax when PowerShell is available, and every Nix platform evaluation.
+GitHub Actions also builds the native x86_64 and ARM64 Linux and macOS profiles and validates the Windows integration scripts on x86_64 and ARM64 Windows runners.
+
 Remove unused Nix store files when disk space is needed:
 
 ```sh
@@ -373,6 +423,9 @@ nix-collect-garbage
 
 The installer moves an existing managed file to a backup with a name such as `.zshrc.backup.20260712153000` before replacing it.
 Do not delete those backups until the new setup works correctly.
+
+On the first macOS activation, the installer similarly moves pre-existing system shell files to `/etc/bashrc.before-nix-darwin` and `/etc/zshrc.before-nix-darwin`.
+If either backup name is already occupied, the new backup receives a timestamp suffix so earlier contents are not overwritten.
 
 On Ubuntu or WSL, show older Home Manager generations with:
 
@@ -447,7 +500,7 @@ The shared environment includes:
 
 - Git, zsh, tmux, Neovim, Starship, and Herdr.
 - Pi, Codex, Claude Code, and opencode.
-- Shared agent instructions and skills, plus Pi settings, prompts, extensions, and the Rosé Pine Moon theme.
+- Shared agent instructions and skills, plus Pi settings, model overrides, extensions, and the Rosé Pine Moon theme.
 - ripgrep, fzf, bat, btop, jq, tree, curl, wget, DNS tools, and direnv.
 - Node.js, uv, pre-commit, GCC on Linux, Make, ShellCheck, and shfmt.
 - kubectl and Terraform.
@@ -461,17 +514,17 @@ macOS receives WezTerm through Homebrew and system integration through nix-darwi
 
 ### Pi customizations
 
-Press `Alt+Shift+F` or run `/fast` to toggle Codex fast mode for the current session.
-The extension sends `service_tier: "priority"` only to the `openai-codex` provider and displays `⚡ fast` in the footer while enabled.
-The selected mode is stored in the Pi session and restored when that session resumes.
+Run `/calm` to toggle the local Calm presentation mode for the current Pi installation.
+Calm is off by default, hides built-in tool shells and collapsed thinking while enabled, and replaces the working row with a compact animated status widget.
+It does not alter prompts, tool execution, model context, session data, exports, or shared transcripts.
+Its preference is stored in the unmanaged `~/.pi/agent/calm` runtime file.
 
-Run `/status` to fetch the current OpenAI Codex rate-limit windows, reset times, credits, and Pi context usage.
-The command uses Pi's in-memory OAuth credentials and does not persist the token or usage response.
+The terminal-title extension shows a spinner while Pi is working and a completion mark when it finishes.
+The model overrides raise the context window for the configured Codex models without selecting a default provider or model.
 
-Pi sends a desktop notification when a run takes at least ten seconds, fails after retries, or displays a project-trust prompt.
-Run `/notify-test`, then switch to another application during its three-second delay to verify delivery.
-Notifications are suppressed while a WezTerm window is focused because the relevant Pi prompt or result is already visible.
-Native Windows and WSL use Windows notifications with WezTerm's application identity, macOS uses Notification Center through JavaScript for Automation, and other environments fall back to WezTerm's OSC 777 protocol.
+Pi installs the pinned `pi-web-access`, Codex fast mode, and OpenAI server-compaction packages declared in `settings.json`.
+The server-compaction extension is experimental and sends the relevant compaction and continuity data to OpenAI.
+Third-party package code and package state remain in Pi's unmanaged runtime directories rather than this repository.
 
 ## Repository Layout
 
@@ -485,7 +538,7 @@ Native Windows and WSL use Windows notifications with WezTerm's application iden
 | `nix/darwin.nix` | Defines macOS system settings, fonts, and Homebrew applications. |
 | `agents/global/AGENTS.md` | Stores shared coding-agent instructions. |
 | `agents/skills/` | Stores portable skills shared through `~/.agents/skills`. |
-| `pi/` | Stores Pi settings, extensions, prompts, and themes. |
+| `pi/` | Stores Pi settings, model overrides, extensions, and themes. |
 | `herdr/config.toml` | Configures Herdr. |
 | `nvim/` | Configures Neovim and pins its plugins. |
 | `scripts/` | Contains WSL clipboard and Windows integration helpers. |
@@ -501,10 +554,11 @@ Run `./bootstrap.sh --check` before applying configuration changes.
 ## Platform Limitations
 
 - Native Windows without WSL is not provisioned by Nix.
+- GitHub-hosted CI validates WSL profile evaluation and mocked UTF-8 interoperation, but a real Windows-to-WSL GUI and clipboard smoke test still requires a Windows 11 machine.
 - Apple ID data, App Store authentication, privacy permissions, and personal application data are not managed.
 - The upstream opencode package does not support Intel macOS, so opencode is omitted on Intel Macs.
 - Nixpkgs 26.05 is the final release supporting Intel macOS, so a future Nixpkgs upgrade may require removing the Intel profile.
-- The macOS configuration received static evaluation only because a macOS runner was not available.
+- Apple Silicon macOS receives local build and runtime validation, while GitHub Actions provides clean native builds for both Apple Silicon and Intel macOS.
 
 ## Personal Data and Secrets
 

@@ -1,0 +1,67 @@
+name: Compatibility
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: compatibility-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Configuration behavior
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6.0.2
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - name: Run the compatibility suite
+        run: nix develop --command ./tests/run.sh
+
+  native-build:
+    name: ${{ matrix.profile }} build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            profile: linux-x86_64
+          - runner: ubuntu-24.04-arm
+            profile: linux-aarch64
+          - runner: macos-15-intel
+            profile: macos-x86_64
+          - runner: macos-15
+            profile: macos-aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6.0.2
+      - name: Install Nix
+        uses: DeterminateSystems/determinate-nix-action@v3.21.9
+      - name: Build the native profile without activation
+        run: ./bootstrap.sh --check
+
+  windows:
+    name: Native Windows PowerShell (${{ matrix.architecture }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2025
+            architecture: x86_64
+          - runner: windows-11-arm
+            architecture: aarch64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v6.0.2
+      - name: Validate Windows integration scripts
+        shell: pwsh
+        run: ./tests/windows.ps1

@@ -45,4 +45,11 @@ if (Test-Path -LiteralPath $target) {
 }
 
 Copy-Item -LiteralPath $Source -Destination $target -Force
+
+$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Source).Hash
+$targetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash
+if ($sourceHash -ne $targetHash) {
+    throw "The copied WezTerm configuration failed SHA256 verification."
+}
+
 Write-Host "Installed the WezTerm configuration at $target."

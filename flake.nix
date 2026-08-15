@@ -143,6 +143,29 @@
         hack-font = nixpkgs.legacyPackages.${system}.nerd-fonts.hack;
       });
 
+      devShells = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          default = pkgs.mkShell {
+            packages =
+              with pkgs;
+              [
+                actionlint
+                jq
+                neovim
+                ripgrep
+                shellcheck
+                shfmt
+                tmux
+              ]
+              ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ wezterm ];
+          };
+        }
+      );
+
       formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
     };
 }

@@ -9,6 +9,11 @@
 - Store shared global agent instructions in `agents/global/AGENTS.md`, and ensure global Codex, Claude, opencode, and Pi instruction symlinks target that file rather than this one.
   Pi's global instruction path is `~/.pi/agent/AGENTS.md`, not `~/.pi/AGENTS.md`.
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
+- Keep the larger adaptive WezTerm launch size scoped to macOS so Windows and WSL retain their existing window dimensions.
+- Keep plain `Control+Arrow` events passing through WezTerm on every platform so Neovim receives its navigation bindings.
+- On macOS, disable only the Mission Control and Spaces symbolic hotkeys that consume `Control+Arrow`; merge those entries without replacing unrelated shortcut preferences.
+- Keep MacBook-safe Command aliases for clipboard and Page Up or Page Down behavior while retaining the portable bindings for external keyboards.
+- Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
 - Never pipe WSL clipboard text directly to `clip.exe`.
@@ -17,22 +22,25 @@
 - Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
 - Keep reproducible, non-secret Pi configuration in `pi/` and deploy its writable `settings.json` through Home Manager activation so Pi can preserve runtime metadata.
   Never track Pi authentication, trust decisions, package state, or session transcripts.
+- Back up Pi's managed `models.json` before activation, but leave unmanaged prompt files in place.
+- When replacing managed Pi settings, remove obsolete repository-managed keys during activation while preserving unrelated runtime metadata.
 - Package Pi from a versioned npm release in `nix/pi-coding-agent.nix`.
   When updating Pi, update the version, source hash, and npm dependency hash together.
-- Pi 0.80.7's published shrinkwrap omits integrity records for first-party runtime packages and excludes development dependencies.
+- Pi 0.82.0's published shrinkwrap omits integrity records for first-party runtime packages and includes development dependencies.
   Keep the packaging correction, version 2 npm cache fetcher, and production-only install behavior until the published release metadata is complete.
-- Implement Pi's Codex fast mode by sending `service_tier: "priority"` only for the `openai-codex` provider.
-  Treat `fast` as the user-facing mode name, not the wire-level service tier.
-- Fetch Pi's OpenAI usage status with its refreshed in-memory OAuth token and the Codex usage endpoint.
-  Never persist or log OAuth tokens or raw usage responses.
-- Send Pi notifications from native Windows and WSL through Windows WinRT using WezTerm's `org.wezfurlong.wezterm` application ID.
-  Use JavaScript for Automation with Notification Center on macOS and OSC 777 as the fallback on other platforms.
-  Suppress desktop notifications while WezTerm is the focused application.
+- Keep Pi's shared `postPatch` compatible with `fetchNpmDeps`' minimal build environment; do not invoke Node there unless the npm dependency derivation explicitly includes it.
+- Keep the local Pi Calm extension on its verified Pi version, preserve its bundled license, and never manage or track its runtime preference file.
+- Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
+- Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
+- Keep `tests/run.sh` and the CI matrix covering x86_64 and ARM64 Linux and macOS, native Windows PowerShell validation, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.
 - In `bootstrap.sh`, platform guards in functions called under `set -e` must return success when intentionally skipping another platform.
+- Before the first nix-darwin activation, preserve conflicting `/etc/bashrc` and `/etc/zshrc` files without overwriting existing `.before-nix-darwin` backups; leave established `/etc/static` links untouched.
 - Keep WSL host integration in explicit helpers rather than embedding PowerShell or Windows paths in portable Nix modules.
 - Remember that Windows WezTerm reads `%USERPROFILE%/.wezterm.lua`; a WSL-side `~/.wezterm.lua` alone does not configure the Windows application.
+- Treat native Windows as the host-integration target for WezTerm, fonts, PowerShell, and WSL clipboard interoperation rather than as a Nix-provisioned shell environment.
 - In setup documentation, label PowerShell commands separately from WSL shell commands so Windows-host actions cannot be confused with Linux guest actions.
+- Keep the section index at the top of `README.md` synchronized with every level-two and level-three heading.

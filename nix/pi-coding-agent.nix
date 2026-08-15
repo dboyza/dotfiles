@@ -6,14 +6,14 @@
 }:
 buildNpmPackage rec {
   pname = "pi-coding-agent";
-  version = "0.80.7";
+  version = "0.82.0";
 
   src = fetchurl {
     url = "https://registry.npmjs.org/@earendil-works/pi-coding-agent/-/pi-coding-agent-${version}.tgz";
-    hash = "sha256-wBDbIY1X1WF2VlG/QuwTrcInNmk4gLRs8ZGbm/wmCrM=";
+    hash = "sha256-qcnX+GGnUIr15RbUk6A+rB/vNvi1b7DSBNpkOVDl2wg=";
   };
 
-  npmDepsHash = "sha256-LiSUXnICXJIFLim86sRPv0gNMoFbk6qadBEDqvHSr2Y=";
+  npmDepsHash = "sha256-a2U+yvWtuMiK9FkQPmy0f1TTuBTwkTrmoNvybNNv2Q8=";
   npmDepsFetcherVersion = 2;
   nodejs = nodejs_24;
   dontNpmBuild = true;
@@ -25,26 +25,23 @@ buildNpmPackage rec {
   # npm 11 omitted these integrity values from Pi's published shrinkwrap.
   # Nix requires them to fetch dependencies reproducibly.
   postPatch = ''
-    node --input-type=module -e '
-      import { readFile, writeFile } from "node:fs/promises";
-      const packageJson = JSON.parse(await readFile("package.json", "utf8"));
-      delete packageJson.devDependencies;
-      await writeFile("package.json", `''${JSON.stringify(packageJson, null, 2)}\n`);
-    '
+    grep -q '^[[:space:]]*"devDependencies": {' package.json
+    sed -i '/^[[:space:]]*"devDependencies": {$/,/^[[:space:]]*},$/d' package.json
+    ! grep -q '^[[:space:]]*"devDependencies": {' package.json
 
     substituteInPlace npm-shrinkwrap.json \
       --replace-fail \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.7.tgz",' \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.80.7.tgz",
-        "integrity": "sha512-EFjyAuoz2kn24sR9Q5A86sZCG6mD+nz58DCsA2I2wxgmS50cF1tSLCBOZaHKI5U9Y3pJs4BefeK3LRkB5TdJag==",' \
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.82.0.tgz",' \
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-agent-core/-/pi-agent-core-0.82.0.tgz",
+        "integrity": "sha512-bnS9DpOKK5T/F/gQkaOnYdMsuuciWiScfAHHWC+k5OQ0HxjSqMFQvp8keurULLoT4+v8NHv4V14pNvd4hsfC0Q==",' \
       --replace-fail \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.80.7.tgz",' \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.80.7.tgz",
-        "integrity": "sha512-8RLKLwe5TFM9kKFMNu/lTzveduq4GxZbnlG6ba8FAhLeb5wJP4zbj1eBumKBRvggpFQnW5R/Vo2a8zTlHsV9SQ==",' \
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.82.0.tgz",' \
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-ai/-/pi-ai-0.82.0.tgz",
+        "integrity": "sha512-8MvW9+zno13sXDuT2kFMnWeTNUufUhPeZDRVO+igGoBRCDWgn7Xh2FkRQI1mRuet6QhF4ENQuLYdIAOyG6BhNw==",' \
       --replace-fail \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.80.7.tgz",' \
-        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.80.7.tgz",
-        "integrity": "sha512-1B2++fLZfgI3XMzW2BTpuDuam2uyHnUUEmsOvi5R0Ne9RAt59WjFV0G8ozX6l1Xafa9P5Y3eT4aDtRr/v/CUTA==",'
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.82.0.tgz",' \
+        '"resolved": "https://registry.npmjs.org/@earendil-works/pi-tui/-/pi-tui-0.82.0.tgz",
+        "integrity": "sha512-9IDjQOXne7t9l2s2YcjnIBxsVNVPE7qScVSB3YmFlXsBW4pfo2gOElTxggV84KrRiGqABnlFPBWbf0k54hszHQ==",'
   '';
 
   meta = {

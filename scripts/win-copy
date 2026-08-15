@@ -15,7 +15,7 @@ cleanup() {
 }
 trap cleanup EXIT HUP INT TERM
 
-cat > "$clipboard_file"
+cat >"$clipboard_file"
 export WIN_COPY_PATH
 WIN_COPY_PATH=$(wslpath -w "$clipboard_file")
 case ":${WSLENV:-}:" in

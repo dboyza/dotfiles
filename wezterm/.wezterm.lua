@@ -5,10 +5,10 @@ local mux = wezterm.mux
 local target_triple = wezterm.target_triple:lower()
 local is_windows = target_triple:find('windows') ~= nil
 local is_macos = target_triple:find('darwin') ~= nil
-local launch_max_width = 1800
-local launch_max_height = 1200
-local launch_width_ratio = 0.88
-local launch_height_ratio = 0.84
+local launch_max_width = is_macos and 2100 or 1800
+local launch_max_height = is_macos and 1400 or 1200
+local launch_width_ratio = is_macos and 0.92 or 0.88
+local launch_height_ratio = is_macos and 0.88 or 0.84
 
 local function launch_size(screen)
   return math.min(launch_max_width, math.max(1, math.floor(screen.width * launch_width_ratio))),
@@ -337,12 +337,22 @@ config.keys = {
   {
     key = 'UpArrow',
     mods = 'CTRL',
-    action = wezterm.action.ScrollByLine(-5),
+    action = wezterm.action.SendKey({ key = 'UpArrow', mods = 'CTRL' }),
   },
   {
     key = 'DownArrow',
     mods = 'CTRL',
-    action = wezterm.action.ScrollByLine(5),
+    action = wezterm.action.SendKey({ key = 'DownArrow', mods = 'CTRL' }),
+  },
+  {
+    key = 'LeftArrow',
+    mods = 'CTRL',
+    action = wezterm.action.SendKey({ key = 'LeftArrow', mods = 'CTRL' }),
+  },
+  {
+    key = 'RightArrow',
+    mods = 'CTRL',
+    action = wezterm.action.SendKey({ key = 'RightArrow', mods = 'CTRL' }),
   },
   {
     key = 'LeftArrow',
@@ -363,11 +373,6 @@ config.keys = {
     key = 'RightArrow',
     mods = 'SHIFT',
     action = wezterm.action.SendKey({ key = 'RightArrow', mods = 'SHIFT' }),
-  },
-  {
-    key = 'v',
-    mods = 'CMD',
-    action = wezterm.action.PasteFrom('Clipboard'),
   },
   {
     key = 'c',
@@ -400,6 +405,45 @@ config.keys = {
     action = scroll_or_send_key('PageDown', 'CTRL', wezterm.action.ScrollByLine(1)),
   },
 }
+
+if is_macos then
+  local mac_key_bindings = {
+    {
+      key = 'c',
+      mods = 'CMD',
+      action = wezterm.action.CopyTo('Clipboard'),
+    },
+    {
+      key = 'v',
+      mods = 'CMD',
+      action = wezterm.action.PasteFrom('Clipboard'),
+    },
+    {
+      key = 'UpArrow',
+      mods = 'CMD|SHIFT',
+      action = scroll_or_send_key('PageUp', 'NONE', wezterm.action.ScrollByPage(-1)),
+    },
+    {
+      key = 'DownArrow',
+      mods = 'CMD|SHIFT',
+      action = scroll_or_send_key('PageDown', 'NONE', wezterm.action.ScrollByPage(1)),
+    },
+    {
+      key = 'UpArrow',
+      mods = 'CMD|ALT',
+      action = scroll_or_send_key('PageUp', 'CTRL', wezterm.action.ScrollByLine(-1)),
+    },
+    {
+      key = 'DownArrow',
+      mods = 'CMD|ALT',
+      action = scroll_or_send_key('PageDown', 'CTRL', wezterm.action.ScrollByLine(1)),
+    },
+  }
+
+  for _, binding in ipairs(mac_key_bindings) do
+    table.insert(config.keys, binding)
+  end
+end
 
 config.mouse_bindings = {
   {

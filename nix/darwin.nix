@@ -23,6 +23,24 @@
   };
 
   system = {
+    activationScripts.disableControlArrowShortcuts.text =
+      let
+        user = pkgs.lib.escapeShellArg username;
+        disabledShortcut = pkgs.lib.escapeShellArg ''
+          <dict>
+            <key>enabled</key>
+            <false/>
+          </dict>
+        '';
+      in
+      ''
+        user_id=$(/usr/bin/id -u -- ${user})
+        for shortcut in 32 33 79 80 81 82; do
+          /bin/launchctl asuser "$user_id" /usr/bin/sudo --user=${user} -- \
+            /usr/bin/defaults write com.apple.symbolichotkeys AppleSymbolicHotKeys \
+              -dict-add "$shortcut" ${disabledShortcut}
+        done
+      '';
     primaryUser = username;
     stateVersion = 6;
   };
