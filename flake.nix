@@ -71,6 +71,7 @@
 
       username = requireEnvironment "DOTFILES_USER";
       homeDirectory = requireEnvironment "DOTFILES_HOME";
+      repositoryDirectory = requireEnvironment "DOTFILES_REPOSITORY";
       isWSL = builtins.getEnv "DOTFILES_WSL" == "1";
 
       specialArgs = {
@@ -78,6 +79,7 @@
           homeDirectory
           inputs
           isWSL
+          repositoryDirectory
           username
           ;
       };
@@ -139,9 +141,16 @@
         }
       );
 
-      packages = forAllSystems (system: {
-        hack-font = nixpkgs.legacyPackages.${system}.nerd-fonts.hack;
-      });
+      packages = forAllSystems (
+        system:
+        let
+          pkgs = mkPkgs system;
+        in
+        {
+          hack-font = pkgs.nerd-fonts.hack;
+          pi-coding-agent = pkgs.callPackage ./nix/pi-coding-agent.nix { };
+        }
+      );
 
       devShells = forAllSystems (
         system:

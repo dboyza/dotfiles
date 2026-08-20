@@ -91,7 +91,7 @@ EOF
 cat >"$fake_bin/pi" <<'EOF'
 #!/usr/bin/env bash
 if [[ "${1:-}" == --version ]]; then
-  printf '0.82.0\n'
+  printf '0.84.2\n'
 fi
 EOF
 
@@ -111,6 +111,9 @@ EOF
 
 cat >"$fake_bin/jq" <<'EOF'
 #!/usr/bin/env bash
+if [[ " $* " == *" -r .version // empty "* ]]; then
+  printf '0.84.2\n'
+fi
 exit 0
 EOF
 
@@ -157,6 +160,16 @@ if grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"; then
 fi
 grep -Fq 'flake check' "$BOOTSTRAP_TEST_NIX_LOG"
 test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
+
+rm -f "$BOOTSTRAP_TEST_ACTIVATED" "$BOOTSTRAP_TEST_NIX_LOG"
+"$repo_dir/bootstrap.sh" --apply >/dev/null
+
+if grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"; then
+  printf 'bootstrap test: --apply unexpectedly updated the flake\n' >&2
+  exit 1
+fi
+grep -Fq 'flake check' "$BOOTSTRAP_TEST_NIX_LOG"
+test -e "$BOOTSTRAP_TEST_ACTIVATED"
 
 fake_etc="$test_dir/etc"
 mkdir -p "$fake_etc/static"

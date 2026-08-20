@@ -1,0 +1,220 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: scripts/update-pi [--force] [VERSION]
+
+Update the repository's reproducible Pi package and activate it.
+With no VERSION, use the latest published npm release.
+EOF
+}
+
+force=false
+requested_version=
+while (($# > 0)); do
+  case "$1" in
+    --force) force=true ;;
+    -h | --help)
+      usage
+      exit 0
+      ;;
+    -* | */*)
+      usage >&2
+      exit 2
+      ;;
+    *)
+      if [[ -n "$requested_version" ]]; then
+        usage >&2
+        exit 2
+      fi
+      requested_version=$1
+      ;;
+  esac
+  shift
+done
+
+load_nix() {
+  if command -v nix >/dev/null 2>&1; then
+    return
+  fi
+
+  local profile_script
+  for profile_script in \
+    /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh \
+    "$HOME/.nix-profile/etc/profile.d/nix.sh"; do
+    if [[ -r "$profile_script" ]]; then
+      # shellcheck disable=SC1090
+      source "$profile_script"
+    fi
+  done
+}
+
+load_nix
+unset CDPATH
+repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+metadata_file="$repo_dir/nix/pi-coding-agent.json"
+package_name=@earendil-works/pi-coding-agent
+nix_options=(--extra-experimental-features "nix-command flakes")
+
+for command_name in curl git jq nix npm tar; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    printf 'pi update: required command is missing: %s\n' "$command_name" >&2
+    exit 1
+  fi
+done
+
+if [[ ! -f "$metadata_file" ]]; then
+  printf 'pi update: package metadata is missing: %s\n' "$metadata_file" >&2
+  exit 1
+fi
+
+if [[ -z "$requested_version" ]]; then
+  requested_version=$(npm view "$package_name" dist-tags.latest --json | jq -er 'select(type == "string" and length > 0)')
+fi
+
+release_metadata=$(npm view "$package_name@$requested_version" version dist.tarball dist.integrity --json)
+version=$(jq -er '.version | select(type == "string" and length > 0)' <<<"$release_metadata")
+tarball=$(jq -er '."dist.tarball" | select(type == "string" and length > 0)' <<<"$release_metadata")
+source_hash=$(jq -er '."dist.integrity" | select(type == "string" and length > 0)' <<<"$release_metadata")
+current_version=$(jq -er '.version' "$metadata_file")
+
+if [[ "$version" == "$current_version" ]] && ! $force; then
+  if [[ -z "${PI_MANAGED_VERSION:-}" || "$PI_MANAGED_VERSION" == "$current_version" ]]; then
+    printf 'Pi %s is already current.\n' "$current_version"
+    exit 0
+  fi
+
+  printf 'Pi %s is pinned but not active. Activating it now.\n' "$current_version"
+  exec "$repo_dir/bootstrap.sh" --apply
+fi
+
+if ! git -C "$repo_dir" diff --quiet -- nix/pi-coding-agent.json ||
+  ! git -C "$repo_dir" diff --cached --quiet -- nix/pi-coding-agent.json; then
+  printf 'pi update: refusing to overwrite uncommitted Pi package metadata\n' >&2
+  printf 'Commit or restore nix/pi-coding-agent.json, then retry.\n' >&2
+  exit 1
+fi
+
+work_dir=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-pi-update.XXXXXX")
+metadata_backup="$work_dir/pi-coding-agent.json"
+metadata_temp="$work_dir/pi-coding-agent.json.new"
+package_archive="$work_dir/pi-coding-agent.tgz"
+package_dir="$work_dir/package"
+metadata_valid=false
+
+cleanup() {
+  local exit_code=$?
+  if ! $metadata_valid; then
+    cp "$metadata_backup" "$metadata_file"
+  fi
+  rm -rf "$work_dir"
+  exit "$exit_code"
+}
+trap cleanup EXIT
+
+cp "$metadata_file" "$metadata_backup"
+curl --proto '=https' --tlsv1.2 -fsSL "$tarball" -o "$package_archive"
+mkdir -p "$package_dir"
+tar -xzf "$package_archive" -C "$package_dir" --strip-components=1
+
+jq -n \
+  --arg version "$version" \
+  --arg tarball "$tarball" \
+  --arg source_hash "$source_hash" \
+  '{
+    version: $version,
+    tarball: $tarball,
+    sourceHash: $source_hash,
+    npmDepsHash: "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+    missingIntegrities: []
+  }' >"$metadata_temp"
+
+missing_dependencies=$(jq -r '
+  .packages
+  | to_entries[]
+  | select(
+      .key != ""
+      and (.value.resolved | type == "string")
+      and (.value.integrity | not)
+    )
+  | [(.key | sub("^node_modules/"; "")), .value.version, .value.resolved]
+  | @tsv
+' "$package_dir/npm-shrinkwrap.json")
+
+if [[ -n "$missing_dependencies" ]]; then
+  while IFS=$'\t' read -r dependency dependency_version resolved; do
+    if [[ "$dependency" == */node_modules/* ]]; then
+      printf 'pi update: unsupported nested package without integrity: %s\n' "$dependency" >&2
+      exit 1
+    fi
+
+    dependency_integrity=$(npm view "$dependency@$dependency_version" dist.integrity --json |
+      jq -er 'select(type == "string" and length > 0)')
+    jq \
+      --arg resolved "$resolved" \
+      --arg integrity "$dependency_integrity" \
+      '.missingIntegrities += [{resolved: $resolved, integrity: $integrity}]' \
+      "$metadata_temp" >"$metadata_temp.next"
+    mv "$metadata_temp.next" "$metadata_temp"
+  done <<<"$missing_dependencies"
+fi
+
+mv "$metadata_temp" "$metadata_file"
+
+export DOTFILES_USER=${USER:-$(id -un)}
+export DOTFILES_HOME=$HOME
+export DOTFILES_REPOSITORY=$repo_dir
+export DOTFILES_WSL=0
+if [[ $(uname -s) == Linux ]] && grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
+  export DOTFILES_WSL=1
+fi
+
+set +e
+build_output=$(nix "${nix_options[@]}" build \
+  "path:$repo_dir#pi-coding-agent" \
+  --impure \
+  --no-link 2>&1)
+build_status=$?
+set -e
+
+if ((build_status == 0)); then
+  printf 'pi update: dependency hash discovery unexpectedly succeeded with the placeholder hash\n' >&2
+  exit 1
+fi
+
+npm_deps_hash=$(sed -n 's/^[[:space:]]*got:[[:space:]]*//p' <<<"$build_output" | tail -n 1)
+if [[ "$npm_deps_hash" != sha256-* ]]; then
+  printf '%s\n' "$build_output" >&2
+  printf 'pi update: could not determine the Nix npm dependency hash\n' >&2
+  exit 1
+fi
+
+jq --arg npm_deps_hash "$npm_deps_hash" '.npmDepsHash = $npm_deps_hash' \
+  "$metadata_file" >"$metadata_temp"
+mv "$metadata_temp" "$metadata_file"
+
+pi_store=$(nix "${nix_options[@]}" build \
+  "path:$repo_dir#pi-coding-agent" \
+  --impure \
+  --no-link \
+  --print-out-paths)
+
+if [[ ! -x "$pi_store/bin/pi" ]]; then
+  printf 'pi update: built Pi executable is missing: %s/bin/pi\n' "$pi_store" >&2
+  exit 1
+fi
+
+smoke_agent_dir="$work_dir/pi-agent"
+mkdir -p "$smoke_agent_dir"
+jq '.packages = []' "$repo_dir/pi/settings.json" >"$smoke_agent_dir/settings.json"
+cp "$repo_dir/pi/models.json" "$smoke_agent_dir/models.json"
+ln -s "$repo_dir/pi/extensions" "$smoke_agent_dir/extensions"
+ln -s "$repo_dir/pi/themes" "$smoke_agent_dir/themes"
+PI_CODING_AGENT_DIR="$smoke_agent_dir" PI_OFFLINE=1 \
+  "$pi_store/bin/pi" --mode rpc --no-session --no-approve </dev/null >/dev/null
+metadata_valid=true
+
+printf 'Pi package metadata updated from %s to %s.\n' "$current_version" "$version"
+"$repo_dir/bootstrap.sh" --apply

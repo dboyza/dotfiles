@@ -4,6 +4,7 @@
   isWSL,
   lib,
   pkgs,
+  repositoryDirectory,
   username,
   ...
 }:
@@ -14,7 +15,19 @@ let
   };
 
   system = pkgs.stdenv.hostPlatform.system;
-  pi-coding-agent = pkgs.callPackage ./pi-coding-agent.nix { };
+  pi-package = pkgs.callPackage ./pi-coding-agent.nix { };
+  pi-coding-agent = pkgs.writeShellApplication {
+    name = "pi";
+    text = ''
+      PI_MANAGED_REAL=${lib.escapeShellArg "${pi-package}/bin/pi"}
+      PI_MANAGED_UPDATER=${lib.escapeShellArg "${repositoryDirectory}/scripts/update-pi"}
+      PI_MANAGED_VERSION=${lib.escapeShellArg pi-package.version}
+      export PI_MANAGED_REAL PI_MANAGED_UPDATER PI_MANAGED_VERSION
+
+      ${builtins.readFile ../scripts/pi-managed}
+    '';
+    meta = pi-package.meta;
+  };
 in
 {
   home = {

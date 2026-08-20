@@ -373,6 +373,14 @@ Check that the configuration can build without activating it:
 If Nix is not installed yet, this check installs Nix first.
 It builds the configuration but does not replace or activate the managed configuration files.
 
+Activate the currently pinned configuration without refreshing package and plugin inputs:
+
+```sh
+./bootstrap.sh --apply
+```
+
+This form is used by targeted package updaters and is useful when `flake.lock` must remain unchanged.
+
 Apply the current repository configuration:
 
 ```sh
@@ -393,6 +401,18 @@ The older explicit update form remains available as an alias for the same behavi
 Review and commit `flake.lock` when a refresh is intentional.
 Packages with an explicit version in the repository remain at that version until the declaration is changed.
 This preserves reproducibility for software that needs packaging fixes or compatibility constraints.
+
+Pi is one of those explicitly pinned packages.
+Use Pi's normal command to update it:
+
+```sh
+pi update
+```
+
+The managed wrapper updates Pi's npm release metadata and Nix hashes in this repository, validates the new package, and activates it without trying to modify `/nix/store`.
+Review and commit `nix/pi-coding-agent.json` after a successful Pi update.
+`pi update --extensions` and `pi update --models` continue to use Pi's native package and model update behavior.
+`pi update --all` updates extensions first and then performs the managed Pi update.
 
 ### Automated compatibility checks
 
@@ -473,6 +493,7 @@ Third-party package code and package state remain in Pi's unmanaged runtime dire
 | `flake.lock` | Pins exact Nix, Home Manager, nix-darwin, Herdr, and tmux plugin revisions. |
 | `nix/home.nix` | Defines shared packages and home files. |
 | `nix/pi-coding-agent.nix` | Pins and packages Pi from its published npm release. |
+| `nix/pi-coding-agent.json` | Stores generated Pi release and reproducible hash metadata. |
 | `nix/darwin.nix` | Defines macOS system settings, fonts, and Homebrew applications. |
 | `agents/global/AGENTS.md` | Stores shared coding-agent instructions. |
 | `agents/skills/` | Stores portable skills shared through `~/.agents/skills`. |

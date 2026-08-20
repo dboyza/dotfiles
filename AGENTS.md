@@ -25,15 +25,18 @@
 - Back up Pi's managed `models.json` before activation, but leave unmanaged prompt files in place.
 - When replacing managed Pi settings, remove obsolete repository-managed keys during activation while preserving unrelated runtime metadata.
 - Package Pi from a versioned npm release in `nix/pi-coding-agent.nix`.
-  When updating Pi, update the version, source hash, and npm dependency hash together.
-- Pi 0.82.0's published shrinkwrap omits integrity records for first-party runtime packages and includes development dependencies.
-  Keep the packaging correction, version 2 npm cache fetcher, and production-only install behavior until the published release metadata is complete.
+  Keep generated release metadata in `nix/pi-coding-agent.json`, and update it through `scripts/update-pi` so the version, source hash, missing dependency integrities, and npm dependency hash stay synchronized.
+- Pi's published shrinkwrap omits integrity records for first-party runtime packages and includes development dependencies.
+  Keep the metadata-driven integrity correction, version 2 npm cache fetcher, and production-only install behavior until the published release metadata is complete.
 - Keep Pi's shared `postPatch` compatible with `fetchNpmDeps`' minimal build environment; do not invoke Node there unless the npm dependency derivation explicitly includes it.
+- Keep Pi self-updates routed through the managed wrapper so `pi update` updates the reproducible repository package instead of attempting to modify `/nix/store`.
+  Preserve native Pi behavior for extension-only and model-only updates.
+- Keep `scripts/update-pi` validating the built Pi package with an offline RPC startup that loads the repository-managed extensions and themes before activation.
 - Keep the local Pi Calm extension on its verified Pi version, preserve its bundled license, and never manage or track its runtime preference file.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
-- Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
+- Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPOSITORY`, and `DOTFILES_WSL`, because host identity and the active checkout are intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
-  Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
+  Preserve `./bootstrap.sh --check` as a non-mutating build and `./bootstrap.sh --apply` as activation without input updates.
 - Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
 - Keep `tests/run.sh` covering x86_64 and ARM64 Linux and macOS evaluation, native Windows PowerShell validation when PowerShell is available, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.

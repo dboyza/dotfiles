@@ -4,17 +4,23 @@ set -Eeuo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: ./bootstrap.sh [--check | --update]
+Usage: ./bootstrap.sh [--check | --apply | --update]
 
   --check  Evaluate and build the pinned configuration without updating or activating it.
+  --apply  Check and activate the currently pinned configuration without updating inputs.
   --update Update, check, and activate the configuration (the default behavior).
 EOF
 }
 
 check_only=false
+update_inputs=true
 case "${1:-}" in
   "") ;;
-  --check) check_only=true ;;
+  --check)
+    check_only=true
+    update_inputs=false
+    ;;
+  --apply) update_inputs=false ;;
   --update) ;;
   -h | --help)
     usage
@@ -60,6 +66,7 @@ esac
 
 export DOTFILES_USER=${USER:-$(id -un)}
 export DOTFILES_HOME=$HOME
+export DOTFILES_REPOSITORY=$repo_dir
 export DOTFILES_WSL=0
 if [[ "$os" == Linux ]] && grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
   export DOTFILES_WSL=1
@@ -242,7 +249,7 @@ verify_pi_configuration() {
     return 1
   fi
 
-  expected_version=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$repo_dir/nix/pi-coding-agent.nix")
+  expected_version=$(jq -r '.version // empty' "$repo_dir/nix/pi-coding-agent.json")
   actual_version=$(pi --version 2>/dev/null || true)
   if [[ -z "$expected_version" || "$actual_version" != "$expected_version" ]]; then
     printf 'bootstrap: expected Pi %s, found %s\n' "${expected_version:-unknown}" "${actual_version:-unknown}" >&2
@@ -425,7 +432,7 @@ install_nix
 nix_options=(--extra-experimental-features "nix-command flakes")
 flake_ref="path:$repo_dir"
 
-if ! $check_only; then
+if $update_inputs; then
   printf 'Updating Nix packages and plugin inputs to their latest declared versions...\n'
   nix "${nix_options[@]}" flake update --flake "$flake_ref"
 fi

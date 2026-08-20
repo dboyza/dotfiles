@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+set -Eeuo pipefail
+
+: "${PI_MANAGED_REAL:?PI_MANAGED_REAL is required}"
+: "${PI_MANAGED_UPDATER:?PI_MANAGED_UPDATER is required}"
+: "${PI_MANAGED_VERSION:?PI_MANAGED_VERSION is required}"
+
+if [[ "${1:-}" != update ]]; then
+  exec "$PI_MANAGED_REAL" "$@"
+fi
+
+shift
+target=self
+force=false
+valid_managed_request=true
+
+for argument in "$@"; do
+  case "$argument" in
+    --all) target=all ;;
+    --self | self | pi) target=self ;;
+    --force) force=true ;;
+    -a | --approve | -na | --no-approve) ;;
+    *) valid_managed_request=false ;;
+  esac
+done
+
+if ! $valid_managed_request; then
+  exec "$PI_MANAGED_REAL" update "$@"
+fi
+
+if [[ "$target" == all ]]; then
+  extension_arguments=(--extensions)
+  for argument in "$@"; do
+    case "$argument" in
+      --force | -a | --approve | -na | --no-approve) extension_arguments+=("$argument") ;;
+    esac
+  done
+  "$PI_MANAGED_REAL" update "${extension_arguments[@]}"
+fi
+
+updater_arguments=()
+if $force; then
+  updater_arguments+=(--force)
+fi
+exec "$PI_MANAGED_UPDATER" "${updater_arguments[@]}"

@@ -2,6 +2,7 @@
   homeDirectory,
   inputs,
   pkgs,
+  repositoryDirectory,
   username,
   ...
 }:
@@ -71,6 +72,7 @@
       inherit
         homeDirectory
         inputs
+        repositoryDirectory
         username
         ;
       isWSL = false;
