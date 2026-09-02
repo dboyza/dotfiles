@@ -1,4 +1,5 @@
 {
+  allowUnfreePredicate,
   homeDirectory,
   inputs,
   pkgs,
@@ -6,12 +7,7 @@
   ...
 }:
 {
-  nixpkgs.config.allowUnfreePredicate =
-    package:
-    builtins.elem (pkgs.lib.getName package) [
-      "claude-code"
-      "terraform"
-    ];
+  nixpkgs.config = { inherit allowUnfreePredicate; };
 
   nix = {
     enable = true;

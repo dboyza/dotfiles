@@ -60,6 +60,23 @@
         "x86_64-linux"
       ];
 
+      linuxProfiles = {
+        linux-aarch64 = "aarch64-linux";
+        linux-x86_64 = "x86_64-linux";
+      };
+
+      darwinProfiles = {
+        macos-aarch64 = "aarch64-darwin";
+        macos-x86_64 = "x86_64-darwin";
+      };
+
+      unfreePackageNames = [
+        "claude-code"
+        "terraform"
+      ];
+
+      allowUnfreePredicate = package: builtins.elem (nixpkgs.lib.getName package) unfreePackageNames;
+
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
 
       requireEnvironment =
@@ -75,6 +92,7 @@
 
       specialArgs = {
         inherit
+          allowUnfreePredicate
           homeDirectory
           inputs
           isWSL
@@ -86,12 +104,7 @@
         system:
         import nixpkgs {
           inherit system;
-          config.allowUnfreePredicate =
-            package:
-            builtins.elem (nixpkgs.lib.getName package) [
-              "claude-code"
-              "terraform"
-            ];
+          config = { inherit allowUnfreePredicate; };
         };
 
       mkHome =
@@ -113,15 +126,9 @@
         };
     in
     {
-      homeConfigurations = {
-        linux-aarch64 = mkHome "aarch64-linux";
-        linux-x86_64 = mkHome "x86_64-linux";
-      };
+      homeConfigurations = nixpkgs.lib.mapAttrs (_: system: mkHome system) linuxProfiles;
 
-      darwinConfigurations = {
-        macos-aarch64 = mkDarwin "aarch64-darwin";
-        macos-x86_64 = mkDarwin "x86_64-darwin";
-      };
+      darwinConfigurations = nixpkgs.lib.mapAttrs (_: system: mkDarwin system) darwinProfiles;
 
       apps = forAllSystems (
         system:
@@ -129,12 +136,14 @@
           home-manager = {
             type = "app";
             program = "${home-manager.packages.${system}.home-manager}/bin/home-manager";
+            meta.description = "Run Home Manager for the dotfiles configuration";
           };
         }
         // nixpkgs.lib.optionalAttrs nixpkgs.legacyPackages.${system}.stdenv.isDarwin {
           darwin-rebuild = {
             type = "app";
             program = "${nix-darwin.packages.${system}.darwin-rebuild}/bin/darwin-rebuild";
+            meta.description = "Run nix-darwin rebuilds for the dotfiles configuration";
           };
         }
       );

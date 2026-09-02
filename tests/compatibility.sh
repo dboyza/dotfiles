@@ -3,6 +3,8 @@
 set -Eeuo pipefail
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# shellcheck source=scripts/lib/wezterm.sh
+source "$repo_dir/scripts/lib/wezterm.sh"
 test_dir=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-compatibility.XXXXXX")
 cleanup() {
   local status=$?
@@ -43,12 +45,7 @@ if command -v jq >/dev/null 2>&1; then
   done < <(cd "$repo_dir" && rg --files -g '*.json')
 fi
 
-wezterm_command=
-if command -v wezterm >/dev/null 2>&1; then
-  wezterm_command=$(command -v wezterm)
-elif [[ -x /Applications/WezTerm.app/Contents/MacOS/wezterm ]]; then
-  wezterm_command=/Applications/WezTerm.app/Contents/MacOS/wezterm
-fi
+wezterm_command=$(find_wezterm || true)
 
 if [[ -n "$wezterm_command" ]]; then
   keys="$test_dir/wezterm-keys"

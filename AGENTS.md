@@ -44,3 +44,10 @@
 - Treat native Windows as the host-integration target for WezTerm, fonts, PowerShell, and WSL clipboard interoperation rather than as a Nix-provisioned shell environment.
 - In setup documentation, label PowerShell commands separately from WSL shell commands so Windows-host actions cannot be confused with Linux guest actions.
 - Keep the section index at the top of `README.md` synchronized with every level-two and level-three heading.
+- Keep `bootstrap.sh` as the thin public entry point, with shared and platform-specific behavior in `scripts/lib/`.
+- Keep the bootstrap managed-target inventory centralized so backup and verification always operate on the same paths.
+- Keep `./bootstrap.sh --check` non-mutating and require an existing Nix installation instead of installing prerequisites.
+- Run platform prerequisite preflight checks before updating inputs, installing packages, backing up files, or activating configuration.
+- Keep WezTerm executable discovery centralized in `scripts/lib/wezterm.sh` for bootstrap and compatibility tests.
+- Install Hack Nerd Font through nix-darwin on macOS and through Home Manager on Linux so each platform has one font owner.
+- Keep the unused .NET test input removed from the pre-commit derivation so macOS checks do not build .NET, Swift, and LLVM.

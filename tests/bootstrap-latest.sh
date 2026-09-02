@@ -125,6 +125,7 @@ chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "
 for command_name in brew claude codex herdr kubectl nvim node opencode pre-commit starship terraform uv wezterm; do
   ln -s "$fake_bin/noop" "$fake_bin/$command_name"
 done
+ln -s "$fake_bin/noop" "$fake_bin/xcode-select"
 
 export BOOTSTRAP_TEST_ACTIVATED="$test_dir/activated"
 export BOOTSTRAP_TEST_GENERATION="$generation"
@@ -166,6 +167,17 @@ export BOOTSTRAP_DARWIN_ETC_DIR="$fake_etc"
 export BOOTSTRAP_TEST_OS=Darwin
 
 rm -f "$BOOTSTRAP_TEST_NIX_LOG"
+export BOOTSTRAP_XCODE_SELECT="$fake_bin/missing-xcode-select"
+if "$repo_dir/bootstrap.sh" >/dev/null 2>&1; then
+  printf 'bootstrap test: macOS preflight accepted missing Command Line Tools\n' >&2
+  exit 1
+fi
+if [[ -e "$BOOTSTRAP_TEST_NIX_LOG" ]]; then
+  printf 'bootstrap test: macOS preflight changed Nix state before failing\n' >&2
+  exit 1
+fi
+unset BOOTSTRAP_XCODE_SELECT
+
 "$repo_dir/bootstrap.sh" >/dev/null
 
 test ! -e "$fake_etc/bashrc"

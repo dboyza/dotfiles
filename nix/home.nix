@@ -15,6 +15,14 @@ let
 
   system = pkgs.stdenv.hostPlatform.system;
   pi-coding-agent = pkgs.callPackage ./pi-coding-agent.nix { };
+  pre-commit-without-dotnet-tests = pkgs.pre-commit.overridePythonAttrs (old: {
+    nativeCheckInputs = builtins.filter (input: input != pkgs.dotnet-sdk) old.nativeCheckInputs;
+    preCheck = lib.concatStringsSep "\n" (
+      builtins.filter (line: !(lib.hasInfix ".NET location" line || lib.hasInfix "DOTNET_ROOT" line)) (
+        lib.splitString "\n" (builtins.unsafeDiscardStringContext old.preCheck)
+      )
+    );
+  });
 in
 {
   home = {
@@ -39,11 +47,10 @@ in
         inputs.herdr.packages.${system}.default
         jq
         kubectl
-        nerd-fonts.hack
         neovim
         nodejs_24
         pi-coding-agent
-        pre-commit
+        pre-commit-without-dotnet-tests
         ripgrep
         shellcheck
         shfmt
@@ -61,6 +68,7 @@ in
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
         gcc
+        nerd-fonts.hack
         wl-clipboard
         xclip
         xsel
