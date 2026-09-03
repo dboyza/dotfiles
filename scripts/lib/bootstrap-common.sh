@@ -228,7 +228,7 @@ build_configuration() {
 
 verify_installation() {
   local command_name missing=0
-  local expected_commands=(claude codex git herdr kubectl nvim node pi pre-commit rg starship terraform tmux uv zsh)
+  local expected_commands=(claude codex gh git herdr kubectl nvim node pi pre-commit rg starship terraform tmux uv zsh)
   export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/$DOTFILES_USER/bin:/run/current-system/sw/bin:$PATH"
 
   if [[ "$profile" != macos-x86_64 ]]; then

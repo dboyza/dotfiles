@@ -41,6 +41,7 @@ in
         curl
         direnv
         fzf
+        gh
         git
         git-lfs
         gnumake

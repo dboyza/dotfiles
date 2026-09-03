@@ -145,7 +145,7 @@ EOF
 chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "$fake_bin/sudo" "$fake_bin/curl" \
   "$fake_bin/pi" "$fake_bin/tmux" "$fake_bin/PlistBuddy" "$fake_bin/jq" "$fake_bin/noop" "$generation/activate"
 
-for command_name in brew claude codex herdr kubectl nvim node opencode pre-commit starship terraform uv wezterm; do
+for command_name in brew claude codex gh herdr kubectl nvim node opencode pre-commit starship terraform uv wezterm; do
   ln -s "$fake_bin/noop" "$fake_bin/$command_name"
 done
 ln -s "$fake_bin/noop" "$fake_bin/xcode-select"
