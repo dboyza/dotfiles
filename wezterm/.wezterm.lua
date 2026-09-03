@@ -5,10 +5,10 @@ local mux = wezterm.mux
 local target_triple = wezterm.target_triple:lower()
 local is_windows = target_triple:find('windows') ~= nil
 local is_macos = target_triple:find('darwin') ~= nil
-local launch_max_width = is_macos and 2100 or 1800
-local launch_max_height = is_macos and 1400 or 1200
-local launch_width_ratio = is_macos and 0.92 or 0.88
-local launch_height_ratio = is_macos and 0.88 or 0.84
+local launch_max_width = is_macos and 2800 or 1800
+local launch_max_height = is_macos and 1800 or 1200
+local launch_width_ratio = is_macos and 0.94 or 0.88
+local launch_height_ratio = is_macos and 0.90 or 0.84
 
 local function launch_size(screen)
   return math.min(launch_max_width, math.max(1, math.floor(screen.width * launch_width_ratio))),
