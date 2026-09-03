@@ -13,6 +13,21 @@ path_prepend "$HOME/.nix-profile/bin"
 unfunction path_prepend
 export PATH
 
+# Homebrew's installer does not persist its environment when bootstrap runs in
+# a child process. Initialize it for interactive macOS shells on both Apple
+# Silicon and Intel installations.
+case $(uname -s 2>/dev/null) in
+  Darwin*)
+    for homebrew_binary in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+      if [ -x "$homebrew_binary" ]; then
+        eval "$("$homebrew_binary" shellenv)"
+        break
+      fi
+    done
+    unset homebrew_binary
+    ;;
+esac
+
 for hm_session_vars in \
   "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" \
   "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh"; do

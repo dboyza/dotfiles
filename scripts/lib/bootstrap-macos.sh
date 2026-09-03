@@ -3,6 +3,30 @@
 # shellcheck disable=SC2154
 # macOS bootstrap functions. This file is sourced by bootstrap.sh.
 
+find_homebrew() {
+  local candidate
+
+  if [[ -n ${BOOTSTRAP_HOMEBREW+x} ]]; then
+    [[ -x "$BOOTSTRAP_HOMEBREW" ]] || return 1
+    printf '%s\n' "$BOOTSTRAP_HOMEBREW"
+    return
+  fi
+
+  if command -v brew >/dev/null 2>&1; then
+    command -v brew
+    return
+  fi
+
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return
+    fi
+  done
+
+  return 1
+}
+
 preflight_platform_installation() {
   local xcode_select=${BOOTSTRAP_XCODE_SELECT:-xcode-select}
   if ! command -v "$xcode_select" >/dev/null 2>&1 || ! "$xcode_select" -p >/dev/null 2>&1; then
@@ -12,7 +36,7 @@ preflight_platform_installation() {
   fi
   printf '  Apple Command Line Tools: installed\n'
 
-  if command -v brew >/dev/null 2>&1; then
+  if find_homebrew >/dev/null; then
     printf '  Homebrew: installed; configured packages will be updated\n'
   else
     printf '  Homebrew: will be installed\n'
@@ -20,21 +44,23 @@ preflight_platform_installation() {
 }
 
 install_homebrew() {
-  if command -v brew >/dev/null 2>&1; then
+  local homebrew_binary installer
+
+  if homebrew_binary=$(find_homebrew); then
+    eval "$("$homebrew_binary" shellenv)"
     return
   fi
 
-  local installer
   installer=$(mktemp "${TMPDIR:-/tmp}/homebrew-install.XXXXXX")
   curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$installer"
   env -u NONINTERACTIVE /bin/bash "$installer"
   rm -f "$installer"
 
-  if [[ -x /opt/homebrew/bin/brew ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
-  elif [[ -x /usr/local/bin/brew ]]; then
-    eval "$(/usr/local/bin/brew shellenv)"
+  if ! homebrew_binary=$(find_homebrew); then
+    printf 'bootstrap: Homebrew installer completed but brew was not found\n' >&2
+    return 1
   fi
+  eval "$("$homebrew_binary" shellenv)"
 }
 
 backup_darwin_shell_files() {

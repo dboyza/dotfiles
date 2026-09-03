@@ -138,6 +138,7 @@ if [[ -n "${NONINTERACTIVE:-}" ]]; then
   exit 1
 fi
 touch "$BOOTSTRAP_TEST_HOMEBREW_INSTALLED"
+ln -s "$BOOTSTRAP_TEST_NOOP" "$BOOTSTRAP_HOMEBREW"
 INSTALLER
 EOF
 
@@ -153,7 +154,9 @@ export BOOTSTRAP_TEST_ACTIVATED="$test_dir/activated"
 export BOOTSTRAP_TEST_GENERATION="$generation"
 export BOOTSTRAP_TEST_GREP="$real_grep"
 export BOOTSTRAP_TEST_HOMEBREW_INSTALLED="$test_dir/homebrew-installed"
+export BOOTSTRAP_TEST_NOOP="$fake_bin/noop"
 export BOOTSTRAP_TEST_NIX_LOG="$test_dir/nix.log"
+export BOOTSTRAP_HOMEBREW="$fake_bin/brew"
 export BOOTSTRAP_PLISTBUDDY="$fake_bin/PlistBuddy"
 export HOME="$fake_home"
 export PATH="$fake_bin:$PATH"
@@ -206,7 +209,7 @@ unset BOOTSTRAP_XCODE_SELECT
 rm "$fake_bin/brew"
 "$repo_dir/bootstrap.sh" >/dev/null
 test -e "$BOOTSTRAP_TEST_HOMEBREW_INSTALLED"
-ln -s "$fake_bin/noop" "$fake_bin/brew"
+test -x "$fake_bin/brew"
 
 test ! -e "$fake_etc/bashrc"
 test ! -e "$fake_etc/zshrc"

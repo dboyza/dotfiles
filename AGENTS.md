@@ -39,6 +39,7 @@
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
 - Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
 - Keep first-time Homebrew installation interactive on macOS so its installer can request administrator credentials.
+- Discover Homebrew from `PATH` or the standard Apple Silicon or Intel prefix during bootstrap, and initialize it in interactive macOS shells because bootstrap cannot persist its child-process environment.
 - Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
 - Keep `tests/run.sh` covering x86_64 and ARM64 Linux and macOS evaluation, native Windows PowerShell validation when PowerShell is available, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.

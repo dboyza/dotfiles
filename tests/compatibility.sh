@@ -39,6 +39,28 @@ if command -v shfmt >/dev/null 2>&1; then
   shfmt -d -i 2 -ci "${shell_scripts[@]}"
 fi
 
+if [[ $(uname -s) == Darwin ]]; then
+  homebrew_binary=
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [[ -x "$candidate" ]]; then
+      homebrew_binary=$candidate
+      break
+    fi
+  done
+
+  if [[ -n "$homebrew_binary" ]]; then
+    mkdir -p "$test_dir/home"
+    detected_homebrew=$(
+      HOME="$test_dir/home" PATH=/usr/bin:/bin \
+        zsh -dfc 'source "$1"; command -v brew' zsh "$repo_dir/zsh/.zshrc"
+    )
+    if [[ "$detected_homebrew" != "$homebrew_binary" ]]; then
+      printf 'compatibility test: zsh did not initialize Homebrew from %s\n' "$homebrew_binary" >&2
+      exit 1
+    fi
+  fi
+fi
+
 if command -v jq >/dev/null 2>&1; then
   while IFS= read -r json_file; do
     jq empty "$repo_dir/$json_file"
