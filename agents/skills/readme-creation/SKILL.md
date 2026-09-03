@@ -1,184 +1,109 @@
 ---
 name: readme-creation
-description: Creates or substantially improves repository README files for first-time users. Use when a README must clearly explain what a repository is for and provide accurate, copy-pasteable installation, configuration, usage, verification, troubleshooting, and development instructions.
+description: Creates or substantially improves concise repository README files for first-time users. Use when a README should explain the project's purpose and shortest successful path without duplicating detailed documentation.
 ---
 
 # README Creation
 
-Create a README that lets someone unfamiliar with the repository understand its purpose, decide whether it fits their needs, and successfully use it without relying on undocumented knowledge.
-Treat the README as a tested user interface rather than a description of the source tree.
+Create the shortest README that lets an unfamiliar reader understand the project, decide whether it fits their needs, and complete the primary task successfully.
+Treat concision as a core requirement, not a final editing pass.
 
 ## Core principles
 
-- Write for a capable reader who has never seen the repository.
-- Put the shortest successful path near the beginning.
-- Prefer verified facts and runnable commands over promotional language.
+- Lead with the project's purpose and the shortest verified path to a useful result.
+- Include only information needed by the README's primary audience.
+- Prefer one strong example over a catalog of possibilities.
+- Remove repetition, promotional language, obvious explanations, and source-tree narration.
+- Link to focused documentation instead of reproducing it in the README.
+- Prefer verified facts and runnable commands.
 - Never invent features, prerequisites, defaults, compatibility claims, environment variables, or commands.
 - Clearly label anything that could not be verified.
-- Explain why a step is necessary when that reason is not obvious.
-- Keep platform-specific commands in separately labeled sections.
 - Do not expose credentials, private URLs, personal paths, or machine-specific state.
-- Preserve useful existing documentation and link to detailed documents instead of duplicating them without need.
 
-## 1. Establish scope and audience
+## Establish the essential user journey
 
 Before writing, determine:
 
-1. Which README is in scope and what directory or package it represents.
-2. Whether the primary audience is end users, operators, library consumers, contributors, or a combination of them.
-3. The main task a first-time user should be able to complete.
-4. The supported operating systems, runtimes, package managers, and deployment environments.
-5. Whether the repository is public, internal, experimental, or production-ready.
+1. What the project does and who it is for.
+2. The primary task a first-time user should complete.
+3. The minimum prerequisites for that task.
+4. The shortest installation and usage path.
+5. A command or observable result that confirms success.
 
-If any answer materially affects installation or usage and cannot be inferred safely, ask the user rather than guessing.
+Infer these from the repository when safe.
+Ask the user only when missing information would materially change the instructions.
 
-## 2. Investigate the repository
+## Investigate selectively
 
-Read all applicable instruction files before changing documentation.
-Inspect the repository deeply enough to verify the user journey, including as relevant:
+Read applicable instruction files and the existing README before editing.
+Inspect only the sources needed to verify claims and commands, such as package manifests, entry points, configuration examples, bootstrap scripts, tests, and existing focused documentation.
 
-- Existing README files and documentation directories.
-- Package manifests, lockfiles, workspace definitions, and runtime constraints.
-- CLI entry points and built-in `--help` output.
-- Application entry points, exported APIs, and public configuration schemas.
-- Bootstrap, installation, migration, deployment, and teardown scripts.
-- Example projects, fixtures, screenshots, and sample configuration.
-- Environment variable references and example environment files.
-- Test, lint, format, build, and development commands.
-- CI workflows and release configuration.
-- License, support, security, and contribution files.
+Trace important commands to their implementation when practical.
+Record prerequisites, working directories, side effects, prompts, and expected results only when readers need them to succeed safely.
+Do not turn repository investigation into an exhaustive README inventory.
 
-Trace commands to their implementation when practical.
-Do not assume a script name describes its behavior accurately.
-Record prerequisites, required working directories, side effects, expected output, and failure modes.
+## Keep the structure minimal
 
-## 3. Design the first-time user journey
+A concise README usually needs:
 
-Define a minimal path that starts from the least configured supported environment and ends with a visible success condition.
-The path should answer these questions in order:
+1. Project name and a one-sentence purpose.
+2. A quick start with prerequisites, copy-pasteable commands, and a success check.
+3. Essential usage or configuration that most readers need next.
+4. Links to deeper documentation, support, contribution guidance, security information, or licensing when relevant.
 
-1. What is this repository?
-2. Why would I use it?
-3. What do I need before starting?
-4. How do I install or obtain it?
-5. What exact command do I run first?
-6. What should success look like?
-7. What should I do next?
+Add another section only when omitting it would block or seriously mislead the primary audience.
+Do not add boilerplate sections, exhaustive option references, long architecture tours, complete repository trees, or troubleshooting catalogs by default.
 
-Keep the quick start focused on one representative success path.
-Move alternatives and advanced options into later sections.
-If different platforms require different commands, provide separate complete paths rather than mixing shell dialects in one block.
+For monorepos or complex products, keep the root README as a concise entry point and link to component or task-specific documentation.
 
-## 4. Choose an appropriate structure
+## Write compact executable instructions
 
-Use only sections that help this repository's readers.
-A strong default order is:
-
-1. Project name and one-sentence purpose.
-2. A short explanation of the problem it solves and intended use cases.
-3. Key capabilities, with limitations or non-goals where useful.
-4. Prerequisites with supported versions and required accounts or permissions.
-5. Quick start with copy-pasteable commands and a success check.
-6. Common usage workflows with realistic examples.
-7. Configuration, including locations, precedence, defaults, and secrets handling.
-8. Architecture or repository layout when readers need it to operate or modify the project.
-9. Development setup and validation commands.
-10. Troubleshooting organized by observable symptoms.
-11. Upgrade, migration, uninstall, or cleanup instructions when applicable.
-12. Security, support, contributing, and license links.
-
-Do not add empty boilerplate sections.
-Do not lead with a large architecture discussion when users need installation instructions first.
-
-## 5. Write executable instructions
-
-For every command sequence:
-
-- State which terminal, operating system, container, or host should run it.
-- State the required working directory when it is not obvious.
+- Keep command sequences in execution order.
+- State the working directory or platform only when it is not obvious.
 - Use the repository's actual package manager and pinned tooling.
-- Keep commands in execution order.
-- Make placeholders visually unmistakable and explain how to obtain their values.
-- Mention prompts, restarts, permission requests, destructive effects, and long-running steps before they occur.
-- Include a verification command or observable result.
-- Avoid combining unrelated operations into opaque one-liners.
+- Make placeholders unmistakable and explain only those that are not self-evident.
+- Warn before permission prompts, destructive actions, restarts, or significant side effects.
+- Keep expected output outside copyable command blocks.
+- Separate platform paths only when their commands genuinely differ.
 
-Use command blocks that can be copied without also copying shell prompts or expected output.
-Put expected output in a separate block or describe it in prose.
-Use `sh` only for portable shell commands, and use `bash`, `zsh`, `powershell`, or another specific language when syntax requires it.
+Document the smallest useful configuration example.
+Explain required values, important defaults, and secret handling, then link to a complete configuration reference when one exists.
 
-## 6. Explain configuration precisely
+Include troubleshooting only for common blockers in the documented quick start.
+Use a recognizable symptom, likely cause, and concrete recovery step.
+Link uncommon failures to deeper documentation or issue tracking.
 
-Document configuration from the user's perspective.
-Include, when applicable:
+## Edit for concision
 
-- Configuration file paths and discovery rules.
-- Environment variables and whether they are required or optional.
-- Defaults and precedence between flags, environment variables, and files.
-- A minimal valid example.
-- Reload or restart requirements.
-- Safe secret-storage guidance.
-- Platform-specific differences.
+After drafting, challenge every section, paragraph, sentence, example, and badge.
+Remove anything that does not help the primary reader choose, start, verify, or find the next source of detail.
 
-Never include real secrets in examples.
-Use clearly fake values that cannot be mistaken for working credentials.
+Prefer:
 
-## 7. Make troubleshooting actionable
+- A sentence over a paragraph.
+- A short paragraph over a list.
+- One canonical workflow over several equivalent alternatives.
+- A link over duplicated detail.
+- Direct language over background exposition.
 
-Write troubleshooting entries around symptoms a new user can recognize.
-Each entry should include:
+Preserve necessary safety warnings and platform differences even when shortening.
+Do not achieve concision by making commands ambiguous or omitting required prerequisites.
 
-1. The exact symptom or representative error.
-2. The most likely cause.
-3. A diagnostic command or check.
-4. A concrete recovery procedure.
-5. A link to deeper documentation when available.
+## Validate
 
-Avoid advice such as "check your setup" without explaining what to check.
+Treat documentation commands as code.
+Run the quick start, verification command, and relevant documentation checks when practical.
+Confirm paths, links, code fences, placeholders, platform labels, and rendered Markdown.
 
-## 8. Validate the README
+Perform a final stranger test:
 
-Treat all documentation commands as code.
-Run the repository's existing documentation checks, formatters, and link checkers when available.
-Then validate manually:
+- Can a new reader state what the project does?
+- Can they reach a successful first result without inspecting the source?
+- Can they find deeper information without the README duplicating it?
+- Is anything present that they do not need yet?
 
-- Follow the quick start from a clean temporary directory, container, or least-configured available environment when practical.
-- Run help, version, build, test, and verification commands exactly as written.
-- Confirm file paths, headings, anchors, internal links, and external links.
-- Confirm code fences use the correct language.
-- Confirm every placeholder is defined.
-- Confirm platform labels are unambiguous.
-- Confirm the README does not promise unsupported behavior.
-- Confirm setup and cleanup instructions do not destroy existing user data unexpectedly.
-- Review the rendered Markdown, not only the source.
-
-If a supported platform is unavailable, statically inspect that path and state the validation limitation in the final report.
-Do not present untested platform behavior as verified.
-
-## 9. Perform a stranger test
-
-Before finishing, reread the README as someone who knows nothing about the repository.
-Verify that the reader can answer all of the following without inspecting source code:
-
-- What does this project do?
-- Who is it for?
-- What does it not do?
-- What must be installed or configured first?
-- Which commands should be run, where, and in what order?
-- How can success be confirmed?
-- How are common tasks performed after installation?
-- Where is configuration stored?
-- How can common failures be diagnosed and fixed?
-- Where can the reader get more detail or help?
-
-Revise any section that depends on implicit repository knowledge.
+If a supported path cannot be tested, state that limitation in the completion report rather than expanding the README with speculation.
 
 ## Completion report
 
-Summarize:
-
-- The user journeys documented or improved.
-- The source files and commands used to verify accuracy.
-- The validation performed.
-- Any platform paths or external services that could not be tested.
-- Any unresolved documentation gaps that require maintainer input.
+Briefly state what changed, what was verified, and any important path that could not be tested.

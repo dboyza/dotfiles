@@ -14,6 +14,7 @@ let
   };
 
   system = pkgs.stdenv.hostPlatform.system;
+  codex = pkgs.callPackage ./codex.nix { };
   pi-coding-agent = pkgs.callPackage ./pi-coding-agent.nix { };
   pre-commit-without-dotnet-tests = pkgs.pre-commit.overridePythonAttrs (old: {
     nativeCheckInputs = builtins.filter (input: input != pkgs.dotnet-sdk) old.nativeCheckInputs;

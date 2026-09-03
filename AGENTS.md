@@ -27,6 +27,8 @@
 - When replacing managed Pi settings, remove obsolete repository-managed keys during activation while preserving unrelated runtime metadata.
 - Package Pi from a versioned npm release in `nix/pi-coding-agent.nix`.
   When updating Pi, update the version, source hash, and npm dependency hash together.
+- Package Codex from official release binaries in `nix/codex.nix` because the stable Nixpkgs package may lag upstream.
+  When updating Codex, update the version and both artifact hashes for every supported Nix platform together.
 - Pi 0.82.0's published shrinkwrap omits integrity records for first-party runtime packages and includes development dependencies.
   Keep the packaging correction, version 2 npm cache fetcher, and production-only install behavior until the published release metadata is complete.
 - Keep Pi's shared `postPatch` compatible with `fetchNpmDeps`' minimal build environment; do not invoke Node there unless the npm dependency derivation explicitly includes it.
@@ -35,6 +37,8 @@
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
+- Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
+- Keep first-time Homebrew installation interactive on macOS so its installer can request administrator credentials.
 - Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
 - Keep `tests/run.sh` covering x86_64 and ARM64 Linux and macOS evaluation, native Windows PowerShell validation when PowerShell is available, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.

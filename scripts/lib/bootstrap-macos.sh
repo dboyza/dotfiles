@@ -27,7 +27,7 @@ install_homebrew() {
   local installer
   installer=$(mktemp "${TMPDIR:-/tmp}/homebrew-install.XXXXXX")
   curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh -o "$installer"
-  NONINTERACTIVE=1 /bin/bash "$installer"
+  env -u NONINTERACTIVE /bin/bash "$installer"
   rm -f "$installer"
 
   if [[ -x /opt/homebrew/bin/brew ]]; then

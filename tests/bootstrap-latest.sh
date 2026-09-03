@@ -119,7 +119,29 @@ cat >"$fake_bin/noop" <<'EOF'
 exit 0
 EOF
 
-chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "$fake_bin/sudo" \
+cat >"$fake_bin/curl" <<'EOF'
+#!/usr/bin/env bash
+output=
+while (($#)); do
+  if [[ "$1" == -o ]]; then
+    output=$2
+    shift 2
+  else
+    shift
+  fi
+done
+
+cat >"$output" <<'INSTALLER'
+#!/usr/bin/env bash
+if [[ -n "${NONINTERACTIVE:-}" ]]; then
+  printf 'homebrew test: installer unexpectedly ran non-interactively\n' >&2
+  exit 1
+fi
+touch "$BOOTSTRAP_TEST_HOMEBREW_INSTALLED"
+INSTALLER
+EOF
+
+chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "$fake_bin/sudo" "$fake_bin/curl" \
   "$fake_bin/pi" "$fake_bin/tmux" "$fake_bin/PlistBuddy" "$fake_bin/jq" "$fake_bin/noop" "$generation/activate"
 
 for command_name in brew claude codex herdr kubectl nvim node opencode pre-commit starship terraform uv wezterm; do
@@ -130,6 +152,7 @@ ln -s "$fake_bin/noop" "$fake_bin/xcode-select"
 export BOOTSTRAP_TEST_ACTIVATED="$test_dir/activated"
 export BOOTSTRAP_TEST_GENERATION="$generation"
 export BOOTSTRAP_TEST_GREP="$real_grep"
+export BOOTSTRAP_TEST_HOMEBREW_INSTALLED="$test_dir/homebrew-installed"
 export BOOTSTRAP_TEST_NIX_LOG="$test_dir/nix.log"
 export BOOTSTRAP_PLISTBUDDY="$fake_bin/PlistBuddy"
 export HOME="$fake_home"
@@ -143,7 +166,8 @@ printf '{"original":true}\n' >"$HOME/.pi/agent/models.json"
 "$repo_dir/bootstrap.sh" >/dev/null
 
 grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"
-grep -Fq 'flake check' "$BOOTSTRAP_TEST_NIX_LOG"
+grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
+grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
 test -e "$BOOTSTRAP_TEST_ACTIVATED"
 grep -Fq 'keep this prompt' "$HOME/.pi/agent/prompts/custom.md"
 grep -Fq '"original":true' "$HOME"/.pi/agent/models.json.backup.*
@@ -156,7 +180,8 @@ if grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"; then
   printf 'bootstrap test: --check unexpectedly updated the flake\n' >&2
   exit 1
 fi
-grep -Fq 'flake check' "$BOOTSTRAP_TEST_NIX_LOG"
+grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
+grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
 test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
 
 fake_etc="$test_dir/etc"
@@ -178,7 +203,10 @@ if [[ -e "$BOOTSTRAP_TEST_NIX_LOG" ]]; then
 fi
 unset BOOTSTRAP_XCODE_SELECT
 
+rm "$fake_bin/brew"
 "$repo_dir/bootstrap.sh" >/dev/null
+test -e "$BOOTSTRAP_TEST_HOMEBREW_INSTALLED"
+ln -s "$fake_bin/noop" "$fake_bin/brew"
 
 test ! -e "$fake_etc/bashrc"
 test ! -e "$fake_etc/zshrc"

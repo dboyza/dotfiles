@@ -92,7 +92,7 @@ if ! $check_only; then
 fi
 
 printf 'Checking %s configuration...\n' "$profile"
-nix "${nix_options[@]}" flake check "$flake_ref" --impure
+nix "${nix_options[@]}" flake check "$flake_ref" --impure --all-systems
 
 if $check_only; then
   build_configuration
