@@ -17,8 +17,6 @@ opt.wrap = false
 opt.showmode = false
 opt.numberwidth = 4
 opt.laststatus = 2
-opt.winbar = " %f"
-opt.statusline = " %f%=%y %l,%c %p%% "
 opt.fillchars = { vert = "│", horiz = "─", horizup = "┴", horizdown = "┬", vertleft = "┤", vertright = "├", verthoriz = "┼" }
 opt.mouse = "a"
 opt.confirm = true
@@ -134,10 +132,6 @@ keymap("i", "<C-Up>", "<C-o>5<C-y>", { desc = "Scroll up 5 lines" })
 keymap("i", "<C-Down>", "<C-o>5<C-e>", { desc = "Scroll down 5 lines" })
 
 keymap("n", "<leader>x", "<cmd>wq<cr>", { desc = "Save and quit" })
-keymap("n", "<leader>e", function()
-  local path = vim.api.nvim_buf_get_name(0)
-  require("mini.files").open(path ~= "" and path or vim.fn.getcwd(), false)
-end, { desc = "File explorer" })
 keymap("n", "<leader>[", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
 keymap("n", "<leader>]", "<cmd>bnext<cr>", { desc = "Next buffer" })
 keymap("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete buffer" })
@@ -381,9 +375,134 @@ require("lazy").setup({
         n_lines = 500,
       })
       require("mini.comment").setup()
-      require("mini.files").setup()
       require("mini.pairs").setup()
       require("mini.surround").setup()
+    end,
+  },
+  {
+    "nvim-tree/nvim-web-devicons",
+    lazy = true,
+  },
+  {
+    "nvim-neo-tree/neo-tree.nvim",
+    branch = "v3.x",
+    dependencies = {
+      "nvim-lua/plenary.nvim",
+      "MunifTanjim/nui.nvim",
+      "nvim-tree/nvim-web-devicons",
+    },
+    cmd = "Neotree",
+    keys = {
+      {
+        "<leader>e",
+        "<cmd>Neotree toggle reveal filesystem left<cr>",
+        desc = "File explorer",
+      },
+    },
+    opts = {
+      close_if_last_window = true,
+      enable_diagnostics = true,
+      enable_git_status = true,
+      filesystem = {
+        follow_current_file = { enabled = true },
+        hijack_netrw_behavior = "open_current",
+      },
+      window = {
+        position = "left",
+        width = 34,
+      },
+    },
+  },
+  {
+    "akinsho/bufferline.nvim",
+    version = "*",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    event = "VeryLazy",
+    keys = {
+      { "<leader><", "<cmd>BufferLineMovePrev<cr>", desc = "Move buffer left" },
+      { "<leader>>", "<cmd>BufferLineMoveNext<cr>", desc = "Move buffer right" },
+      { "<leader>bp", "<cmd>BufferLinePick<cr>", desc = "Pick buffer" },
+    },
+    opts = {
+      highlights = {
+        background = { fg = "#6e6a86", bg = "#232136" },
+        buffer_selected = { fg = "#e0def4", bg = "#393552", bold = true, italic = false },
+        close_button = { fg = "#6e6a86", bg = "#232136" },
+        close_button_selected = { fg = "#eb6f92", bg = "#393552" },
+        fill = { bg = "#191724" },
+        indicator_selected = { fg = "#c4a7e7", bg = "#393552" },
+        modified = { fg = "#f6c177", bg = "#232136" },
+        modified_selected = { fg = "#f6c177", bg = "#393552" },
+        separator = { fg = "#191724", bg = "#232136" },
+        separator_selected = { fg = "#191724", bg = "#393552" },
+      },
+      options = {
+        always_show_bufferline = true,
+        diagnostics = "nvim_lsp",
+        indicator = { icon = "▎", style = "icon" },
+        offsets = {
+          {
+            filetype = "neo-tree",
+            text = function()
+              return " " .. vim.fn.fnamemodify(vim.fn.getcwd(), ":~")
+            end,
+            text_align = "left",
+            separator = true,
+          },
+        },
+        separator_style = "thin",
+        show_buffer_close_icons = true,
+        show_close_icon = false,
+      },
+    },
+  },
+  {
+    "nvim-lualine/lualine.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" },
+    event = "VeryLazy",
+    config = function()
+      local rose_pine = {
+        normal = {
+          a = { fg = "#191724", bg = "#9ccfd8", gui = "bold" },
+          b = { fg = "#e0def4", bg = "#393552" },
+          c = { fg = "#908caa", bg = "none" },
+        },
+        insert = { a = { fg = "#191724", bg = "#c4a7e7", gui = "bold" } },
+        visual = { a = { fg = "#191724", bg = "#f6c177", gui = "bold" } },
+        replace = { a = { fg = "#191724", bg = "#eb6f92", gui = "bold" } },
+        command = { a = { fg = "#191724", bg = "#ebbcba", gui = "bold" } },
+        inactive = {
+          a = { fg = "#6e6a86", bg = "none" },
+          b = { fg = "#6e6a86", bg = "none" },
+          c = { fg = "#6e6a86", bg = "none" },
+        },
+      }
+
+      require("lualine").setup({
+        options = {
+          component_separators = "",
+          globalstatus = false,
+          section_separators = "",
+          theme = rose_pine,
+        },
+        sections = {
+          lualine_a = { "mode" },
+          lualine_b = { "branch", "diff" },
+          lualine_c = { { "filename", path = 1 } },
+          lualine_x = { "diagnostics", "filetype" },
+          lualine_y = { "progress" },
+          lualine_z = { "location" },
+        },
+        inactive_sections = {
+          lualine_a = {},
+          lualine_b = {},
+          lualine_c = { { "filename", path = 1 } },
+          lualine_x = { "location" },
+          lualine_y = {},
+          lualine_z = {},
+        },
+        extensions = { "lazy", "neo-tree" },
+      })
     end,
   },
   {
@@ -622,4 +741,6 @@ require("lazy").setup({
       })
     end,
   },
+}, {
+  lockfile = vim.fn.stdpath("state") .. "/lazy-lock.json",
 })

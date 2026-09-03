@@ -63,7 +63,8 @@ config.hide_mouse_cursor_when_typing = true
 config.switch_to_last_active_tab_when_closing_tab = true
 
 config.enable_tab_bar = true
-config.hide_tab_bar_if_only_one_tab = false
+config.hide_tab_bar_if_only_one_tab = true
+config.tab_bar_at_bottom = true
 config.window_decorations = 'RESIZE'
 config.window_frame = {
   font = platform_font('Bold'),

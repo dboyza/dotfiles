@@ -87,6 +87,15 @@ in
 
   programs.home-manager.enable = true;
 
+  home.activation.installNvimLockfile = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+    state_dir=${lib.escapeShellArg "${homeDirectory}/.local/state/nvim"}
+    state_target="$state_dir/lazy-lock.json"
+
+    $DRY_RUN_CMD mkdir -p "$state_dir"
+    $DRY_RUN_CMD cp -f ${../nvim/lazy-lock.json} "$state_target"
+    $DRY_RUN_CMD chmod 0644 "$state_target"
+  '';
+
   home.activation.installPiSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
     settings_dir=${lib.escapeShellArg "${homeDirectory}/.pi/agent"}
     settings_target="$settings_dir/settings.json"

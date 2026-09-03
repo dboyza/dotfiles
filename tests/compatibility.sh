@@ -51,7 +51,7 @@ if [[ $(uname -s) == Darwin ]]; then
   if [[ -n "$homebrew_binary" ]]; then
     mkdir -p "$test_dir/home"
     detected_homebrew=$(
-      HOME="$test_dir/home" PATH=/usr/bin:/bin \
+      HOME="$test_dir/home" PATH=/usr/bin:/bin TERM=xterm-256color \
         zsh -dfc 'source "$1"; command -v brew' zsh "$repo_dir/zsh/.zshrc"
     )
     if [[ "$detected_homebrew" != "$homebrew_binary" ]]; then
@@ -86,6 +86,14 @@ if command -v tmux >/dev/null 2>&1; then
   TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" -f "$repo_dir/tmux/.tmux.conf" new-session -d
   if [[ $(TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" show-options -gv prefix) != C-g ]]; then
     printf 'compatibility test: tmux prefix is not C-g\n' >&2
+    exit 1
+  fi
+  if [[ $(TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" show-options -gv status-position) != bottom ]]; then
+    printf 'compatibility test: tmux window tabs are not at the bottom\n' >&2
+    exit 1
+  fi
+  if [[ $(TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" show-options -gv status) != on ]]; then
+    printf 'compatibility test: tmux window tabs are not a single visible row\n' >&2
     exit 1
   fi
   if TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" list-keys -T prefix C-a >/dev/null 2>&1; then
