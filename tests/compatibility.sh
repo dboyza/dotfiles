@@ -106,6 +106,9 @@ if command -v tmux >/dev/null 2>&1; then
 fi
 
 if command -v nvim >/dev/null 2>&1; then
+  NVIM_LOG_FILE="$test_dir/wezterm-nvim.log" \
+    nvim --headless -u NONE -l "$repo_dir/tests/wezterm-launch-size.lua" "$repo_dir/wezterm/.wezterm.lua"
+
   export DOTFILES_NVIM_CORE_ONLY=1
   export XDG_CACHE_HOME="$test_dir/cache"
   export XDG_CONFIG_HOME="$test_dir/config"
