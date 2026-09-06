@@ -55,6 +55,9 @@ Run every command in this guide from the Ubuntu terminal.
 
 ## Use and update
 
+Edit application configuration directly in the checkout, then reload the application.
+Bootstrap is only needed for packages, system settings, new managed paths, or a moved checkout.
+
 Open WezTerm whenever you want to use the configured environment.
 
 To download repository changes and activate the newest declared inputs, run:
@@ -65,7 +68,7 @@ git pull --ff-only
 ./bootstrap.sh
 ```
 
-To activate local repository changes, run:
+To activate package or system configuration changes, run:
 
 ```sh
 cd "$HOME/dotfiles"

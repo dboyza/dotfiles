@@ -68,6 +68,9 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 ## Use and update
 
+Edit application configuration directly in the checkout, then reload the application.
+Bootstrap is only needed for packages, system settings, new managed paths, or a moved checkout.
+
 Open WezTerm whenever you want to use the configured environment.
 The configuration disables only the macOS Mission Control and Spaces shortcuts that consume `Control+Arrow`.
 The Mission Control key, trackpad gestures, and other macOS shortcuts remain available.

@@ -19,14 +19,14 @@ trap cleanup EXIT
 
 while IFS= read -r script; do
   bash -n "$repo_dir/$script"
-done < <(cd "$repo_dir" && rg --files -g '*.sh' -g 'bootstrap.sh')
+done < <(cd "$repo_dir" && rg --files -g '*.sh' -g 'scripts/dotfiles-clipboard' -g 'scripts/win-*')
 
 if command -v shellcheck >/dev/null 2>&1; then
   cd "$repo_dir"
   shell_scripts=()
   while IFS= read -r script; do
     shell_scripts+=("$script")
-  done < <(rg --files -g '*.sh' -g 'bootstrap.sh')
+  done < <(rg --files -g '*.sh' -g 'scripts/dotfiles-clipboard' -g 'scripts/win-*')
   shellcheck "${shell_scripts[@]}"
 fi
 
@@ -35,7 +35,7 @@ if command -v shfmt >/dev/null 2>&1; then
   shell_scripts=()
   while IFS= read -r script; do
     shell_scripts+=("$script")
-  done < <(rg --files -g '*.sh' -g 'bootstrap.sh')
+  done < <(rg --files -g '*.sh' -g 'scripts/dotfiles-clipboard' -g 'scripts/win-*')
   shfmt -d -i 2 -ci "${shell_scripts[@]}"
 fi
 
@@ -61,6 +61,22 @@ if [[ $(uname -s) == Darwin ]]; then
   fi
 fi
 
+if command -v zsh >/dev/null 2>&1; then
+  zsh_home="$test_dir/zsh-home"
+  mkdir -p "$zsh_home/.config/zsh/plugins"
+  printf 'typeset -g DOTFILES_AUTOSUGGESTIONS_LOADED=1\n' \
+    >"$zsh_home/.config/zsh/plugins/zsh-autosuggestions.zsh"
+  autosuggestions_loaded=$(
+    HOME="$zsh_home" PATH=/usr/bin:/bin TERM=xterm-256color \
+      zsh -dfc 'source "$1"; print -r -- "${DOTFILES_AUTOSUGGESTIONS_LOADED:-0}"' \
+      zsh "$repo_dir/zsh/.zshrc"
+  )
+  if [[ "$autosuggestions_loaded" != 1 ]]; then
+    printf 'compatibility test: zsh did not load ghost suggestions from the managed plugin path\n' >&2
+    exit 1
+  fi
+fi
+
 if command -v jq >/dev/null 2>&1; then
   while IFS= read -r json_file; do
     jq empty "$repo_dir/$json_file"
@@ -83,7 +99,15 @@ fi
 if command -v tmux >/dev/null 2>&1; then
   tmux_tmp=$(mktemp -d /tmp/dotfiles-tmux-test.XXXXXX)
   socket_name="dotfiles-test-$$"
-  TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" -f "$repo_dir/tmux/.tmux.conf" new-session -d
+  tmux_home="$test_dir/tmux-home"
+  mkdir -p "$tmux_home/.tmux/plugins"
+  # Plugins can install assistant hooks; keep those writes out of the user's HOME.
+  for plugin in tmux-resurrect tmux-assistant-resurrect tmux-continuum; do
+    if [[ -d "$HOME/.tmux/plugins/$plugin" ]]; then
+      ln -s "$HOME/.tmux/plugins/$plugin" "$tmux_home/.tmux/plugins/$plugin"
+    fi
+  done
+  HOME="$tmux_home" TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" -f "$repo_dir/tmux/.tmux.conf" new-session -d
   if [[ $(TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" show-options -gv prefix) != C-g ]]; then
     printf 'compatibility test: tmux prefix is not C-g\n' >&2
     exit 1

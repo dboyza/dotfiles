@@ -30,13 +30,20 @@ if ($wingetExitCode -eq $noApplicableUpdate) {
     Write-Host "Windows WezTerm is already at the newest applicable version."
 }
 
+# A loader works with local paths and WSL UNC paths without Developer Mode or elevation.
+$sourcePath = (Resolve-Path -LiteralPath $Source).ProviderPath
+$luaPath = $sourcePath.Replace('\', '\\').Replace('"', '\"')
+$loader = @"
+-- Managed by dotfiles. Configuration stays in the checkout.
+local source = "$luaPath"
+require("wezterm").add_to_config_reload_watch_list(source)
+return dofile(source)
+"@
+
 $target = Join-Path $HOME ".wezterm.lua"
 if (Test-Path -LiteralPath $target) {
-    $sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Source).Hash
-    $targetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash
-
-    if ($sourceHash -eq $targetHash) {
-        Write-Host "Windows WezTerm is installed and its configuration is current."
+    if ((Get-Content -Raw -Encoding UTF8 -LiteralPath $target).TrimEnd() -eq $loader.TrimEnd()) {
+        Write-Host "Windows WezTerm is installed and its live configuration loader is current."
         exit 0
     }
 
@@ -44,12 +51,10 @@ if (Test-Path -LiteralPath $target) {
     Move-Item -LiteralPath $target -Destination "$target.backup.$stamp"
 }
 
-Copy-Item -LiteralPath $Source -Destination $target -Force
-
-$sourceHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $Source).Hash
-$targetHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $target).Hash
-if ($sourceHash -ne $targetHash) {
-    throw "The copied WezTerm configuration failed SHA256 verification."
+# Explicit UTF-8 without BOM behaves consistently on PowerShell 5.1 and 7.
+[System.IO.File]::WriteAllText($target, $loader, [System.Text.UTF8Encoding]::new($false))
+if ((Get-Content -Raw -Encoding UTF8 -LiteralPath $target).TrimEnd() -ne $loader.TrimEnd()) {
+    throw "The WezTerm configuration loader failed verification."
 }
 
-Write-Host "Installed the WezTerm configuration at $target."
+Write-Host "Installed the live WezTerm configuration loader at $target."

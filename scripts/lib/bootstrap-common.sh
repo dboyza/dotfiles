@@ -79,32 +79,36 @@ install_nix() {
   fi
 }
 
-managed_targets() {
-  cat <<EOF
-$HOME/.zshrc
-$HOME/.zshenv
-$HOME/.tmux.conf
-$HOME/.wezterm.lua
-$HOME/.config/herdr/config.toml
-$HOME/.config/nvim
-$HOME/.config/starship.toml
-$HOME/.codex/AGENTS.md
-$HOME/.claude/CLAUDE.md
-$HOME/.config/opencode/AGENTS.md
-$HOME/.pi/agent/AGENTS.md
-$HOME/.agents/skills
-$HOME/.pi/agent/models.json
-$HOME/.pi/agent/extensions
-$HOME/.pi/agent/themes
-$HOME/.tmux/plugins/tpm
-$HOME/.tmux/plugins/tmux-yank
-$HOME/.tmux/plugins/tmux-resurrect
-$HOME/.tmux/plugins/tmux-continuum
-$HOME/.tmux/plugins/tmux-assistant-resurrect
-EOF
-  if [[ "$DOTFILES_WSL" == 1 ]]; then
-    printf '%s\n' "$HOME/.local/bin/win-copy" "$HOME/.local/bin/win-paste"
+load_managed_targets() {
+  local attribute inventory target
+  if [[ "$os" == Darwin ]]; then
+    attribute="darwinConfigurations.$profile.config.home-manager.users.\"$DOTFILES_USER\".home.file"
+  else
+    attribute="homeConfigurations.$profile.config.home.file"
   fi
+
+  # Evaluate once before backups; a failed evaluation must stop activation.
+  inventory=$(nix "${nix_options[@]}" eval --raw "$flake_ref#$attribute" --impure \
+    --apply 'files: builtins.concatStringsSep "\n" (map (file: file.target) (builtins.filter (file: file.enable) (builtins.attrValues files)))') || return
+  if [[ -z "$inventory" ]]; then
+    printf 'bootstrap: Home Manager returned an empty managed-file inventory\n' >&2
+    return 1
+  fi
+
+  managed_file_targets=()
+  while IFS= read -r target; do
+    case "/$target/" in
+      //* | */../* | */./*)
+        printf 'bootstrap: invalid managed home path: %s\n' "$target" >&2
+        return 1
+        ;;
+    esac
+    managed_file_targets+=("$HOME/$target")
+  done <<<"$inventory"
+}
+
+managed_targets() {
+  printf '%s\n' "${managed_file_targets[@]}"
 }
 
 backup_managed_files() {
@@ -138,9 +142,9 @@ verify_managed_links() {
 
     link_target=$(readlink "$target" 2>/dev/null || true)
     case "$link_target" in
-      /nix/store/*) ;;
+      /nix/store/* | "$repo_dir"/*) ;;
       *)
-        printf 'bootstrap: managed link does not point into the Nix store: %s\n' "$target" >&2
+        printf 'bootstrap: managed link does not point into the checkout or Nix store: %s\n' "$target" >&2
         missing=1
         ;;
     esac

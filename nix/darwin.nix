@@ -1,6 +1,7 @@
 {
   allowUnfreePredicate,
   homeDirectory,
+  repoDirectory,
   inputs,
   pkgs,
   username,
@@ -66,6 +67,7 @@
     extraSpecialArgs = {
       inherit
         homeDirectory
+        repoDirectory
         inputs
         username
         ;

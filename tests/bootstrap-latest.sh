@@ -17,6 +17,17 @@ fake_home="$test_dir/home"
 generation="$test_dir/generation"
 mkdir -p "$fake_bin" "$fake_home" "$generation"
 
+# A small evaluated Home Manager fixture, deliberately independent of the real package list.
+cat >"$test_dir/targets" <<'EOF'
+.zshrc
+.tmux.conf
+.wezterm.lua
+.pi/agent/settings.json
+.pi/agent/models.json
+.config/example app/config
+EOF
+export BOOTSTRAP_TEST_TARGETS="$test_dir/targets"
+
 cat >"$fake_bin/nix" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"$BOOTSTRAP_TEST_NIX_LOG"
@@ -24,6 +35,11 @@ if [[ " $* " == *" build "* ]]; then
   printf '%s\n' "$BOOTSTRAP_TEST_GENERATION"
 elif [[ " $* " == *" run "* ]]; then
   "$BOOTSTRAP_TEST_GENERATION/activate"
+elif [[ " $* " == *" eval "* ]]; then
+  if [[ ${BOOTSTRAP_TEST_FAIL_INVENTORY:-0} == 1 ]]; then
+    exit 1
+  fi
+  cat "$BOOTSTRAP_TEST_TARGETS"
 fi
 EOF
 
@@ -54,33 +70,12 @@ cat >"$generation/activate" <<'EOF'
 touch "$BOOTSTRAP_TEST_ACTIVATED"
 
 while IFS= read -r target; do
+  target="$HOME/$target"
   mkdir -p "$(dirname "$target")"
   ln -sfn "/nix/store/bootstrap-test-$(basename "$target")" "$target"
-done <<LINKS
-$HOME/.zshrc
-$HOME/.zshenv
-$HOME/.tmux.conf
-$HOME/.wezterm.lua
-$HOME/.config/herdr/config.toml
-$HOME/.config/nvim
-$HOME/.config/starship.toml
-$HOME/.codex/AGENTS.md
-$HOME/.claude/CLAUDE.md
-$HOME/.config/opencode/AGENTS.md
-$HOME/.pi/agent/AGENTS.md
-$HOME/.agents/skills
-$HOME/.pi/agent/models.json
-$HOME/.pi/agent/extensions
-$HOME/.pi/agent/themes
-$HOME/.tmux/plugins/tpm
-$HOME/.tmux/plugins/tmux-yank
-$HOME/.tmux/plugins/tmux-resurrect
-$HOME/.tmux/plugins/tmux-continuum
-$HOME/.tmux/plugins/tmux-assistant-resurrect
-LINKS
+done <"$BOOTSTRAP_TEST_TARGETS"
 
-mkdir -p "$HOME/.pi/agent"
-printf '{}\n' >"$HOME/.pi/agent/settings.json"
+ln -sfn "$DOTFILES_REPO/pi/settings.json" "$HOME/.pi/agent/settings.json"
 EOF
 
 cat >"$fake_bin/sudo" <<'EOF'
@@ -165,6 +160,16 @@ export USER=test
 mkdir -p "$HOME/.pi/agent/prompts"
 printf 'keep this prompt\n' >"$HOME/.pi/agent/prompts/custom.md"
 printf '{"original":true}\n' >"$HOME/.pi/agent/models.json"
+mkdir -p "$HOME/.config/example app"
+printf 'original example\n' >"$HOME/.config/example app/config"
+
+if BOOTSTRAP_TEST_FAIL_INVENTORY=1 "$repo_dir/bootstrap.sh" >/dev/null 2>&1; then
+  printf 'bootstrap test: activation accepted a failed inventory evaluation\n' >&2
+  exit 1
+fi
+test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
+test ! -L "$HOME/.pi/agent/models.json"
+grep -Fq 'original example' "$HOME/.config/example app/config"
 
 "$repo_dir/bootstrap.sh" >/dev/null
 
@@ -175,6 +180,9 @@ test -e "$BOOTSTRAP_TEST_ACTIVATED"
 grep -Fq 'keep this prompt' "$HOME/.pi/agent/prompts/custom.md"
 grep -Fq '"original":true' "$HOME"/.pi/agent/models.json.backup.*
 test -L "$HOME/.pi/agent/models.json"
+test -L "$HOME/.config/example app/config"
+grep -Fq 'original example' "$HOME/.config/example app/"config.backup.*
+grep -Fq 'homeConfigurations.linux-x86_64.config.home.file' "$BOOTSTRAP_TEST_NIX_LOG"
 
 rm -f "$BOOTSTRAP_TEST_ACTIVATED" "$BOOTSTRAP_TEST_NIX_LOG"
 "$repo_dir/bootstrap.sh" --check >/dev/null
@@ -216,6 +224,7 @@ test ! -e "$fake_etc/zshrc"
 grep -Fq 'existing bash config' "$fake_etc/bashrc.before-nix-darwin"
 grep -Fq 'existing zsh config' "$fake_etc/zshrc.before-nix-darwin"
 grep -Fq 'run path:' "$BOOTSTRAP_TEST_NIX_LOG"
+grep -Fq 'darwinConfigurations.macos-x86_64.config.home-manager.users."test".home.file' "$BOOTSTRAP_TEST_NIX_LOG"
 
 ln -s "$fake_etc/static/bashrc" "$fake_etc/bashrc"
 printf 'second zsh config\n' >"$fake_etc/zshrc"

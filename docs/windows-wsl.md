@@ -59,7 +59,7 @@ Windows PowerShell and the Ubuntu terminal are different environments, so each s
 
    The preflight verifies Windows interoperability before package updates begin.
    The script installs Nix and the configured Linux tools inside Ubuntu.
-   It uses Winget to install or upgrade Windows WezTerm, installs Hack Nerd Font for the Windows user, and copies the tracked WezTerm configuration into the Windows profile.
+   It uses Winget to install or upgrade Windows WezTerm, installs Hack Nerd Font for the Windows user, and installs a WezTerm loader in the Windows profile that reads the live checkout.
 
 4. Close the original Ubuntu window after the script prints `Bootstrap complete`.
 
@@ -79,6 +79,9 @@ Windows PowerShell and the Ubuntu terminal are different environments, so each s
 
 ## Use and update
 
+Edit application configuration directly in the checkout, then reload the application.
+Bootstrap is only needed for packages, system settings, new managed paths, or a moved checkout.
+
 Open WezTerm from the Windows Start menu and run Linux commands in the Ubuntu session.
 
 To download changes and activate them, run inside WezTerm:
@@ -97,5 +100,7 @@ To update only Windows WezTerm, run this command in Windows PowerShell:
 winget upgrade --exact --id wez.wezterm
 ```
 
-Then rerun `./bootstrap.sh` inside WSL to refresh and verify the Windows configuration.
+The loader continues to read the checkout after a WezTerm upgrade.
+On WSL, the selected distribution must remain available for Windows WezTerm to read that configuration.
+If automatic reload misses an edit across the WSL filesystem, reload WezTerm with `Ctrl+Shift+R`.
 See [operations](operations.md) for non-mutating checks, testing, and recovery.

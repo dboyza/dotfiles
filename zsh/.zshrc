@@ -94,16 +94,11 @@ copy-selected-region() {
   (( REGION_ACTIVE )) || return
   zle copy-region-as-kill
 
-  if (( $+commands[pbcopy] )); then
-    print -rn -- "$CUTBUFFER" | pbcopy || return
-  elif (( $+commands[win-copy] )); then
-    print -rn -- "$CUTBUFFER" | win-copy || return
-  elif (( $+commands[wl-copy] )); then
-    print -rn -- "$CUTBUFFER" | wl-copy || return
-  else
+  if ! (( $+commands[dotfiles-clipboard] )); then
     zle -M 'No system clipboard provider found'
     return 1
   fi
+  print -rn -- "$CUTBUFFER" | dotfiles-clipboard copy || return
 
   REGION_ACTIVE=0
   CURSOR=${#BUFFER}
@@ -130,8 +125,8 @@ bindkey $'\e[99;6u' copy-selected-region
 
 # ls aliases
 case $(uname -s 2>/dev/null) in
-  Darwin*) alias ls='ls -G' ;;
-  *) alias ls='ls --color=auto' ;;
+  Darwin*) alias ls='ls -mG' ;;
+  *) alias ls='ls -m --color=auto' ;;
 esac
 alias ll="ls -alF"
 alias la="ls -la"
@@ -147,20 +142,10 @@ alias tat="tmux attach -t"
 ZSH_AUTOSUGGEST_USE_ASYNC=true
 ZSH_AUTOSUGGEST_BUFFER_MAX_SIZE=80
 ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE="fg=8"
-source_first() { local plugin; for plugin in "$@"; do [ -r "$plugin" ] && source "$plugin" && return; done; }
-source_first \
-  "$HOME/.nix-profile/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
-  "/etc/profiles/per-user/$USER/share/zsh-autosuggestions/zsh-autosuggestions.zsh" \
-  /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
-  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh \
-  /usr/local/share/zsh-autosuggestions/zsh-autosuggestions.zsh
-source_first \
-  "$HOME/.nix-profile/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" \
-  "/etc/profiles/per-user/$USER/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" \
-  /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-  /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
-  /usr/local/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-unfunction source_first
+for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
+  [[ -r "$HOME/.config/zsh/plugins/$plugin.zsh" ]] && source "$HOME/.config/zsh/plugins/$plugin.zsh"
+done
+unset plugin
 
 # Prompt
 if command -v starship >/dev/null 2>&1; then

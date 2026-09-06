@@ -19,16 +19,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    tpm = {
-      url = "github:tmux-plugins/tpm";
-      flake = false;
-    };
-
-    tmux-yank = {
-      url = "github:tmux-plugins/tmux-yank";
-      flake = false;
-    };
-
     tmux-resurrect = {
       url = "github:tmux-plugins/tmux-resurrect";
       flake = false;
@@ -86,6 +76,7 @@
         in
         if value == "" then throw "${name} is unset. Run this flake through ./bootstrap.sh." else value;
 
+      repoDirectory = requireEnvironment "DOTFILES_REPO";
       username = requireEnvironment "DOTFILES_USER";
       homeDirectory = requireEnvironment "DOTFILES_HOME";
       isWSL = builtins.getEnv "DOTFILES_WSL" == "1";
@@ -93,6 +84,7 @@
       specialArgs = {
         inherit
           allowUnfreePredicate
+          repoDirectory
           homeDirectory
           inputs
           isWSL

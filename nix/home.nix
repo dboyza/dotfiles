@@ -1,4 +1,6 @@
 {
+  config,
+  repoDirectory,
   homeDirectory,
   inputs,
   isWSL,
@@ -12,6 +14,8 @@ let
     inherit source;
     force = true;
   };
+
+  live = relative: managed (config.lib.file.mkOutOfStoreSymlink "${repoDirectory}/${relative}");
 
   system = pkgs.stdenv.hostPlatform.system;
   codex = pkgs.callPackage ./codex.nix { };
@@ -87,74 +91,37 @@ in
 
   programs.home-manager.enable = true;
 
-  home.activation.installNvimLockfile = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    state_dir=${lib.escapeShellArg "${homeDirectory}/.local/state/nvim"}
-    state_target="$state_dir/lazy-lock.json"
-
-    $DRY_RUN_CMD mkdir -p "$state_dir"
-    $DRY_RUN_CMD cp -f ${../nvim/lazy-lock.json} "$state_target"
-    $DRY_RUN_CMD chmod 0644 "$state_target"
-  '';
-
-  home.activation.installPiSettings = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-    settings_dir=${lib.escapeShellArg "${homeDirectory}/.pi/agent"}
-    settings_target="$settings_dir/settings.json"
-    settings_temp="$settings_target.tmp.$$"
-
-    $DRY_RUN_CMD mkdir -p "$settings_dir"
-    if [[ -z "''${DRY_RUN_CMD:-}" ]]; then
-      trap '${pkgs.coreutils}/bin/rm -f "$settings_temp"' EXIT
-      if [[ -f "$settings_target" ]] && ${pkgs.jq}/bin/jq empty "$settings_target" >/dev/null 2>&1; then
-        ${pkgs.jq}/bin/jq -s '
-          .[0] as $current
-          | .[1] as $managed
-          | ($current | del(
-              .autocompleteMaxVisible,
-              .defaultModel,
-              .defaultProvider,
-              .defaultThinkingLevel,
-              .editorPaddingX,
-              .enabledModels,
-              .externalEditor,
-              .showHardwareCursor
-            )) * $managed
-        ' "$settings_target" ${../pi/settings.json} > "$settings_temp"
-      else
-        ${pkgs.coreutils}/bin/cp ${../pi/settings.json} "$settings_temp"
-      fi
-      ${pkgs.coreutils}/bin/chmod 0644 "$settings_temp"
-      ${pkgs.coreutils}/bin/mv -f "$settings_temp" "$settings_target"
-      trap - EXIT
-    fi
-  '';
-
   home.file = {
-    ".zshenv" = managed ../zsh/.zshenv;
-    ".zshrc" = managed ../zsh/.zshrc;
-    ".tmux.conf" = managed ../tmux/.tmux.conf;
-    ".wezterm.lua" = managed ../wezterm/.wezterm.lua;
-    ".config/herdr/config.toml" = managed ../herdr/config.toml;
-    ".config/nvim" = managed ../nvim;
-    ".config/starship.toml" = managed ../starship/starship.toml;
+    ".zshenv" = live "zsh/.zshenv";
+    ".zshrc" = live "zsh/.zshrc";
+    ".config/zsh/plugins/zsh-autosuggestions.zsh" =
+      managed "${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh";
+    ".config/zsh/plugins/zsh-syntax-highlighting.zsh" =
+      managed "${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh";
+    ".tmux.conf" = live "tmux/.tmux.conf";
+    ".wezterm.lua" = live "wezterm/.wezterm.lua";
+    ".config/herdr/config.toml" = live "herdr/config.toml";
+    ".config/nvim" = live "nvim";
+    ".config/starship.toml" = live "starship/starship.toml";
+    ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
 
-    ".codex/AGENTS.md" = managed ../agents/global/AGENTS.md;
-    ".claude/CLAUDE.md" = managed ../agents/global/AGENTS.md;
-    ".config/opencode/AGENTS.md" = managed ../agents/global/AGENTS.md;
-    ".pi/agent/AGENTS.md" = managed ../agents/global/AGENTS.md;
-    ".agents/skills" = managed ../agents/skills;
+    ".codex/AGENTS.md" = live "agents/global/AGENTS.md";
+    ".claude/CLAUDE.md" = live "agents/global/AGENTS.md";
+    ".config/opencode/AGENTS.md" = live "agents/global/AGENTS.md";
+    ".pi/agent/AGENTS.md" = live "agents/global/AGENTS.md";
+    ".agents/skills" = live "agents/skills";
 
-    ".pi/agent/models.json" = managed ../pi/models.json;
-    ".pi/agent/extensions" = managed ../pi/extensions;
-    ".pi/agent/themes" = managed ../pi/themes;
+    ".pi/agent/settings.json" = live "pi/settings.json";
+    ".pi/agent/models.json" = live "pi/models.json";
+    ".pi/agent/extensions" = live "pi/extensions";
+    ".pi/agent/themes" = live "pi/themes";
 
-    ".tmux/plugins/tpm" = managed inputs.tpm;
-    ".tmux/plugins/tmux-yank" = managed inputs.tmux-yank;
     ".tmux/plugins/tmux-resurrect" = managed inputs.tmux-resurrect;
     ".tmux/plugins/tmux-continuum" = managed inputs.tmux-continuum;
     ".tmux/plugins/tmux-assistant-resurrect" = managed inputs.tmux-assistant-resurrect;
   }
   // lib.optionalAttrs isWSL {
-    ".local/bin/win-copy" = managed ../scripts/win-copy;
-    ".local/bin/win-paste" = managed ../scripts/win-paste;
+    ".local/bin/win-copy" = live "scripts/win-copy";
+    ".local/bin/win-paste" = live "scripts/win-paste";
   };
 }

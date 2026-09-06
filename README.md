@@ -62,6 +62,21 @@ The server-compaction extension is experimental and sends relevant compaction an
 
 ## Common Workflows
 
+Application configs are symlinked to this checkout.
+Edit the files here, then reload the affected application; no bootstrap is needed for ordinary config changes.
+Open a new Zsh session, restart Neovim or Pi, or run `tmux source-file ~/.tmux.conf` for those tools.
+WezTerm normally reloads configuration automatically.
+Windows WezTerm uses a small loader pointing at the checkout instead of a copied config.
+
+Neovim options and mappings live in `nvim/lua/config`; plugin configuration lives in `nvim/lua/plugins`.
+Zsh, tmux, and Neovim share the `dotfiles-clipboard` command for copy and paste.
+Nix installs tmux's restoration plugins directly, so there is no separate tmux plugin manager to maintain.
+tmux provides persistent terminal sessions; Herdr organizes agent workspaces within those sessions.
+
+Keep this checkout at the same path.
+Run bootstrap after moving it, adding managed paths, or changing Nix packages or system settings.
+Pi can write settings and Lazy can update `nvim/lazy-lock.json` directly in the checkout, so review those changes before committing.
+
 Read [checks, updates, testing, and recovery](docs/operations.md) before changing or repairing an installation.
 
 To validate the pinned configuration without updating inputs or activating configuration, run:
@@ -103,7 +118,7 @@ Run the complete local test suite with:
 | `agents/` | Stores shared coding-agent instructions and skills. |
 | `pi/` | Stores Pi settings, model overrides, extensions, and themes. |
 | `herdr/`, `nvim/`, `starship/`, `tmux/`, `wezterm/`, `zsh/` | Store application configuration. |
-| `scripts/` | Contains WSL clipboard and Windows integration helpers. |
+| `scripts/` | Contains shared clipboard dispatch, WSL transport, and Windows integration helpers. |
 | `tests/` | Contains bootstrap, compatibility, platform evaluation, and integration checks. |
 
 Add portable packages to `nix/home.nix`.

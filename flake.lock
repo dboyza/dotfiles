@@ -87,9 +87,7 @@
         "nixpkgs": "nixpkgs",
         "tmux-assistant-resurrect": "tmux-assistant-resurrect",
         "tmux-continuum": "tmux-continuum",
-        "tmux-resurrect": "tmux-resurrect",
-        "tmux-yank": "tmux-yank",
-        "tpm": "tpm"
+        "tmux-resurrect": "tmux-resurrect"
       }
     },
     "tmux-assistant-resurrect": {
@@ -137,38 +135,6 @@
       "original": {
         "owner": "tmux-plugins",
         "repo": "tmux-resurrect",
-        "type": "github"
-      }
-    },
-    "tmux-yank": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1689770565,
-        "narHash": "sha256-/5HPaoOx2U2d8lZZJo5dKmemu6hKgHJYq23hxkddXpA=",
-        "owner": "tmux-plugins",
-        "repo": "tmux-yank",
-        "rev": "acfd36e4fcba99f8310a7dfb432111c242fe7392",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tmux-plugins",
-        "repo": "tmux-yank",
-        "type": "github"
-      }
-    },
-    "tpm": {
-      "flake": false,
-      "locked": {
-        "lastModified": 1779036064,
-        "narHash": "sha256-oRKUZNyJYQXlkeQfbEYiltUEBpvdwn2SoEBWHVUNmrA=",
-        "owner": "tmux-plugins",
-        "repo": "tpm",
-        "rev": "e261deb1b47614eed3400089ce7197dc68acc4eb",
-        "type": "github"
-      },
-      "original": {
-        "owner": "tmux-plugins",
-        "repo": "tpm",
         "type": "github"
       }
     }

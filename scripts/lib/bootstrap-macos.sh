@@ -114,6 +114,7 @@ activate_platform() {
   sudo env \
     "DOTFILES_USER=$DOTFILES_USER" \
     "DOTFILES_HOME=$DOTFILES_HOME" \
+    "DOTFILES_REPO=$DOTFILES_REPO" \
     "DOTFILES_WSL=$DOTFILES_WSL" \
     "PATH=$PATH" \
     nix "${nix_options[@]}" run "$flake_ref#darwin-rebuild" -- \

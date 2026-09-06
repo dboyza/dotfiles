@@ -66,6 +66,7 @@ esac
 
 export DOTFILES_USER=${USER:-$(id -un)}
 export DOTFILES_HOME=$HOME
+export DOTFILES_REPO=$repo_dir
 export DOTFILES_WSL=0
 if [[ "$os" == Linux ]] && grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
   export DOTFILES_WSL=1
@@ -100,6 +101,7 @@ if $check_only; then
   exit 0
 fi
 
+load_managed_targets
 backup_managed_files
 activate_platform
 verify_installation

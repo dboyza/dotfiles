@@ -1,5 +1,7 @@
 # Repository instructions
 
+- Keep the default Zsh `ls` alias comma-separated with `-m`, preserving platform-specific color flags.
+
 - When making a change, keep it compatible with native Windows 11, Windows 11 with WSL, and macOS.
   Use platform-specific branches or fallbacks where behavior and dependencies differ, and verify each platform path as far as the available environment allows.
   If full compatibility cannot be achieved, state the limitation explicitly instead of silently breaking a supported platform.
@@ -24,10 +26,11 @@
   Use the tracked UTF-8-safe `scripts/win-copy` and `scripts/win-paste` helpers for Windows clipboard interoperability.
 - Treat macOS as a supported path, but state clearly when it received static validation only because no macOS runner was available.
 - Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
-- Keep reproducible, non-secret Pi configuration in `pi/` and deploy its writable `settings.json` through Home Manager activation so Pi can preserve runtime metadata.
+- Expose Zsh plugin scripts through managed paths under `~/.config/zsh/plugins`; Home Manager profiles do not reliably link package-specific top-level `share` directories.
+- Keep reproducible, non-secret Pi configuration in `pi/` and symlink its `settings.json` directly into the checkout.
+  Pi may write runtime settings into that file; review these changes before committing.
   Never track Pi authentication, trust decisions, package state, or session transcripts.
 - Back up Pi's managed `models.json` before activation, but leave unmanaged prompt files in place.
-- When replacing managed Pi settings, remove obsolete repository-managed keys during activation while preserving unrelated runtime metadata.
 - Package Pi from a versioned npm release in `nix/pi-coding-agent.nix`.
   When updating Pi, update the version, source hash, and npm dependency hash together.
 - Package Codex from official release binaries in `nix/codex.nix` because the stable Nixpkgs package may lag upstream.
@@ -37,7 +40,7 @@
 - Keep Pi's shared `postPatch` compatible with `fetchNpmDeps`' minimal build environment; do not invoke Node there unless the npm dependency derivation explicitly includes it.
 - Keep the local Pi Calm extension on its verified Pi version, preserve its bundled license, and never manage or track its runtime preference file.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
-- Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
+- Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
 - Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
@@ -55,10 +58,21 @@
 - Keep the section index at the top of `README.md` synchronized with every level-two and level-three heading.
 - Keep `bootstrap.sh` as the thin public entry point, with shared and platform-specific behavior in `scripts/lib/`.
 - Keep the bootstrap managed-target inventory centralized so backup and verification always operate on the same paths.
+  Evaluate enabled Home Manager `home.file` targets once before backup; do not maintain a second list in shell scripts.
 - Keep `./bootstrap.sh --check` non-mutating and require an existing Nix installation instead of installing prerequisites.
 - Run platform prerequisite preflight checks before updating inputs, installing packages, backing up files, or activating configuration.
 - Keep WezTerm executable discovery centralized in `scripts/lib/wezterm.sh` for bootstrap and compatibility tests.
 - Install Hack Nerd Font through nix-darwin on macOS and through Home Manager on Linux so each platform has one font owner.
 - Keep the unused .NET test input removed from the pre-commit derivation so macOS checks do not build .NET, Swift, and LLVM.
 - Keep Neovim's Neo-tree sidebar, Bufferline tab row, and Lualine status line visually coordinated with the transparent Rosé Pine terminal theme.
-- Copy the tracked Lazy lockfile into Neovim's writable state directory during Home Manager activation because the configuration itself is deployed through the read-only Nix store.
+- Deploy repository-authored home files through `mkOutOfStoreSymlink` using the absolute checkout path from `DOTFILES_REPO`.
+  Keep packaged Zsh and tmux plugins in the Nix store.
+  Configuration edits require only application reloads; moving the checkout or changing Nix declarations requires activation.
+- Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.
+- Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
+- Keep Neovim's entry point small, with core settings in `nvim/lua/config` and plugin declarations in `nvim/lua/plugins`.
+- Load Zsh plugins from the managed `~/.config/zsh/plugins` paths instead of searching package-manager directories.
+- Share clipboard provider selection through `scripts/dotfiles-clipboard`; keep the Windows UTF-8 transport in `scripts/win-copy` and `scripts/win-paste`.
+- Let Nix install and pin tmux plugins, and initialize the restoration plugins directly without TPM or tmux-yank.
+  Initialize assistant restoration before continuum so restoration hooks are ready when automatic restore runs.
+- Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.

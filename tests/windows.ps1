@@ -26,8 +26,8 @@ $weztermInstaller = Get-Content -Raw -LiteralPath $scripts[1]
 if ($weztermInstaller -notmatch 'APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE') {
     throw "The WezTerm installer does not handle Winget's no-applicable-update result."
 }
-if ($weztermInstaller -notmatch 'Get-FileHash' -or $weztermInstaller -notmatch 'SHA256') {
-    throw "The WezTerm installer does not verify the copied configuration."
+if ($weztermInstaller -notmatch 'return dofile' -or $weztermInstaller -notmatch 'add_to_config_reload_watch_list') {
+    throw "The WezTerm installer must load and watch the live checkout configuration."
 }
 
 Write-Host "Native Windows PowerShell compatibility passed"
