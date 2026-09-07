@@ -76,6 +76,12 @@ config.switch_to_last_active_tab_when_closing_tab = true
 config.enable_tab_bar = true
 config.hide_tab_bar_if_only_one_tab = true
 config.tab_bar_at_bottom = true
+-- Cell-based tabs let the left status area center the row at any font size.
+config.use_fancy_tab_bar = false
+config.show_new_tab_button_in_tab_bar = false
+config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
+config.tab_max_width = 24
+config.status_update_interval = 250
 config.window_decorations = 'RESIZE'
 config.window_frame = {
   font = platform_font('Bold'),
@@ -101,8 +107,8 @@ config.colors = {
   selection_bg = '#eb6f92',
   tab_bar = {
     background = 'rgba(35, 33, 54, 0.70)',
-    active_tab = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
-    inactive_tab = { bg_color = 'rgba(35, 33, 54, 0.45)', fg_color = '#908caa' },
+    active_tab = { bg_color = '#c4a7e7', fg_color = '#232136', intensity = 'Bold' },
+    inactive_tab = { bg_color = 'rgba(35, 33, 54, 0.70)', fg_color = '#908caa' },
     inactive_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
     new_tab = { bg_color = 'rgba(35, 33, 54, 0.45)', fg_color = '#908caa' },
     new_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
@@ -471,6 +477,54 @@ config.mouse_bindings = {
 wezterm.on('format-window-title', function()
   return ' '
 end)
+
+wezterm.on('format-tab-title', function(tab, _tabs, _panes, _config, _hover, max_width)
+  local width = math.max(0, math.min(config.tab_max_width, max_width))
+  if width == 0 then
+    return { { Text = '' } }
+  end
+  local title = tab.tab_title
+  if not title or title == '' then
+    title = tab.active_pane.title
+  end
+  title = (title or ''):gsub('%c', ' '):gsub('%s+', ' '):match('^%s*(.-)%s*$')
+  local label = tostring(tab.tab_index + 1) .. '  ' .. title
+  local available = math.max(1, width - 4)
+  if wezterm.column_width(label) > available then
+    label = wezterm.truncate_right(label, available - 1) .. '…'
+  end
+  local padding = width - wezterm.column_width(label)
+  local left = math.floor(padding / 2)
+  return { { Text = string.rep(' ', left) .. label .. string.rep(' ', padding - left) } }
+end)
+
+local function center_tabs(window)
+  local tab = window:active_tab()
+  if not tab then
+    window:set_left_status('')
+    return
+  end
+  -- Use the whole tab's width so split panes cannot shift the tab row.
+  local size = tab:get_size()
+  local cols = size.cols
+  if size.pixel_width > 0 then
+    cols = math.floor(window:get_dimensions().pixel_width * size.cols / size.pixel_width)
+  end
+  local count = #window:mux_window():tabs()
+  if count == 0 then
+    window:set_left_status('')
+    return
+  end
+  -- The retro renderer reserves one cell per gap when it clamps tab widths.
+  local available = math.max(0, cols - (count - 1))
+  local width = math.min(config.tab_max_width, math.floor(available / count))
+  local padding = math.max(0, math.floor((cols - count * width) / 2))
+  window:set_left_status(string.rep(' ', padding))
+end
+
+wezterm.on('update-status', center_tabs)
+wezterm.on('window-resized', center_tabs)
+wezterm.on('window-config-reloaded', center_tabs)
 
 wezterm.on('new-tab-button-click', function(window, pane, button)
   if button == 'Left' then

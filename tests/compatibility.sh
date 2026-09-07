@@ -88,6 +88,7 @@ wezterm_command=$(find_wezterm || true)
 if [[ -n "$wezterm_command" ]]; then
   keys="$test_dir/wezterm-keys"
   "$wezterm_command" --config-file "$repo_dir/wezterm/.wezterm.lua" show-keys >"$keys"
+  "$wezterm_command" --config-file "$repo_dir/tests/wezterm-tabs.lua" show-keys >/dev/null
   for direction in Left Right Up Down; do
     if ! grep -E "^[[:space:]]*CTRL[[:space:]]+${direction}Arrow[[:space:]]+->[[:space:]]+SendKey.*mods: CTRL" "$keys" >/dev/null; then
       printf 'compatibility test: WezTerm does not pass Control+%s through unchanged\n' "$direction" >&2

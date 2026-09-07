@@ -20,6 +20,8 @@
 - Keep MacBook-safe Command aliases for clipboard and Page Up or Page Down behavior while retaining the portable bindings for external keyboards.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and hide WezTerm's native tab bar when only one native tab exists so the normal tmux interface does not show duplicate tab systems.
+- Center WezTerm's cell-based tab row with left-status padding measured from the whole tab, not an individual split pane.
+  Keep label widths and centering calculations aligned, with display-cell-aware Unicode truncation.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
 - Never pipe WSL clipboard text directly to `clip.exe`.
