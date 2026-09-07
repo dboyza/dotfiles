@@ -17,9 +17,6 @@ let
 
   live = relative: managed (config.lib.file.mkOutOfStoreSymlink "${repoDirectory}/${relative}");
 
-  system = pkgs.stdenv.hostPlatform.system;
-  codex = pkgs.callPackage ./codex.nix { };
-  pi-coding-agent = pkgs.callPackage ./pi-coding-agent.nix { };
   pre-commit-without-dotnet-tests = pkgs.pre-commit.overridePythonAttrs (old: {
     nativeCheckInputs = builtins.filter (input: input != pkgs.dotnet-sdk) old.nativeCheckInputs;
     preCheck = lib.concatStringsSep "\n" (
@@ -41,7 +38,6 @@ in
         bind
         btop
         claude-code
-        codex
         curl
         direnv
         fzf
@@ -50,12 +46,10 @@ in
         git-lfs
         gnumake
         gnupg
-        inputs.herdr.packages.${system}.default
         jq
         kubectl
         neovim
         nodejs_24
-        pi-coding-agent
         pre-commit-without-dotnet-tests
         ripgrep
         shellcheck
@@ -73,6 +67,7 @@ in
         zsh-syntax-highlighting
       ]
       ++ lib.optionals pkgs.stdenv.isLinux [
+        bubblewrap
         gcc
         nerd-fonts.hack
         wl-clipboard
@@ -81,9 +76,6 @@ in
       ]
       ++ lib.optionals (pkgs.stdenv.isLinux && !isWSL) [
         wezterm
-      ]
-      ++ lib.optionals (system != "x86_64-darwin") [
-        opencode
       ];
   };
 
@@ -104,6 +96,11 @@ in
     ".config/nvim" = live "nvim";
     ".config/starship.toml" = live "starship/starship.toml";
     ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
+    ".local/bin/dotfiles-tool.mjs" = live "scripts/dotfiles-tool.mjs";
+    ".local/bin/codex" = live "scripts/codex";
+    ".local/bin/pi" = live "scripts/pi";
+    ".local/bin/opencode" = live "scripts/opencode";
+    ".local/bin/herdr" = live "scripts/herdr";
 
     ".codex/AGENTS.md" = live "agents/global/AGENTS.md";
     ".claude/CLAUDE.md" = live "agents/global/AGENTS.md";

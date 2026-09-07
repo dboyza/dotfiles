@@ -18,12 +18,20 @@ flake_ref="path:$repo_dir"
 # shellcheck source=scripts/lib/bootstrap-common.sh
 source "$repo_dir/scripts/lib/bootstrap-common.sh"
 
+verify_tool_targets() {
+  local tool
+  for tool in codex pi opencode herdr dotfiles-tool.mjs; do
+    managed_targets | grep -Fx "$HOME/.local/bin/$tool" >/dev/null
+  done
+}
+
 os=Linux
 for profile in linux-aarch64 linux-x86_64; do
   nix "${nix_options[@]}" eval --raw \
     "$flake_ref#homeConfigurations.$profile.activationPackage.drvPath" \
     --impure >/dev/null
   load_managed_targets
+  verify_tool_targets
   managed_targets | grep -Fx "$HOME/.local/bin/dotfiles-clipboard" >/dev/null
 done
 
@@ -33,6 +41,7 @@ for profile in macos-aarch64 macos-x86_64; do
     "$flake_ref#darwinConfigurations.$profile.system.drvPath" \
     --impure >/dev/null
   load_managed_targets
+  verify_tool_targets
   managed_targets | grep -Fx "$HOME/.config/nvim" >/dev/null
 done
 
@@ -43,6 +52,7 @@ nix "${nix_options[@]}" eval --raw \
   "$flake_ref#homeConfigurations.linux-x86_64.activationPackage.drvPath" \
   --impure >/dev/null
 load_managed_targets
+verify_tool_targets
 managed_targets | grep -Fx "$HOME/.local/bin/win-copy" >/dev/null
 managed_targets | grep -Fx "$HOME/.local/bin/win-paste" >/dev/null
 

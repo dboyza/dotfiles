@@ -85,9 +85,8 @@ EOF
 
 cat >"$fake_bin/pi" <<'EOF'
 #!/usr/bin/env bash
-if [[ "${1:-}" == --version ]]; then
-  printf '0.82.0\n'
-fi
+printf 'bootstrap test: bootstrap must not launch Pi or update its installation\n' >&2
+exit 1
 EOF
 
 cat >"$fake_bin/tmux" <<'EOF'
@@ -107,6 +106,14 @@ EOF
 cat >"$fake_bin/jq" <<'EOF'
 #!/usr/bin/env bash
 exit 0
+EOF
+
+cat >"$fake_bin/node" <<'EOF'
+#!/usr/bin/env bash
+if [[ "$#" != 2 || "$1" != --check || "$2" != "$DOTFILES_REPO/scripts/dotfiles-tool.mjs" ]]; then
+  printf 'bootstrap test: Node must only check launcher syntax\n' >&2
+  exit 1
+fi
 EOF
 
 cat >"$fake_bin/noop" <<'EOF'
@@ -138,9 +145,9 @@ INSTALLER
 EOF
 
 chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "$fake_bin/sudo" "$fake_bin/curl" \
-  "$fake_bin/pi" "$fake_bin/tmux" "$fake_bin/PlistBuddy" "$fake_bin/jq" "$fake_bin/noop" "$generation/activate"
+  "$fake_bin/node" "$fake_bin/pi" "$fake_bin/tmux" "$fake_bin/PlistBuddy" "$fake_bin/jq" "$fake_bin/noop" "$generation/activate"
 
-for command_name in brew claude codex gh herdr kubectl nvim node opencode pre-commit starship terraform uv wezterm; do
+for command_name in brew claude codex gh herdr kubectl nvim opencode pre-commit starship terraform uv wezterm; do
   ln -s "$fake_bin/noop" "$fake_bin/$command_name"
 done
 ln -s "$fake_bin/noop" "$fake_bin/xcode-select"

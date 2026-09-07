@@ -154,21 +154,12 @@ verify_managed_links() {
 }
 
 verify_pi_configuration() {
-  local actual_version expected_version
-
   if [[ ! -f "$HOME/.pi/agent/settings.json" ]]; then
     printf 'bootstrap: Pi settings.json is missing\n' >&2
     return 1
   fi
   if ! jq empty "$HOME/.pi/agent/settings.json" >/dev/null 2>&1; then
     printf 'bootstrap: Pi settings.json contains invalid JSON\n' >&2
-    return 1
-  fi
-
-  expected_version=$(sed -n 's/^[[:space:]]*version = "\([^"]*\)";/\1/p' "$repo_dir/nix/pi-coding-agent.nix")
-  actual_version=$(pi --version 2>/dev/null || true)
-  if [[ -z "$expected_version" || "$actual_version" != "$expected_version" ]]; then
-    printf 'bootstrap: expected Pi %s, found %s\n' "${expected_version:-unknown}" "${actual_version:-unknown}" >&2
     return 1
   fi
 }
@@ -232,12 +223,8 @@ build_configuration() {
 
 verify_installation() {
   local command_name missing=0
-  local expected_commands=(claude codex gh git herdr kubectl nvim node pi pre-commit rg starship terraform tmux uv zsh)
-  export PATH="$HOME/.nix-profile/bin:/etc/profiles/per-user/$DOTFILES_USER/bin:/run/current-system/sw/bin:$PATH"
-
-  if [[ "$profile" != macos-x86_64 ]]; then
-    expected_commands+=(opencode)
-  fi
+  local expected_commands=(claude codex gh git herdr kubectl nvim node opencode pi pre-commit rg starship terraform tmux uv zsh)
+  export PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$DOTFILES_USER/bin:/run/current-system/sw/bin:$PATH"
 
   for command_name in "${expected_commands[@]}"; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -252,6 +239,7 @@ verify_installation() {
 
   verify_managed_links
   verify_pi_configuration
+  node --check "$repo_dir/scripts/dotfiles-tool.mjs"
   verify_tmux_configuration
   verify_wezterm_configuration
   verify_platform

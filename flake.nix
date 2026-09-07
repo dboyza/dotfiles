@@ -14,11 +14,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    herdr = {
-      url = "github:ogulcancelik/herdr/v0.7.1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     tmux-resurrect = {
       url = "github:tmux-plugins/tmux-resurrect";
       flake = false;

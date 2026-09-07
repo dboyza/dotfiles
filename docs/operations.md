@@ -31,15 +31,40 @@ The older `./bootstrap.sh --update` form is an alias for the same behavior.
 
 An update may change `flake.lock`.
 Review and commit that file when the refresh is intentional.
-Packages with explicit versions remain pinned until their declarations change.
+Codex, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
 
-After activation, bootstrap verifies managed links, Pi settings and version, the tmux prefix, WezTerm configuration, and platform integration.
+After activation, bootstrap verifies managed links, Pi settings, launcher syntax, the tmux prefix, WezTerm configuration, and platform integration.
 The managed-file inventory comes from the evaluated Home Manager configuration, including its platform-specific files.
 Add managed files in `nix/home.nix`; backup and verification discover them automatically.
 
 tmux plugins are pinned Nix inputs and load directly from their managed paths.
 Use bootstrap to update them along with other declared inputs.
 Resurrect, assistant session restoration, and continuum remain enabled; TPM and tmux-yank are no longer needed.
+
+## Update agent tools at launch
+
+Launching `codex`, `pi`, `opencode`, or `herdr` checks the official release source for a newer stable version and installs it before starting the application.
+The first launch requires an internet connection.
+A failed check or installation falls back to the installed version, and concurrent launches coordinate through a per-tool update lock.
+Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on macOS and Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
+Tool versions are outside Nix generations and are not changed by Nix rollback.
+
+Skip updates for one launch when offline or diagnosing an issue:
+
+```sh
+DOTFILES_TOOL_UPDATE=0 codex
+```
+
+The bypass requires an existing managed installation.
+Replace `codex` with `pi`, `opencode`, or `herdr` as needed.
+To prepare an installation or update without opening a session:
+
+```sh
+node scripts/dotfiles-tool.mjs --update-only codex
+```
+
+Pi's local extensions and pinned extension packages are independent of the Pi application version.
+Check extension behavior after upgrades, especially the Calm extension's UI integrations.
 
 ## Run automated tests
 
@@ -50,6 +75,7 @@ Run:
 ```
 
 The suite checks bootstrap update, preflight, backup, and check-only behavior.
+It exercises launch-time updates with isolated installations and mocked release sources.
 It also checks WSL UTF-8 clipboard round trips, shell formatting and lint, JSON validity, WezTerm bindings, tmux, Neovim core mappings, PowerShell syntax when available, and every Nix platform evaluation.
 Shared clipboard tests exercise provider selection and Unicode payloads, and isolated tmux tests check restoration plugin initialization and reloads.
 
@@ -59,7 +85,6 @@ Application configurations point at the live checkout, so Nix generation rollbac
 Use Git to review and restore configuration changes.
 Pi settings are backed up before their first conversion to a live symlink; later Pi writes affect `pi/settings.json` directly.
 Credentials and sessions remain outside the checkout.
-
 
 Before activation, bootstrap moves an existing managed file to a path such as `.zshrc.backup.20260712153000`.
 Do not delete backups until the new setup works correctly.

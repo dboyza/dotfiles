@@ -54,7 +54,6 @@ The shared environment includes:
 Linux desktop installations receive WezTerm, GCC, and common X11 and Wayland clipboard tools.
 WSL receives Windows WezTerm, a Windows font installation, and UTF-8-safe Windows clipboard helpers.
 macOS receives WezTerm through Homebrew and system integration through nix-darwin.
-opencode is omitted on Intel macOS because its upstream package does not support that platform.
 
 Pi includes the local Calm extension, terminal-title status, model overrides, and the Rose Pine Moon theme.
 Its settings declare pinned web-access, Codex fast-mode, and OpenAI server-compaction packages.
@@ -76,6 +75,16 @@ tmux provides persistent terminal sessions; Herdr organizes agent workspaces wit
 Keep this checkout at the same path.
 Run bootstrap after moving it, adding managed paths, or changing Nix packages or system settings.
 Pi can write settings and Lazy can update `nvim/lazy-lock.json` directly in the checkout, so review those changes before committing.
+
+Codex, Pi, opencode, and Herdr check for the latest stable release whenever you launch them.
+The first launch installs the tool; later launches update it before starting your session.
+Updates use writable, versioned installations under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools`, separate from the Nix store.
+If a check or update fails, the launcher starts the installed version, and simultaneous launches share an update lock.
+These four tools no longer need bootstrap for updates.
+Use `DOTFILES_TOOL_UPDATE=0 codex` to skip the update check for a launch; the same variable works with `pi`, `opencode`, and `herdr`.
+The bypass requires a previously installed version.
+To install or update without starting a session, run `node scripts/dotfiles-tool.mjs --update-only codex` from the checkout, substituting any of the four tool names.
+Pi extensions remain pinned separately in `pi/settings.json`; review their compatibility when Pi updates.
 
 Read [checks, updates, testing, and recovery](docs/operations.md) before changing or repairing an installation.
 
@@ -111,10 +120,10 @@ Run the complete local test suite with:
 | `bootstrap.sh` | Selects the platform and coordinates preflight, update, activation, and verification. |
 | `scripts/lib/` | Contains shared, Linux, macOS, and WezTerm bootstrap functions. |
 | `flake.nix` | Defines supported systems, packages, and platform profiles. |
-| `flake.lock` | Pins Nix, Home Manager, nix-darwin, Herdr, and tmux plugin revisions. |
+| `flake.lock` | Pins Nix, Home Manager, nix-darwin, and tmux plugin revisions. |
 | `nix/home.nix` | Defines portable packages and managed home files. |
 | `nix/darwin.nix` | Defines macOS settings, fonts, and Homebrew applications. |
-| `nix/pi-coding-agent.nix` | Packages the pinned Pi npm release. |
+| `scripts/dotfiles-tool.mjs` | Checks and installs agent-tool releases at launch. |
 | `agents/` | Stores shared coding-agent instructions and skills. |
 | `pi/` | Stores Pi settings, model overrides, extensions, and themes. |
 | `herdr/`, `nvim/`, `starship/`, `tmux/`, `wezterm/`, `zsh/` | Store application configuration. |
@@ -127,7 +136,7 @@ Run `./bootstrap.sh --check` before activating configuration changes.
 
 ## Platform Limitations
 
-- Native Windows without WSL is only a host-integration target for WezTerm, fonts, PowerShell, and clipboard handling.
+- Native Windows supports host integration and [optional native agent-tool launchers](docs/windows-wsl.md#optional-native-windows-agent-tools); the complete shell environment still requires WSL.
 - A real Windows-to-WSL GUI and clipboard smoke test requires a Windows 11 machine.
 - Apple ID data, App Store authentication, privacy permissions, and personal application data are not managed.
 - Nixpkgs 26.05 is the final release supporting Intel macOS, so a future Nixpkgs upgrade may require removing that profile.

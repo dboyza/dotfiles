@@ -80,7 +80,8 @@ Windows PowerShell and the Ubuntu terminal are different environments, so each s
 ## Use and update
 
 Edit application configuration directly in the checkout, then reload the application.
-Bootstrap is only needed for packages, system settings, new managed paths, or a moved checkout.
+Codex, Pi, opencode, and Herdr update when launched.
+Bootstrap is needed for other Nix packages, system settings, new managed paths, or a moved checkout.
 
 Open WezTerm from the Windows Start menu and run Linux commands in the Ubuntu session.
 
@@ -104,3 +105,36 @@ The loader continues to read the checkout after a WezTerm upgrade.
 On WSL, the selected distribution must remain available for Windows WezTerm to read that configuration.
 If automatic reload misses an edit across the WSL filesystem, reload WezTerm with `Ctrl+Shift+R`.
 See [operations](operations.md) for non-mutating checks, testing, and recovery.
+
+## Optional native Windows agent tools
+
+WSL already receives the four launchers through bootstrap.
+To also run Codex, Pi, opencode, and Herdr directly in Windows, install separate native launchers.
+This does not install the complete Nix-managed environment or copy WSL credentials and configuration.
+
+In a regular Windows PowerShell window, install Node.js LTS with npm:
+
+```powershell
+winget install --exact --id OpenJS.NodeJS.LTS
+```
+
+Reopen PowerShell, enter the repository directory, and run:
+
+```powershell
+.\scripts\install-windows-tools.ps1
+```
+
+The installer requires Node.js 22.19 or newer.
+It adds launchers to `%USERPROFILE%\.local\bin`, preserves existing unmanaged launchers in backups, and adds the directory to your user PATH.
+Keep the checkout at the same location, or rerun the installer after moving it.
+Reopen your terminal, then launch `codex`, `pi`, `opencode`, or `herdr`.
+Each command installs or updates its native application before starting it.
+Native installations live under `%LOCALAPPDATA%\dotfiles\tools` and are independent of WSL installations.
+
+To bypass update checks in the current PowerShell session after a tool has been installed:
+
+```powershell
+$env:DOTFILES_TOOL_UPDATE = "0"
+codex
+Remove-Item Env:DOTFILES_TOOL_UPDATE
+```

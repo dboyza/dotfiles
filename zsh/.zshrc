@@ -38,6 +38,10 @@ for hm_session_vars in \
 done
 unset hm_session_vars
 
+# Mutable tool launchers must win over older Nix generations and vendor installs.
+path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}")
+export PATH
+
 # History
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000

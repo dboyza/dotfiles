@@ -1,0 +1,3 @@
+#!/usr/bin/env node
+import { main } from './dotfiles-tool.mjs';
+await main('opencode', process.argv.slice(2));

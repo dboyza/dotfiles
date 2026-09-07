@@ -33,14 +33,13 @@
   Pi may write runtime settings into that file; review these changes before committing.
   Never track Pi authentication, trust decisions, package state, or session transcripts.
 - Back up Pi's managed `models.json` before activation, but leave unmanaged prompt files in place.
-- Package Pi from a versioned npm release in `nix/pi-coding-agent.nix`.
-  When updating Pi, update the version, source hash, and npm dependency hash together.
-- Package Codex from official release binaries in `nix/codex.nix` because the stable Nixpkgs package may lag upstream.
-  When updating Codex, update the version and both artifact hashes for every supported Nix platform together.
-- Pi 0.82.0's published shrinkwrap omits integrity records for first-party runtime packages and includes development dependencies.
-  Keep the packaging correction, version 2 npm cache fetcher, and production-only install behavior until the published release metadata is complete.
-- Keep Pi's shared `postPatch` compatible with `fetchNpmDeps`' minimal build environment; do not invoke Node there unless the npm dependency derivation explicitly includes it.
-- Keep the local Pi Calm extension on its verified Pi version, preserve its bundled license, and never manage or track its runtime preference file.
+- Keep Codex, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
+  Nix manages the launchers, Node.js, ripgrep, and Linux bubblewrap; package updates happen at launch.
+  Preserve offline fallback, serialized updates, and the `DOTFILES_TOOL_UPDATE=0` bypass.
+  Verify Herdr downloads against its official release manifest and preserve the bundled ConPTY runtime on Windows.
+  Resolve npm executable entries from installed package metadata; OpenCode can publish a native binary rather than a JavaScript launcher.
+- Preserve the local Pi Calm extension's bundled license and never manage or track its runtime preference file.
+  Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
@@ -48,7 +47,7 @@
 - Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
 - Keep first-time Homebrew installation interactive on macOS so its installer can request administrator credentials.
 - Discover Homebrew from `PATH` or the standard Apple Silicon or Intel prefix during bootstrap, and initialize it in interactive macOS shells because bootstrap cannot persist its child-process environment.
-- Keep post-activation verification aligned with the managed links, pinned Pi version, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
+- Keep post-activation verification aligned with the managed links, launcher syntax, Pi settings, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
 - Keep `tests/run.sh` covering x86_64 and ARM64 Linux and macOS evaluation, native Windows PowerShell validation when PowerShell is available, and WSL profile and clipboard behavior.
 - Treat Winget's `APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE` result as success when an idempotent install finds an existing package with no applicable update.
 - In `bootstrap.sh`, platform guards in functions called under `set -e` must return success when intentionally skipping another platform.

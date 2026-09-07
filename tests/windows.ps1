@@ -4,7 +4,8 @@ Set-StrictMode -Version Latest
 $repository = Split-Path -Parent $PSScriptRoot
 $scripts = @(
     (Join-Path $repository "scripts/install-windows-fonts.ps1"),
-    (Join-Path $repository "scripts/install-windows-wezterm.ps1")
+    (Join-Path $repository "scripts/install-windows-wezterm.ps1"),
+    (Join-Path $repository "scripts/install-windows-tools.ps1")
 )
 
 foreach ($script in $scripts) {
