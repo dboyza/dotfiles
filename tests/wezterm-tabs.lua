@@ -10,12 +10,12 @@ wezterm.on = original_on
 
 local format_title = assert(callbacks['format-tab-title'])
 for _, title in ipairs({ 'shell', 'a very long project name with spaces', '日本語のプロジェクト', '🌲 café', '' }) do
-  for width = 0, 24 do
+  for width = 0, config.tab_max_width do
     local result = format_title({ tab_index = 0, tab_title = title, active_pane = { title = 'fallback' } }, {}, {}, config, false, width)
     assert(wezterm.column_width(result[1].Text) == width, 'tab label must fill its allocated cells')
   end
 end
-local custom = format_title({ tab_index = 0, tab_title = 'custom', active_pane = { title = 'fallback' } }, {}, {}, config, false, 24)
+local custom = format_title({ tab_index = 0, tab_title = 'custom', active_pane = { title = 'fallback' } }, {}, {}, config, false, config.tab_max_width)
 assert(custom[1].Text:find('custom', 1, true), 'explicit tab title must win')
 
 for _, cols in ipairs({ 1, 20, 80, 140, 240 }) do
@@ -34,7 +34,7 @@ for _, cols in ipairs({ 1, 20, 80, 140, 240 }) do
       set_left_status = function(_, text) padding = #text end,
     }
     callbacks['update-status'](window)
-    local rendered_width = math.min(24, math.floor(math.max(0, cols - count + 1) / count))
+    local rendered_width = math.min(config.tab_max_width, math.floor(math.max(0, cols - count + 1) / count))
     local right = cols - padding - count * rendered_width
     assert(math.abs(padding - right) <= 1, 'tab row must have balanced margins')
   end
