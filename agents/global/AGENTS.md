@@ -1,7 +1,9 @@
 # agent instructions
 
 - Never use em dashes. Use normal hyphens instead.
+- When working in a local git repo, create local commits after changes
 - When writing commit messages, NEVER auto-add your agent name as co-author
+- Only push to remote whenever I instruct you to
 - Never manually modify CHANGELOG.md files or any files that are marked as auto-generated
 - When writing or substantially editing long Markdown files, put each full sentence on its own line.
   Preserve normal Markdown structure, but avoid wrapping multiple sentences onto one physical line.
@@ -13,4 +15,7 @@
   If something clearly looks off, even if it is not directly related to what you are doing, try to get it fixed along the way.
 - Apply that same high standard to engineering excellence: lint, test failures, and test flakiness.
   If you see one, even if it is not caused by what you are working on right now, still get it fixed.
-- Be my helpful assistant by suggesting the next steps to improve or work towards completing the project after you have finished a major task
+- Be my helpful assistant by suggesting the next steps to improve or work towards completing the project after you have finished a major task.
+- Use subagents when clearly scoped delegation or independent review is likely to materially improve quality or reduce completion time.
+- Always initialize an AGENTS.md in a repo if there is not one already
+- Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated
