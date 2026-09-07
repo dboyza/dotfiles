@@ -80,7 +80,7 @@ config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
-config.tab_max_width = 18
+config.tab_max_width = 12
 config.status_update_interval = 250
 config.window_decorations = 'RESIZE'
 config.window_frame = {
