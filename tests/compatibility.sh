@@ -131,6 +131,9 @@ if command -v tmux >/dev/null 2>&1; then
 fi
 
 if command -v nvim >/dev/null 2>&1; then
+  NVIM_LOG_FILE="$test_dir/wezterm-keys.log" \
+    nvim --headless -u NONE -i NONE -l "$repo_dir/tests/wezterm-keys.lua" "$repo_dir/wezterm/.wezterm.lua"
+
   NVIM_LOG_FILE="$test_dir/wezterm-nvim.log" \
     nvim --headless -u NONE -l "$repo_dir/tests/wezterm-launch-size.lua" "$repo_dir/wezterm/.wezterm.lua"
 

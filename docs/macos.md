@@ -79,9 +79,23 @@ MacBook keyboard aliases include:
 
 - `Command+Shift+Up` and `Command+Shift+Down` for Page Up and Page Down.
 - `Command+Option+Up` and `Command+Option+Down` for Control+Page Up and Control+Page Down.
-- `Command+C` and `Command+V` for clipboard operations.
+- `Option+Left` and `Option+Right` to move by a word.
+- `Control+Left` and `Control+Right` also move by a word in Codex and Zsh once the macOS shortcuts are disabled.
+- `Command+Left` and `Command+Right` for Home and End, moving to the beginning or end of the current line.
+- `Fn+Left` and `Fn+Right` provide the same Home and End keys on a MacBook keyboard.
+- `Command+C` to copy selected terminal text.
+- `Command+V` to paste text or attach a clipboard screenshot in Codex, including inside tmux.
+  Image-only clipboards send `Control+V` to the application; text and copied file paths use normal terminal paste.
+  `Control+Shift+V` remains available for text-only paste.
 
 The tmux prefix is `Control+G`, while the Herdr prefix is `Control+A`.
+Plain `Control+V` passes through tmux so applications can handle their own image paste.
+
+WezTerm reloads checkout edits automatically; `Control+Shift+R` also reloads its configuration.
+In an existing tmux session, press `Control+G`, then `R` to reload its bindings.
+Open a new shell to pick up Zsh changes.
+If macOS still consumes `Control+Arrow`, disable Mission Control and Move left/right a space in System Settings > Keyboard > Keyboard Shortcuts > Mission Control, then log out and back in if needed.
+Bootstrap also manages these shortcut preferences.
 
 To download changes and activate them, run:
 

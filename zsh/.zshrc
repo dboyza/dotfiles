@@ -73,6 +73,14 @@ bindkey $'\e[1;5D' backward-word
 bindkey $'\e[1;5C' forward-word
 bindkey $'\e[5D' backward-word
 bindkey $'\e[5C' forward-word
+# Home and End vary between terminals and tmux's application cursor mode.
+for key in $'\e[H' $'\eOH' $'\e[1~' $'\e[7~'; do
+  bindkey "$key" beginning-of-line
+done
+for key in $'\e[F' $'\eOF' $'\e[4~' $'\e[8~'; do
+  bindkey "$key" end-of-line
+done
+unset key
 
 select-backward-word() {
   (( REGION_ACTIVE )) || zle set-mark-command

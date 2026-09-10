@@ -245,6 +245,31 @@ end
 
 -- keys
 
+local function macos_paste_clipboard()
+  return wezterm.action_callback(function(window, pane)
+    -- Inspect formats only. Codex reads the image itself when it receives Ctrl+V.
+    -- Prefer text when an app also offers an image preview or a copied file URL.
+    local called, success, kind = pcall(wezterm.run_child_process, {
+      '/usr/bin/osascript', '-l', 'JavaScript', '-e', [[
+        ObjC.import('AppKit');
+        const types = ObjC.deepUnwrap($.NSPasteboard.generalPasteboard.types) || [];
+        const images = ['public.png', 'public.tiff', 'public.jpeg'];
+        const text = [
+          'public.utf8-plain-text', 'public.utf16-plain-text',
+          'public.utf16-external-plain-text', 'public.file-url'
+        ];
+        types.some(t => images.includes(t)) && !types.some(t => text.includes(t))
+          ? 'image' : 'text';
+      ]],
+    })
+    if called and success and kind:match('^image%s*$') then
+      window:perform_action(wezterm.action.SendKey({ key = 'v', mods = 'CTRL' }), pane)
+    else
+      window:perform_action(wezterm.action.PasteFrom('Clipboard'), pane)
+    end
+  end)
+end
+
 local function copy_or_send_to_shell()
   return wezterm.action_callback(function(window, pane)
     local selection = window:get_selection_text_for_pane(pane)
@@ -434,7 +459,27 @@ if is_macos then
     {
       key = 'v',
       mods = 'CMD',
-      action = wezterm.action.PasteFrom('Clipboard'),
+      action = macos_paste_clipboard(),
+    },
+    {
+      key = 'LeftArrow',
+      mods = 'ALT',
+      action = wezterm.action.SendString('\x1bb'),
+    },
+    {
+      key = 'RightArrow',
+      mods = 'ALT',
+      action = wezterm.action.SendString('\x1bf'),
+    },
+    {
+      key = 'LeftArrow',
+      mods = 'CMD',
+      action = wezterm.action.SendKey({ key = 'Home', mods = 'NONE' }),
+    },
+    {
+      key = 'RightArrow',
+      mods = 'CMD',
+      action = wezterm.action.SendKey({ key = 'End', mods = 'NONE' }),
     },
     {
       key = 'UpArrow',

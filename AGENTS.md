@@ -18,6 +18,10 @@
 - Keep plain `Control+Arrow` events passing through WezTerm on every platform so Neovim receives its navigation bindings.
 - On macOS, disable only the Mission Control and Spaces symbolic hotkeys that consume `Control+Arrow`; merge those entries without replacing unrelated shortcut preferences.
 - Keep MacBook-safe Command aliases for clipboard and Page Up or Page Down behavior while retaining the portable bindings for external keyboards.
+- On macOS, route image-only Command+V paste to the application's Control+V handler and preserve normal terminal paste for text and copied file paths.
+  Keep plain Control+V unbound in tmux's root table, including on configuration reload.
+- Use Option+Left/Right for word movement and Command+Left/Right for Home/End on macOS.
+  Send Home/End keys rather than Control+A/Control+E so Herdr's prefix remains usable, and bind both CSI and SS3 Home/End sequences in Zsh.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and hide WezTerm's native tab bar when only one native tab exists so the normal tmux interface does not show duplicate tab systems.
 - Center WezTerm's cell-based tab row with left-status padding measured from the whole tab, not an individual split pane.
