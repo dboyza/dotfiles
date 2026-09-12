@@ -58,6 +58,7 @@
       unfreePackageNames = [
         "claude-code"
         "terraform"
+        "wallper"
       ];
 
       allowUnfreePredicate = package: builtins.elem (nixpkgs.lib.getName package) unfreePackageNames;

@@ -32,6 +32,8 @@
   Use the tracked UTF-8-safe `scripts/win-copy` and `scripts/win-paste` helpers for Windows clipboard interoperability.
 - Treat macOS as a supported path, but state clearly when it received static validation only because no macOS runner was available.
 - Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
+- Keep macOS desktop apps in nix-darwin: use Homebrew casks where available and checksum-pinned packages under `nix/packages/` otherwise.
+  Preserve vendor-signed app bundles without Nix fixups, and document their minimum macOS version and update path.
 - Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.

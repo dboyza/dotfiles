@@ -140,10 +140,17 @@
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
   fonts.packages = [ pkgs.nerd-fonts.hack ];
+  environment.systemPackages = [ (pkgs.callPackage ./packages/wallper.nix { }) ];
 
   homebrew = {
     enable = true;
-    casks = [ "wezterm" ];
+    taps = [ "theboredteam/boring-notch" ];
+    casks = [
+      "google-chrome"
+      "visual-studio-code"
+      "theboredteam/boring-notch/boring-notch"
+      "wezterm"
+    ];
     onActivation = {
       autoUpdate = true;
       cleanup = "none";

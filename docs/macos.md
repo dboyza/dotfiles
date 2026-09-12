@@ -66,6 +66,20 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
    zsh --version
    ```
 
+## Managed desktop applications
+
+Activation installs Google Chrome, Visual Studio Code, BoringNotch, and WezTerm through Homebrew.
+BoringNotch uses its [developer-maintained tap](https://github.com/TheBoredTeam/boring.notch#installation).
+Its upstream cask removes quarantine from the installed BoringNotch bundle as part of installation.
+
+Wallper is packaged from its [official release](https://github.com/alxndlk/wallper-app/releases) in `nix/packages/wallper.nix`, with a pinned version and SHA-256 checksum.
+Nix-darwin installs it under `/Applications/Nix Apps/Wallper.app`.
+The pinned release supports Intel and Apple Silicon and requires macOS 14.6 or later.
+To update the reproducible Wallper installation, update its version and checksum together, then run `./bootstrap.sh --check` before activation.
+Wallper updates made inside the application may be replaced by the pinned version on a later activation.
+Existing manually installed copies in `/Applications` are not removed; use the managed copy to avoid launching an older duplicate.
+App sign-in, licenses, wallpaper selection, and permissions remain interactive setup steps.
+
 ## Customize macOS preferences
 
 Edit `system.defaults` in [`nix/darwin.nix`](../nix/darwin.nix) to manage macOS preferences as code.
