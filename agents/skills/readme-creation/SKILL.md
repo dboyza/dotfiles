@@ -1,109 +1,125 @@
 ---
 name: readme-creation
-description: Creates or substantially improves concise repository README files for first-time users. Use when a README should explain the project's purpose and shortest successful path without duplicating detailed documentation.
+description: Create or substantially improve modern, polished repository READMEs with a branded header, verified quick start, purposeful visuals, and an annotated directory layout. Use for first-time-user repository introductions without duplicating detailed documentation.
 ---
 
 # README Creation
 
-Create the shortest README that lets an unfamiliar reader understand the project, decide whether it fits their needs, and complete the primary task successfully.
-Treat concision as a core requirement, not a final editing pass.
+Create a modern, sleek, professional, informative README that helps an unfamiliar reader understand the project, reach a useful first result, and find their way around the repository.
+Use a restrained visual presentation inspired by GPTskins: a centered logo, clear identity, compact navigation, selective product proof, and a curated directory layout.
+Adapt this presentation to the project's audience and branding; do not copy another project's identity or force irrelevant sections.
 
-## Core principles
+## Verify the user journey
 
-- Lead with the project's purpose and the shortest verified path to a useful result.
-- Include only information needed by the README's primary audience.
-- Prefer one strong example over a catalog of possibilities.
-- Remove repetition, promotional language, obvious explanations, and source-tree narration.
-- Link to focused documentation instead of reproducing it in the README.
-- Prefer verified facts and runnable commands.
-- Never invent features, prerequisites, defaults, compatibility claims, environment variables, or commands.
-- Clearly label anything that could not be verified.
-- Do not expose credentials, private URLs, personal paths, or machine-specific state.
+Read applicable instruction files, the existing README, and any user-supplied design reference.
+Inspect manifests, entry points, configuration examples, scripts, tests, and focused documentation as needed to establish:
 
-## Establish the essential user journey
-
-Before writing, determine:
-
-1. What the project does and who it is for.
+1. What the project does and who it serves.
 2. The primary task a first-time user should complete.
-3. The minimum prerequisites for that task.
-4. The shortest installation and usage path.
-5. A command or observable result that confirms success.
+3. The minimum prerequisites and shortest installation and usage path.
+4. An observable result that confirms success.
+5. The real capabilities, limitations, and source locations worth highlighting.
 
 Infer these from the repository when safe.
-Ask the user only when missing information would materially change the instructions.
+Ask only when missing information would materially change the result.
+Never invent features, compatibility, statistics, licenses, published packages, commands, or links.
+Do not expose credentials, private URLs, personal paths, or machine-specific state.
 
-## Investigate selectively
+## Build a polished opening
 
-Read applicable instruction files and the existing README before editing.
-Inspect only the sources needed to verify claims and commands, such as package manifests, entry points, configuration examples, bootstrap scripts, tests, and existing focused documentation.
+Default to a compact centered hero using GitHub-compatible HTML:
 
-Trace important commands to their implementation when practical.
-Record prerequisites, working directories, side effects, prompts, and expected results only when readers need them to succeed safely.
-Do not turn repository investigation into an exhaustive README inventory.
+- A project logo with explicit dimensions and meaningful alternative text.
+- The project name as the single main heading.
+- A short, specific tagline and, if needed, one supporting sentence.
+- A small row of links to the quick start, preview, and most useful existing documentation or support destinations.
+- A restrained row of verified facts when they help readers decide, such as scope, platform, or offline operation.
 
-## Keep the structure minimal
+Reuse a suitable repository logo first.
+When creating a logo is within scope and none exists, make an original mark that fits the product; use a simple editable vector when appropriate, and use image-generation capabilities for bitmap artwork when needed.
+Store assets in a stable repository location and use relative references.
+Do not repurpose another project's logo or introduce a remote asset dependency without a reason.
+Check that the logo remains legible at header size on both light and dark backgrounds.
 
-A concise README usually needs:
+Prefer typography, whitespace, and a consistent accent palette over decoration.
+Avoid badge walls, ornamental emoji headings, unsupported marketing claims, decorative banners, and repetitive calls to action.
+Use badges only when their real status helps readers and their source is valid.
 
-1. Project name and a one-sentence purpose.
-2. A quick start with prerequisites, copy-pasteable commands, and a success check.
-3. Essential usage or configuration that most readers need next.
-4. Links to deeper documentation, support, contribution guidance, security information, or licensing when relevant.
+## Organize around the reader
 
-Add another section only when omitting it would block or seriously mislead the primary audience.
-Do not add boilerplate sections, exhaustive option references, long architecture tours, complete repository trees, or troubleshooting catalogs by default.
+Use this default flow, adjusting labels and order when the product calls for it:
 
-For monorepos or complex products, keep the root README as a concise entry point and link to component or task-specific documentation.
+1. Branded header and navigation.
+2. Install or Quick start, with prerequisites, runnable commands, and a success check.
+3. Preview, when an actual screenshot, demo, or short output example materially explains the experience.
+4. A compact explanation of the capabilities and workflow readers need next.
+5. Development, containing a curated repository layout and the canonical local checks.
+6. Links to focused documentation, support, contribution guidance, and licensing where relevant.
 
-## Write compact executable instructions
+Keep the first successful action near the top.
+Show a few concrete benefits tied to implemented behavior rather than a feature inventory.
+Link to deeper guidance instead of repeating it.
+For monorepos, make the root README an entry point to component documentation.
+Omit empty or irrelevant sections rather than filling a template.
 
-- Keep command sequences in execution order.
-- State the working directory or platform only when it is not obvious.
-- Use the repository's actual package manager and pinned tooling.
-- Make placeholders unmistakable and explain only those that are not self-evident.
-- Warn before permission prompts, destructive actions, restarts, or significant side effects.
-- Keep expected output outside copyable command blocks.
-- Separate platform paths only when their commands genuinely differ.
+## Use purposeful visuals
 
-Document the smallest useful configuration example.
-Explain required values, important defaults, and secret handling, then link to a complete configuration reference when one exists.
+For visual applications, prefer a small number of current, authentic screenshots showing the main experience.
+Capture them from the running product with scratch data when possible.
+For command-line tools or libraries, a short real terminal transcript or usage example may be a better preview.
+Never present concept art or a fabricated screenshot as working product behavior.
 
-Include troubleshooting only for common blockers in the documented quick start.
-Use a recognizable symptom, likely cause, and concrete recovery step.
-Link uncommon failures to deeper documentation or issue tracking.
+Use relative image paths, descriptive alternative text, and deliberate display widths.
+Link reduced-size previews to the full image when useful.
+Keep visual assets legible without making readers scroll through an oversized gallery before they can start.
+Prefer simple Markdown; reserve HTML for the centered hero or a compact image arrangement that improves the rendered result.
 
-## Edit for concision
+## Include a curated directory layout
 
-After drafting, challenge every section, paragraph, sentence, example, and badge.
-Remove anything that does not help the primary reader choose, start, verify, or find the next source of detail.
+Default to an annotated `text` tree under Development or Repository layout.
+Show the actual root name, key source areas, tests, scripts, assets, and documentation that orient a new contributor.
+Use short, aligned descriptions of each location's responsibility.
+Expand only subdirectories that help explain the project.
 
-Prefer:
+Verify every included path and description against the checkout.
+Aim for roughly 8-15 meaningful entries, scaling down for small repositories.
+Do not dump the entire tree or include dependency caches, local environments, secrets, or transient reports.
+Show a generated output directory only when contributors need to know about it, and label its generated or ignored status accurately.
+Keep architecture explanations in focused documentation rather than extending the tree into a file-by-file tour.
 
-- A sentence over a paragraph.
-- A short paragraph over a list.
-- One canonical workflow over several equivalent alternatives.
-- A link over duplicated detail.
-- Direct language over background exposition.
+## Write executable, concise instructions
 
-Preserve necessary safety warnings and platform differences even when shortening.
-Do not achieve concision by making commands ambiguous or omitting required prerequisites.
+Use the repository's actual package manager and pinned tooling.
+Keep commands in execution order and state working directories or platform differences when necessary.
+Make placeholders unmistakable, keep expected output outside copyable command blocks, and explain important side effects before the command that causes them.
+Do not advertise installation from a registry unless that package is actually available.
 
-## Validate
+Document only the smallest useful configuration example and common blockers on the documented path.
+For troubleshooting, connect a recognizable symptom to a concrete recovery step; link uncommon failures to deeper guidance.
+Avoid multiple equivalent installation paths unless they serve distinct audiences.
+
+Use plain, specific language and short sections.
+Put each full sentence on its own physical line in long Markdown, preserving normal lists, tables, and code blocks.
+Use normal hyphens rather than em dashes.
+Remove repetition and promotional filler while preserving prerequisites, material limitations, and a clear next step.
+
+## Validate the result
 
 Treat documentation commands as code.
-Run the quick start, verification command, and relevant documentation checks when practical.
-Confirm paths, links, code fences, placeholders, platform labels, and rendered Markdown.
+Run the quick start, success check, and relevant documentation checks when practical.
+Verify local paths, external destinations where needed, heading anchors, image references, code fences, placeholders, and all numerical claims.
+
+Inspect the rendered README, including the hero, logo, preview sizing, tree alignment, and navigation.
+Check narrow and wide layouts and light and dark backgrounds when the renderer supports them.
+Fix broken images, excessive whitespace, clipping, unreadable text, and accidental HTML rendering problems.
 
 Perform a final stranger test:
 
-- Can a new reader state what the project does?
-- Can they reach a successful first result without inspecting the source?
-- Can they find deeper information without the README duplicating it?
-- Is anything present that they do not need yet?
+- Can a new reader quickly explain what the project does and whether it fits their needs?
+- Can they reach a successful first result without reading the source?
+- Do the visuals demonstrate the real product?
+- Does the directory layout help them find the right code or documentation?
+- Does each section earn its space?
 
-If a supported path cannot be tested, state that limitation in the completion report rather than expanding the README with speculation.
-
-## Completion report
-
-Briefly state what changed, what was verified, and any important path that could not be tested.
+Briefly report what changed, what was verified, and any important command or rendering path that could not be tested.
+Do not imply that validation was performed when it was not.
