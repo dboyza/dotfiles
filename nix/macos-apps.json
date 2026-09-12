@@ -1,0 +1,29 @@
+[
+  {
+    "bundle": "Google Chrome.app",
+    "id": "com.google.Chrome",
+    "cask": "google-chrome"
+  },
+  {
+    "bundle": "Visual Studio Code.app",
+    "id": "com.microsoft.VSCode",
+    "cask": "visual-studio-code"
+  },
+  {
+    "bundle": "boringNotch.app",
+    "id": "theboringteam.boringnotch",
+    "cask": "theboredteam/boring-notch/boring-notch"
+  },
+  {
+    "bundle": "WezTerm.app",
+    "id": "com.github.wez.wezterm",
+    "cask": "wezterm"
+  },
+  {
+    "bundle": "Wallper.app",
+    "id": "sandimax.Wallper",
+    "url": "https://github.com/alxndlk/wallper-app/releases/download/1.11.1/Wallper.zip",
+    "sha256": "52b75a7dbcfc3d0f27d8cf96cea7f1f22c5b0a2a96cbf9916d071d06c256e832",
+    "minimum_macos": "14.6"
+  }
+]

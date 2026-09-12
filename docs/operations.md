@@ -26,7 +26,8 @@ Run:
 ```
 
 The command updates declared Nix package and plugin inputs, checks the result, and activates it.
-It also installs or upgrades WezTerm through Winget on Windows or Homebrew on macOS.
+It also installs or upgrades WezTerm through Winget on Windows.
+On macOS, desktop apps are installed only when missing; existing versions are preserved.
 The older `./bootstrap.sh --update` form is an alias for the same behavior.
 
 An update may change `flake.lock`.

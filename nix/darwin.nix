@@ -7,6 +7,25 @@
   username,
   ...
 }:
+let
+  appInstaller = pkgs.writeShellScript "install-missing-macos-apps" ''
+    brew_binary=$(command -v brew || true)
+    for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+      if [ -z "$brew_binary" ] && [ -x "$candidate" ]; then
+        brew_binary=$candidate
+        break
+      fi
+    done
+    if [ -z "$brew_binary" ]; then
+      echo "Homebrew is required to install missing macOS applications" >&2
+      exit 1
+    fi
+    exec ${pkgs.python3}/bin/python3 ${../scripts/install-macos-apps.py} \
+      --manifest ${./macos-apps.json} \
+      --home ${pkgs.lib.escapeShellArg homeDirectory} --brew "$brew_binary" "$@"
+  '';
+  runAppInstaller = "/usr/bin/sudo -H --user=${pkgs.lib.escapeShellArg username} -- ${appInstaller}";
+in
 {
   nixpkgs.config = { inherit allowUnfreePredicate; };
 
@@ -140,21 +159,19 @@
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
   fonts.packages = [ pkgs.nerd-fonts.hack ];
-  environment.systemPackages = [ (pkgs.callPackage ./packages/wallper.nix { }) ];
+  system.activationScripts.preActivation.text = pkgs.lib.mkBefore ''
+    ${runAppInstaller} --preserve-legacy
+  '';
+  system.activationScripts.postActivation.text = pkgs.lib.mkAfter ''
+    ${runAppInstaller}
+  '';
 
   homebrew = {
     enable = true;
-    taps = [ "theboredteam/boring-notch" ];
-    casks = [
-      "google-chrome"
-      "visual-studio-code"
-      "theboredteam/boring-notch/boring-notch"
-      "wezterm"
-    ];
     onActivation = {
-      autoUpdate = true;
+      autoUpdate = false;
       cleanup = "none";
-      upgrade = true;
+      upgrade = false;
     };
   };
 

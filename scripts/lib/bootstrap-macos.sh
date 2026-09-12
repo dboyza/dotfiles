@@ -37,7 +37,7 @@ preflight_platform_installation() {
   printf '  Apple Command Line Tools: installed\n'
 
   if find_homebrew >/dev/null; then
-    printf '  Homebrew: installed; configured packages will be updated\n'
+    printf '  Homebrew: installed; existing desktop apps will be preserved\n'
   else
     printf '  Homebrew: will be installed\n'
   fi

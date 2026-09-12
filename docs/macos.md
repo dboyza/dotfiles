@@ -50,7 +50,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
    No package update or system activation starts until that preflight succeeds.
    The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, Hack Nerd Font, WezTerm, and tracked configuration.
    It may request your macOS password.
-   Homebrew activation updates configured packages and may upgrade other packages already managed by Homebrew.
+   Desktop apps are installed only when absent; activation does not update or replace existing versions.
 
 3. Close every Terminal window after the script prints `Bootstrap complete`.
 
@@ -68,16 +68,21 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 ## Managed desktop applications
 
-Activation installs Google Chrome, Visual Studio Code, BoringNotch, and WezTerm through Homebrew.
-BoringNotch uses its [developer-maintained tap](https://github.com/TheBoredTeam/boring.notch#installation).
-Its upstream cask removes quarantine from the installed BoringNotch bundle as part of installation.
+Activation installs missing copies of Google Chrome, Visual Studio Code, BoringNotch, WezTerm, and Wallper.
+Existing apps are skipped regardless of version or whether they were installed with Homebrew or manually.
+The installer checks `/Applications`, `~/Applications`, and their subfolders, and uses Spotlight bundle identifiers to find renamed apps or apps installed elsewhere.
+Unindexed apps outside those folders cannot be discovered automatically; move them into an Applications folder before activation if needed.
+No version checks, downloads, adoption, or upgrades run for an app that is found.
+Homebrew automatic updates, activation upgrades, and installation cleanup are disabled for this workflow.
+Apps may still update themselves according to their own preferences.
 
-Wallper is packaged from its [official release](https://github.com/alxndlk/wallper-app/releases) in `nix/packages/wallper.nix`, with a pinned version and SHA-256 checksum.
-Nix-darwin installs it under `/Applications/Nix Apps/Wallper.app`.
-The pinned release supports Intel and Apple Silicon and requires macOS 14.6 or later.
-To update the reproducible Wallper installation, update its version and checksum together, then run `./bootstrap.sh --check` before activation.
-Wallper updates made inside the application may be replaced by the pinned version on a later activation.
-Existing manually installed copies in `/Applications` are not removed; use the managed copy to avoid launching an older duplicate.
+The inventory lives in `nix/macos-apps.json`, and `scripts/install-macos-apps.py` runs as the primary user during nix-darwin activation.
+Missing Chrome, VS Code, BoringNotch, and WezTerm apps install through Homebrew into `~/Applications`.
+BoringNotch uses its [developer-maintained tap](https://github.com/TheBoredTeam/boring.notch#installation); its upstream cask removes quarantine from the newly installed bundle.
+Missing Wallper installs from a checksum-pinned [official release](https://github.com/alxndlk/wallper-app/releases) into `~/Applications/Wallper.app` after signature verification.
+That installer supports Intel and Apple Silicon and requires macOS 14.6 or later.
+The pinned Wallper version only applies to a missing-app installation; changing the manifest does not replace an existing copy.
+If an older configuration installed Wallper under `/Applications/Nix Apps`, activation preserves that exact version in `~/Applications` before nix-darwin cleans its old managed directory.
 App sign-in, licenses, wallpaper selection, and permissions remain interactive setup steps.
 
 ## Customize macOS preferences

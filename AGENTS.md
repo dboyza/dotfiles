@@ -32,8 +32,10 @@
   Use the tracked UTF-8-safe `scripts/win-copy` and `scripts/win-paste` helpers for Windows clipboard interoperability.
 - Treat macOS as a supported path, but state clearly when it received static validation only because no macOS runner was available.
 - Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
-- Keep macOS desktop apps in nix-darwin: use Homebrew casks where available and checksum-pinned packages under `nix/packages/` otherwise.
-  Preserve vendor-signed app bundles without Nix fixups, and document their minimum macOS version and update path.
+- Keep the macOS app inventory in `nix/macos-apps.json` and install missing apps through `scripts/install-macos-apps.py` during nix-darwin activation.
+  Skip existing bundles regardless of version or installation source, including user Applications folders and renamed apps found by bundle ID.
+  Do not enable Homebrew activation upgrades or put these apps in `environment.systemPackages`, which would replace them on activation.
+  Verify direct downloads with pinned checksums and preserve legacy Nix Apps bundles before nix-darwin cleans that directory.
 - Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
@@ -51,7 +53,7 @@
   Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
-- Keep normal `./bootstrap.sh` activation update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
+- Keep normal `./bootstrap.sh` activation update-first for Nix inputs and Windows Winget packages; macOS desktop apps are install-only.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
 - Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
 - Keep first-time Homebrew installation interactive on macOS so its installer can request administrator credentials.
