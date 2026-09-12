@@ -32,6 +32,9 @@
   Use the tracked UTF-8-safe `scripts/win-copy` and `scripts/win-paste` helpers for Windows clipboard interoperability.
 - Treat macOS as a supported path, but state clearly when it received static validation only because no macOS runner was available.
 - Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
+- Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
+  When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
+  Removing a preference declaration does not reset its stored macOS value.
 - Expose Zsh plugin scripts through managed paths under `~/.config/zsh/plugins`; Home Manager profiles do not reliably link package-specific top-level `share` directories.
 - Keep reproducible, non-secret Pi configuration in `pi/` and symlink its `settings.json` directly into the checkout.
   Pi may write runtime settings into that file; review these changes before committing.

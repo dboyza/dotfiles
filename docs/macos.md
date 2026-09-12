@@ -66,6 +66,62 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
    zsh --version
    ```
 
+## Customize macOS preferences
+
+Edit `system.defaults` in [`nix/darwin.nix`](../nix/darwin.nix) to manage macOS preferences as code.
+The checked-in settings capture appearance, text input, Dock and Finder behavior, window management, widgets, menu-bar clock and battery percentage, mouse and trackpad behavior, guest login, automatic macOS updates, and Activity Monitor preferences.
+Finder opens new windows in the home folder with list view, path and status bars, and folders sorted first.
+The Dock hides automatically, omits recent apps, and uses its bottom-right hot corner for Quick Note.
+Tap-to-click and three-finger dragging are disabled; two-finger secondary click is enabled.
+
+Only explicitly declared preferences are managed.
+Unspecified preferences, including keyboard repeat timing and extension visibility, retain their existing macOS values.
+Dock app lists, recent items, account data, and window positions are not imported.
+These declarations are scoped to nix-darwin and do not affect Windows or WSL.
+See the [nix-darwin option reference](https://nix-darwin.github.io/nix-darwin/manual/) for supported settings and value types.
+
+Validate the configuration from the repository root before applying changes:
+
+```sh
+./bootstrap.sh --check
+```
+
+Apply it with `./bootstrap.sh`.
+Normal activation also updates packages and Nix inputs, as described below.
+Some preferences require restarting the affected application or logging out and back in.
+Changes made in System Settings to a managed preference are overwritten on the next activation.
+Removing a declaration stops managing that preference; it does not restore its previous value.
+To restore an earlier choice, use the option's supported value and activate again.
+Some preferences use absence rather than an explicit opposite value: `AppleInterfaceStyle` accepts `"Dark"` or `null`, not `"Light"`.
+To return to light appearance, remove that declaration or set it to `null`, then run `defaults delete -g AppleInterfaceStyle` if the key is present.
+
+### Coverage and remaining manual settings
+
+The preference review compares saved user and system values with the options in the pinned nix-darwin release, including relevant host-specific preferences.
+It is not a complete export of every System Settings control.
+An absent key does not prove a feature is disabled: macOS can supply defaults or store its state elsewhere.
+
+| Area | Managed or remaining scope |
+| --- | --- |
+| Appearance and text input | Dark appearance, capitalization, and period substitution are managed; key repeat, extension visibility, and other unset options remain unmanaged. |
+| Dock, Finder, and desktop | Saved supported view, sorting, hot-corner, and Dock behavior preferences are managed; app lists and per-folder window state remain unmanaged. |
+| Windows and widgets | Saved Stage Manager, grouping, widget visibility, and tiling margin settings are managed. |
+| Menu bar | Saved clock preferences and battery percentage are managed; the observed Now Playing value is outside the pinned option's supported mapping and is not converted. |
+| Mouse and trackpad | Supported saved click, tracking, scrolling, and gesture settings are managed; device-specific driver settings remain unmanaged. |
+| Keyboard and language | Existing Control+Arrow integration remains managed; the U.S. input source, language/region, dictation, text replacements, and other shortcuts are not imported. |
+| Screenshots and Spaces | No explicit values for the supported options were found; existing behavior remains unmanaged. |
+| Login and updates | Guest login is disabled and automatic macOS installation is enabled; account identities and update runtime state are not imported. |
+| Activity Monitor | Opening its main window and showing My Processes are managed. |
+| Power | AC sleep settings were inspected; battery-specific values were not available, so global sleep options are not used to extrapolate them. |
+| Sound, accessibility, and lock screen | No explicit saved values were found for supported alert sound, cursor/motion/transparency/zoom, or screen-lock password timing options; these remain unmanaged. |
+| Displays | Display state could not be read in the inspection environment; resolution, brightness, True Tone, and Night Shift require manual review. |
+| Security | Firewall, Gatekeeper, and SIP status were inspected without importing policy; FileVault status could not be determined and requires manual review. |
+| Privacy, accounts, and services | Apple Account, iCloud, Touch ID, app permissions, network credentials, Bluetooth pairing, Focus, notifications, Screen Time, Siri, and Apple Intelligence are not cloned by this configuration. |
+| Wallpaper and third-party apps | Wallpaper assets and application-specific preferences require separate portable configuration. |
+
+Keep new declarations limited to settings with verified meaning and supported values.
+Use System Settings to review the remaining areas on a new Mac; do not treat this configuration as a full machine backup.
+
 ## Use and update
 
 Edit application configuration directly in the checkout, then reload the application.

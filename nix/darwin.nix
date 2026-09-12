@@ -20,6 +20,96 @@
   };
 
   system = {
+    # Explicit macOS preferences; leave unspecified settings at their existing values.
+    defaults = {
+      NSGlobalDomain = {
+        AppleInterfaceStyle = "Dark";
+        NSAutomaticCapitalizationEnabled = true;
+        NSAutomaticPeriodSubstitutionEnabled = true;
+        "com.apple.trackpad.scaling" = 1.0;
+        "com.apple.trackpad.forceClick" = true;
+        "com.apple.springing.enabled" = true;
+        "com.apple.springing.delay" = 0.5;
+      };
+
+      dock = {
+        autohide = true;
+        magnification = false;
+        mineffect = "genie";
+        minimize-to-application = true;
+        orientation = "bottom";
+        show-recents = false;
+        showAppExposeGestureEnabled = true;
+        tilesize = 57;
+        wvous-tl-corner = 1; # Disabled.
+        wvous-tr-corner = 1;
+        wvous-bl-corner = 1;
+        wvous-br-corner = 14; # Quick Note.
+      };
+
+      finder = {
+        FXPreferredViewStyle = "Nlsv"; # List view.
+        NewWindowTarget = "Home";
+        ShowExternalHardDrivesOnDesktop = true;
+        ShowHardDrivesOnDesktop = false;
+        ShowRemovableMediaOnDesktop = true;
+        ShowPathbar = true;
+        ShowStatusBar = true;
+        _FXSortFoldersFirst = true;
+        _FXSortFoldersFirstOnDesktop = false;
+      };
+
+      ActivityMonitor = {
+        OpenMainWindow = true;
+        ShowCategory = 102; # My Processes.
+      };
+
+      WindowManager = {
+        GloballyEnabled = false; # Stage Manager.
+        AutoHide = false;
+        AppWindowGroupingBehavior = true;
+        HideDesktop = true; # Hide desktop items while using Stage Manager.
+        EnableTiledWindowMargins = false;
+        StandardHideWidgets = false;
+        StageManagerHideWidgets = false;
+      };
+
+      menuExtraClock = {
+        ShowAMPM = true;
+        ShowDayOfWeek = true;
+        ShowDate = 0; # When space allows.
+      };
+
+      controlcenter.BatteryShowPercentage = true;
+      loginwindow.GuestEnabled = false;
+      SoftwareUpdate.AutomaticallyInstallMacOSUpdates = true;
+      magicmouse.MouseButtonMode = "OneButton";
+
+      trackpad = {
+        Clicking = false;
+        Dragging = false;
+        DragLock = false;
+        TrackpadRightClick = true;
+        TrackpadThreeFingerDrag = false;
+        TrackpadThreeFingerTapGesture = 0;
+        TrackpadThreeFingerHorizSwipeGesture = 2;
+        TrackpadThreeFingerVertSwipeGesture = 2;
+        TrackpadFourFingerHorizSwipeGesture = 2;
+        TrackpadFourFingerVertSwipeGesture = 2;
+        TrackpadFourFingerPinchGesture = 2;
+        TrackpadTwoFingerFromRightEdgeSwipeGesture = 3;
+        ActuateDetents = true;
+        FirstClickThreshold = 1;
+        SecondClickThreshold = 1;
+        ForceSuppressed = false;
+        TrackpadCornerSecondaryClick = 0;
+        TrackpadMomentumScroll = true;
+        TrackpadPinch = true;
+        TrackpadRotate = true;
+        TrackpadTwoFingerDoubleTapGesture = true;
+      };
+    };
+
     activationScripts.disableControlArrowShortcuts.text =
       let
         user = pkgs.lib.escapeShellArg username;
