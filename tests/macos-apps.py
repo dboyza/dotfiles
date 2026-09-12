@@ -212,6 +212,42 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
         self.assertEqual(list(self.destination.iterdir()), [])
         self.assertTrue(source.is_dir())
 
+    def test_existing_app_store_app_skips_all_install_commands(self):
+        app = {"bundle": "Amphetamine.app", "id": "com.if.Amphetamine", "app_store_id": 937984704}
+        existing = self.bundle(self.system / app["bundle"], app, "0.1")
+        before = (existing / "Contents/Info.plist").read_bytes()
+        result = self.run_cli([app], extra=["--mas", str(self.base / "must-not-run")])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual((existing / "Contents/Info.plist").read_bytes(), before)
+
+    def test_missing_app_store_app_installs_once(self):
+        app = {"bundle": "Amphetamine.app", "id": "com.if.Amphetamine", "app_store_id": 937984704}
+        mas = self.command("mas", '''
+import json, os, pathlib, plistlib, sys
+assert sys.argv[1:] == ["get", "937984704"]
+with open(os.environ["TEST_COMMAND_LOG"], "a") as log:
+    log.write(json.dumps({"mas": sys.argv[1:]}) + "\\n")
+contents = pathlib.Path(os.environ["HOME"]) / "Applications/Amphetamine.app/Contents"
+contents.mkdir(parents=True)
+with (contents / "Info.plist").open("wb") as output:
+    plistlib.dump({"CFBundleIdentifier": "com.if.Amphetamine"}, output)
+''')
+        first = self.run_cli([app], extra=["--mas", str(mas)])
+        self.assertEqual(first.returncode, 0, first.stderr)
+        self.assertEqual(self.calls(), [{"mas": ["get", "937984704"]}])
+        second = self.run_cli([app], extra=["--mas", str(mas)])
+        self.assertEqual(second.returncode, 0, second.stderr)
+        self.assertEqual(len(self.calls()), 1)
+
+    def test_app_store_failure_explains_authentication(self):
+        app = {"bundle": "Amphetamine.app", "id": "com.if.Amphetamine", "app_store_id": 937984704}
+        mas = self.command("mas", "import sys; sys.exit(1)")
+        result = self.run_cli([app], extra=["--mas", str(mas)])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Sign in to the App Store", result.stderr)
+        self.assertFalse((self.destination / app["bundle"]).exists())
+
     def test_brew_failure_propagates(self):
         result = self.run_cli([self.chrome], environment={"TEST_BREW_FAIL": "1"})
         self.assertNotEqual(result.returncode, 0)

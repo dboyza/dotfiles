@@ -68,7 +68,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 ## Managed desktop applications
 
-Activation installs missing copies of Google Chrome, Visual Studio Code, BoringNotch, WezTerm, and Wallper.
+Activation installs missing copies of Google Chrome, Visual Studio Code, BoringNotch, WezTerm, Wallper, and Amphetamine.
 Existing apps are skipped regardless of version or whether they were installed with Homebrew or manually.
 The installer checks `/Applications`, `~/Applications`, and their subfolders, and uses Spotlight bundle identifiers to find renamed apps or apps installed elsewhere.
 Unindexed apps outside those folders cannot be discovered automatically; move them into an Applications folder before activation if needed.
@@ -78,6 +78,10 @@ Apps may still update themselves according to their own preferences.
 
 The inventory lives in `nix/macos-apps.json`, and `scripts/install-macos-apps.py` runs as the primary user during nix-darwin activation.
 Missing Chrome, VS Code, BoringNotch, and WezTerm apps install through Homebrew into `~/Applications`.
+[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) installs through the Mac App Store using the Nix-provided `mas` CLI and app ID `937984704`.
+Sign in to the App Store on a new Mac before activation; macOS may prompt for authentication or administrator permission when installing it.
+An existing Amphetamine installation skips all App Store commands, regardless of version.
+The installer never runs App Store updates.
 BoringNotch uses its [developer-maintained tap](https://github.com/TheBoredTeam/boring.notch#installation); its upstream cask removes quarantine from the newly installed bundle.
 Missing Wallper installs from a checksum-pinned [official release](https://github.com/alxndlk/wallper-app/releases) into `~/Applications/Wallper.app` after signature verification.
 That installer supports Intel and Apple Silicon and requires macOS 14.6 or later.

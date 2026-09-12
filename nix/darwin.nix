@@ -21,7 +21,7 @@ let
       exit 1
     fi
     exec ${pkgs.python3}/bin/python3 ${../scripts/install-macos-apps.py} \
-      --manifest ${./macos-apps.json} \
+      --manifest ${./macos-apps.json} --mas ${pkgs.mas}/bin/mas \
       --home ${pkgs.lib.escapeShellArg homeDirectory} --brew "$brew_binary" "$@"
   '';
   runAppInstaller = "/usr/bin/sudo -H --user=${pkgs.lib.escapeShellArg username} -- ${appInstaller}";

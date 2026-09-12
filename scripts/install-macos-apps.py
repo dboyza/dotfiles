@@ -107,6 +107,7 @@ def main():
     parser.add_argument("--manifest", required=True, type=Path)
     parser.add_argument("--home", required=True, type=Path)
     parser.add_argument("--brew", required=True)
+    parser.add_argument("--mas", default="mas")
     parser.add_argument("--applications-root", action="append", type=Path)
     parser.add_argument("--spotlight", default="/usr/bin/mdfind")
     parser.add_argument("--preserve-legacy", action="store_true")
@@ -122,7 +123,18 @@ def main():
         if existing:
             print(f"Skipping {app['bundle']}: already installed at {existing}")
             continue
-        if "cask" in app:
+        if "app_store_id" in app:
+            try:
+                subprocess.run([args.mas, "get", str(app["app_store_id"])], check=True,
+                               env=dict(os.environ, HOME=str(args.home)))
+            except subprocess.CalledProcessError as error:
+                raise RuntimeError(
+                    f"Could not install {app['bundle']}. Sign in to the App Store, "
+                    "complete any authentication prompts, and rerun activation."
+                ) from error
+            if not find_app(app, roots, args.spotlight):
+                raise RuntimeError(f"App Store finished but {app['bundle']} was not found")
+        elif "cask" in app:
             destination.mkdir(parents=True, exist_ok=True)
             environment = dict(os.environ, HOME=str(args.home), HOMEBREW_NO_AUTO_UPDATE="1",
                                HOMEBREW_NO_INSTALL_CLEANUP="1", HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK="1")

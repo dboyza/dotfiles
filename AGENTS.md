@@ -36,6 +36,7 @@
   Skip existing bundles regardless of version or installation source, including user Applications folders and renamed apps found by bundle ID.
   Do not enable Homebrew activation upgrades or put these apps in `environment.systemPackages`, which would replace them on activation.
   Verify direct downloads with pinned checksums and preserve legacy Nix Apps bundles before nix-darwin cleans that directory.
+  Install missing App Store apps by ID with the Nix-provided `mas get`; keep existing-app detection ahead of all App Store commands and leave account authentication interactive.
 - Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
