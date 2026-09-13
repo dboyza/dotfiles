@@ -48,6 +48,7 @@ in
         gnupg
         jq
         kubectl
+        lazygit
         neovim
         nodejs_24
         pre-commit-without-dotnet-tests
@@ -62,6 +63,7 @@ in
         unzip
         uv
         wget
+        zoxide
         zsh
         zsh-autosuggestions
         zsh-syntax-highlighting

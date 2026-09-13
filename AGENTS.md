@@ -95,6 +95,7 @@
 - Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.
 - Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
 - Keep Neovim's entry point small, with core settings in `nvim/lua/config` and plugin declarations in `nvim/lua/plugins`.
+- Initialize Zoxide in the tracked `zsh/.zshrc` after completion setup; Home Manager does not generate this live-linked file.
 - Load Zsh plugins from the managed `~/.config/zsh/plugins` paths instead of searching package-manager directories.
 - Share clipboard provider selection through `scripts/dotfiles-clipboard`; keep the Windows UTF-8 transport in `scripts/win-copy` and `scripts/win-paste`.
 - Let Nix install and pin tmux plugins, and initialize the restoration plugins directly without TPM or tmux-yank.

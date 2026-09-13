@@ -17,6 +17,11 @@ Run:
 This command requires an existing Nix installation.
 It evaluates and builds the pinned configuration without installing Nix, updating `flake.lock`, activating configuration, or replacing managed files.
 
+Lazygit and Zoxide are included in the shared macOS, Linux, and WSL package set.
+Run `lazygit` inside a Git checkout to open its terminal interface.
+In Zsh, use `z <directory>` to jump to a frequently visited directory or `zi` for interactive selection with fzf.
+Zoxide initializes in the tracked `zsh/.zshrc`; its directory history remains local runtime data.
+
 ## Update and activate
 
 Run:
