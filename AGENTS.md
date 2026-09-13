@@ -64,6 +64,7 @@
   Revalidate its guarded internal `wheelScrollLines` integration after Pi upgrades; fullscreen wheel handling precedes extension input listeners in Pi 0.85.1.
 - Install the computer-use Python runtime from `pi/computer-use/requirements.txt`, not the upstream requirements or postinstall hook.
   Regenerate its hash-locked dependencies with uv from `requirements.in`; do not edit generated requirements manually.
+- Run macOS activation with `sudo -H` so elevated Nix uses root's home; preserve the target user's home separately through `DOTFILES_HOME`.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first for Nix inputs and Windows Winget packages; macOS desktop apps are install-only.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.

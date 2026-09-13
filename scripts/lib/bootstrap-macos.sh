@@ -111,7 +111,7 @@ verify_platform() {
 activate_platform() {
   install_homebrew
   backup_darwin_shell_files
-  sudo env \
+  sudo -H env \
     "DOTFILES_USER=$DOTFILES_USER" \
     "DOTFILES_HOME=$DOTFILES_HOME" \
     "DOTFILES_REPO=$DOTFILES_REPO" \

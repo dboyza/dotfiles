@@ -34,7 +34,13 @@ printf '%s\n' "$*" >>"$BOOTSTRAP_TEST_NIX_LOG"
 if [[ " $* " == *" build "* ]]; then
   printf '%s\n' "$BOOTSTRAP_TEST_GENERATION"
 elif [[ " $* " == *" run "* ]]; then
-  "$BOOTSTRAP_TEST_GENERATION/activate"
+  if [[ ${BOOTSTRAP_TEST_OS:-Linux} == Darwin ]]; then
+    if [[ "$HOME" != "$BOOTSTRAP_TEST_ROOT_HOME" || "$DOTFILES_HOME" != "$BOOTSTRAP_TEST_USER_HOME" ]]; then
+      printf 'bootstrap test: elevated Nix must use root HOME and preserve DOTFILES_HOME\n' >&2
+      exit 1
+    fi
+  fi
+  env HOME="$DOTFILES_HOME" "$BOOTSTRAP_TEST_GENERATION/activate"
 elif [[ " $* " == *" eval "* ]]; then
   if [[ ${BOOTSTRAP_TEST_FAIL_INVENTORY:-0} == 1 ]]; then
     exit 1
@@ -80,6 +86,10 @@ EOF
 
 cat >"$fake_bin/sudo" <<'EOF'
 #!/usr/bin/env bash
+if [[ ${1:-} == -H ]]; then
+  export HOME="$BOOTSTRAP_TEST_ROOT_HOME"
+  shift
+fi
 exec "$@"
 EOF
 
@@ -161,6 +171,8 @@ export BOOTSTRAP_TEST_NIX_LOG="$test_dir/nix.log"
 export BOOTSTRAP_HOMEBREW="$fake_bin/brew"
 export BOOTSTRAP_PLISTBUDDY="$fake_bin/PlistBuddy"
 export HOME="$fake_home"
+export BOOTSTRAP_TEST_USER_HOME="$fake_home"
+export BOOTSTRAP_TEST_ROOT_HOME="$test_dir/root"
 export PATH="$fake_bin:$PATH"
 export USER=test
 
