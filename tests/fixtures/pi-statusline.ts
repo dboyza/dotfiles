@@ -8,6 +8,27 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("footer-fixture", {
     description: "Set synthetic footer status and check real terminal-cell widths",
     handler: async (args, ctx) => {
+      if (args === "structured") {
+        const active = pi.getActiveTools();
+        for (const name of ["exec_command", "write_stdin", "apply_patch", "view_image"]) assert.ok(active.includes(name), name);
+        for (const name of ["bash", "read", "edit", "write", "exec", "notebook"]) assert.ok(!active.includes(name), name);
+        await ctx.newSession({
+          setup(sm) {
+            const timestamp = Date.now();
+            sm.appendMessage({
+              role: "assistant", api: "openai-codex-responses", provider: "openai-codex", model: "gpt-6-astra",
+              content: [{ type: "toolCall", id: "ui-fixture", name: "exec_command", arguments: { cmd: "printf 'UI fixture output\\n'" } }],
+              stopReason: "toolUse", timestamp,
+              usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+            });
+            sm.appendMessage({
+              role: "toolResult", toolCallId: "ui-fixture", toolName: "exec_command", isError: false, timestamp,
+              content: [{ type: "text", text: Array.from({ length: 20 }, (_, i) => `UI fixture output ${i + 1}`).join("\n") }],
+            });
+          },
+        });
+        return;
+      }
       if (args === "medium") pi.setThinkingLevel("medium");
       if (args === "other") {
         const model = ctx.modelRegistry.find("offline", "fixture-model");

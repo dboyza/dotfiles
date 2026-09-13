@@ -55,12 +55,23 @@ try {
     offline: { apiKey: "not-a-real-credential", baseUrl: "http://127.0.0.1:9", api: "openai-completions", models: [{ id: "fixture-model", reasoning: false }] },
   } });
   const configPath = join(agent, "pi-codex-conversion.json");
-  const config = { executionMode: "notebook", tools: { applyPatchOnly: true, viewImageOnly: true }, openai: { fast: false, cacheDiagnostics: "status" } };
+  const structured = process.env.PI_STATUSLINE_STRUCTURED === "1";
+  const config = { executionMode: structured ? "normal" : "notebook", tools: { applyPatchOnly: !structured, viewImageOnly: !structured }, ui: { compactTools: "on" }, openai: { fast: false, cacheDiagnostics: "status" } };
   json(configPath, config);
   const launch = ["env", `PI_CODING_AGENT_DIR=${agent}`, "PI_OFFLINE=1", "PI_TELEMETRY=0", "/usr/bin/sandbox-exec", "-p", "(version 1)(allow default)(deny network*)", process.execPath, resolve(cli), "--no-session", "--no-skills", "--no-context-files", "--no-approve"].map(quote).join(" ");
   tmux("-f", "/dev/null", "new-session", "-d", "-s", "footer", "-x", "150", "-y", "35", "-c", workspace, launch);
   await waitFor(/gpt-6-astra high .*weekly unavailable .*Fast off .*main/);
   assert.doesNotMatch(pane(), /integration unavailable|Failed to load extension/);
+  if (structured) {
+    await command("/footer-fixture structured");
+    await waitFor(/• Ran/);
+    await waitFor(/UI fixture output 20/);
+    assert.match(pane(), /earlier lines/);
+    if (process.env.PI_CODEX_UI_CAPTURE) writeFileSync(process.env.PI_CODEX_UI_CAPTURE, tmux("capture-pane", "-e", "-p", "-t", "footer"));
+    tmux("send-keys", "-t", "footer", "C-o");
+    await waitFor(/UI fixture output 1\n/);
+    tmux("send-keys", "-t", "footer", "C-o");
+  }
   await command("/footer-fixture");
   await waitFor(/weekly 61% left .*Fast off .*main/);
   assert.match(pane(), /Unicode cell widths 0-180/);
