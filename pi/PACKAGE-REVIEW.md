@@ -96,3 +96,29 @@ The existing dotfiles cross-platform configuration compatibility checks also pas
 No image generation, audio capture, remote SSH connection, worker dispatch, native-helper execution, or Code/Notebook download was performed as part of validation.
 Windows and Linux package runtime behavior was not executed or validated.
 Future package versions and new dependency resolutions require another review.
+
+## Computer-use addition
+
+Repository: <https://github.com/husain-zaidi/pi-computer-use>.
+Reviewed and installed commit: `89e3c1398650301b21086f77db1ae6839644400e` (package version `0.1.0`).
+No obvious malicious behavior was found in the extension, Python worker, lifecycle/input-cleanup helpers, or installer source.
+The worker starts only after an authorized `exec_py` call and uses a separate Playwright browser profile.
+It can execute arbitrary local Python with inherited environment and user permissions; browser mode is not an isolation boundary.
+Returned screenshots and text enter the Pi conversation and can be persisted or sent to its model provider.
+
+The initial installation was withheld because upstream pins vulnerable Pillow 11.0.0.
+With explicit user approval, installation skipped upstream postinstall and used a separate Python 3.12 environment with Pillow pinned to `12.3.0`.
+The PSD out-of-bounds-write vulnerability CVE-2026-25990 was fixed in 12.1.1, and that fix is included in 12.3.0.
+PyPI reported no active advisories for any of the 18 version pins in the cross-platform lock, including Pillow 12.3.0, when checked on 2026-09-13.
+Seventeen packages apply to macOS; the Linux-only Xlib pin was not installed here.
+
+The small source-distributed GUI dependencies' build scripts were inspected before execution, and runtime dependencies were installed with required SHA-256 hashes.
+Dependency inspection was bounded and does not establish the safety of every native library or Chromium binary.
+Pi's `npmCommand` now persistently disables lifecycle scripts, development dependencies, and automatic peer resolution to avoid rerunning the vulnerable upstream setup.
+The upstream Git source remains unchanged.
+
+Validation passed for the Pillow version, dependency consistency, persistent Python state, exception recovery, headed Chromium form input and screenshots, worker shutdown, timeout enforcement, and reset-required behavior.
+The test used a local synthetic page without external accounts or desktop control, and its screenshot was inspected.
+Pi RPC startup also passed with OS-level network access denied, with `exec_py` active and `/computer-use` registered alongside the existing extensions.
+The dotfiles cross-platform configuration compatibility checks passed; Windows/Linux computer-use runtimes and native desktop input remain untested.
+See [computer-use setup](computer-use/SETUP.md) for the reproducible dependency lock, platform instructions, and update precautions.

@@ -53,7 +53,10 @@
 - Preserve the local Pi Calm extension's bundled license and never manage or track its runtime preference file.
   Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
-- Before changing third-party Pi package pins, review published artifacts and runtime dependencies, and disable npm lifecycle scripts during package installation.
+- Before changing third-party Pi package pins, review published artifacts and runtime dependencies, and keep npm lifecycle scripts disabled through Pi's `npmCommand` configuration.
+  Preserve its production-only and legacy-peer flags so configured Git installs do not pull development dependencies or duplicate Pi runtimes.
+- Install the computer-use Python runtime from `pi/computer-use/requirements.txt`, not the upstream requirements or postinstall hook.
+  Regenerate its hash-locked dependencies with uv from `requirements.in`; do not edit generated requirements manually.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 - Keep normal `./bootstrap.sh` activation update-first for Nix inputs and Windows Winget packages; macOS desktop apps are install-only.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.

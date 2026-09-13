@@ -11,13 +11,15 @@
   "steeringMode": "all",
   "followUpMode": "all",
   "collapseChangelog": true,
+  "npmCommand": ["npm", "--ignore-scripts", "--omit=dev", "--legacy-peer-deps"],
   "packages": [
     "npm:pi-web-access@0.14.0",
     "npm:@howaboua/pi-codex-imagegen@0.0.4",
     "npm:@howaboua/pi-ask@0.0.9",
     "npm:@howaboua/pi-shepherdr@0.2.3",
     "npm:@howaboua/pi-auto-trees@0.1.15",
-    "npm:@howaboua/pi-codex-conversion@3.0.34"
+    "npm:@howaboua/pi-codex-conversion@3.0.34",
+    "git:github.com/husain-zaidi/pi-computer-use@89e3c1398650301b21086f77db1ae6839644400e"
   ],
   "lastChangelogVersion": "0.85.1",
   "defaultProvider": "openai-codex",
