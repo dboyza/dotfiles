@@ -1,5 +1,8 @@
 # Fullscreen scrolling sensitivity
 
+This extension is archived and not deployed by the [factory-default profile](../../DEFAULTS.md).
+The behavior below applies only when explicitly reenabled.
+
 Ordinary wheel and trackpad events move five lines instead of one in Pi's fullscreen UI.
 Run `/reload` to load this repository-managed extension.
 It leaves WezTerm, OS preferences, regular terminal scrollback, and model settings unchanged.

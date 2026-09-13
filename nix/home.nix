@@ -109,9 +109,6 @@ in
     ".agents/skills" = live "agents/skills";
 
     ".pi/agent/settings.json" = live "pi/settings.json";
-    ".pi/agent/models.json" = live "pi/models.json";
-    ".pi/agent/extensions" = live "pi/extensions";
-    ".pi/agent/themes" = live "pi/themes";
 
     ".tmux/plugins/tmux-resurrect" = managed inputs.tmux-resurrect;
     ".tmux/plugins/tmux-continuum" = managed inputs.tmux-continuum;

@@ -15,7 +15,7 @@ This is a bounded static review, not proof that every binary or future release i
 | `@howaboua/pi-auto-trees` | `0.1.15` | `8995b342efd7a14a1e90476a2246618a19d212b4` |
 
 Upstream repository: <https://github.com/IgorWarzocha/howaboua-pi-stuff>.
-The pins in `settings.json` are the authoritative installation configuration.
+This review is retained for reference; the [factory-default profile](DEFAULTS.md) enables no packages.
 
 ## Verification performed
 

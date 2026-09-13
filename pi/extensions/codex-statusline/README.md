@@ -5,8 +5,8 @@ The footer uses the reference's gold, green, pink, purple, and muted foreground 
 Cache diagnostics and other extension warnings appear on separate rows.
 Long paths shrink before the other fields, and every row respects terminal-cell width.
 
-The extension loads through the managed `~/.pi/agent/extensions` directory.
-Run `/reload` after changing it.
+The extension is archived and not deployed by the [factory-default profile](../../DEFAULTS.md).
+If explicitly reenabled, run `/reload` after changing it.
 Use `/statusline` to toggle the standard Pi footer back on for token totals and context usage.
 The toggle lasts for the current extension lifetime; reloading restores the compact footer.
 `/session` remains available for session statistics.

@@ -1,5 +1,8 @@
 # Codex-style Pi UI
 
+This profile is inactive after the [factory-default reset](DEFAULTS.md).
+The instructions below are retained for an explicitly requested restoration.
+
 Use the installed Codex Conversion adapter's Structured mode for `Ran` / `Explored` tool rows, indented command output, and expandable previews.
 This is the adapter's existing presentation, not an exact reproduction of Codex CLI.
 It retains Pi's tool panels and `Ctrl+O` expansion shortcut rather than Codex's `Ctrl+T` transcript shortcut.
