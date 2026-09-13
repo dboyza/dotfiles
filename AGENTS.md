@@ -59,6 +59,8 @@
   Follow `pi/CODEX-UI.md` for Structured rendering; standalone patch/image toggles take precedence over the saved execution mode on the Codex provider.
 - Before changing third-party Pi package pins, review published artifacts and runtime dependencies, and keep npm lifecycle scripts disabled through Pi's `npmCommand` configuration.
   Preserve its production-only and legacy-peer flags so configured Git installs do not pull development dependencies or duplicate Pi runtimes.
+- Keep Pi scrolling adjustments in `pi/extensions/scroll-sensitivity`, not in global terminal preferences or installed package patches.
+  Revalidate its guarded internal `wheelScrollLines` integration after Pi upgrades; fullscreen wheel handling precedes extension input listeners in Pi 0.85.1.
 - Install the computer-use Python runtime from `pi/computer-use/requirements.txt`, not the upstream requirements or postinstall hook.
   Regenerate its hash-locked dependencies with uv from `requirements.in`; do not edit generated requirements manually.
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
