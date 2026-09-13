@@ -13,8 +13,11 @@
   "collapseChangelog": true,
   "packages": [
     "npm:pi-web-access@0.14.0",
-    "npm:@ryan_nookpi/pi-extension-codex-fast-mode@0.2.6",
-    "git:github.com/algal/pi-openai-server-compaction@c6d593087709e9481223dc6c6c2269b371b5e055"
+    "npm:@howaboua/pi-codex-imagegen@0.0.4",
+    "npm:@howaboua/pi-ask@0.0.9",
+    "npm:@howaboua/pi-shepherdr@0.2.3",
+    "npm:@howaboua/pi-auto-trees@0.1.15",
+    "npm:@howaboua/pi-codex-conversion@3.0.34"
   ],
   "lastChangelogVersion": "0.85.1",
   "defaultProvider": "openai-codex",
