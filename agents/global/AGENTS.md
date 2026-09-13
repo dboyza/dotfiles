@@ -5,6 +5,8 @@
 - When writing commit messages, NEVER auto-add your agent name as co-author
 - Only push to remote whenever I instruct you to
 - Never manually modify CHANGELOG.md files or any files that are marked as auto-generated
+- Use direct image-reading tools to inspect images and terminal-based checks to validate terminal UIs.
+  Reserve computer use for actual browser or desktop tasks, not browser-rendered previews of terminal output.
 - When writing or substantially editing long Markdown files, put each full sentence on its own line.
   Preserve normal Markdown structure, but avoid wrapping multiple sentences onto one physical line.
 - When making technical decisions, do not give much weight to development cost.
