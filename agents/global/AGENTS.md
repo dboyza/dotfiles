@@ -17,6 +17,8 @@
   Fix problems caused by or blocking the requested change, then rerun the affected checks.
   Report unrelated issues and expand scope only with approval.
 - Be my helpful assistant by suggesting the next steps to improve or work towards completing the project after you have finished a major task.
-- Use subagents when clearly scoped delegation or independent review is likely to materially improve quality or reduce completion time.
+- Never spawn subagents or delegate work unless the user explicitly asks for subagents for the current task.
+  Work directly by default; prior permission does not carry over to later tasks or follow-up prompts.
 - Always initialize an AGENTS.md in a repo if there is not one already
 - Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated
+- When explicitly authorized to use subagents, use GPT-5.6 Luna on High effort and limit delegation to the scope the user requested.
