@@ -11,10 +11,9 @@
   Instead, prefer quality, simplicity, robustness, scalability, and long term maintainability.
 - When doing bug fixes, always start by reproducing the bug in an E2E setting as closely aligned with the end-user experience as possible.
   This makes sure you find the real problem so your fix will actually solve it.
-- When end-to-end testing a product, be picky about the UI you see and be obsessed with pixel perfection.
-  If something clearly looks off, even if it is not directly related to what you are doing, try to get it fixed along the way.
-- Apply that same high standard to engineering excellence: lint, test failures, and test flakiness.
-  If you see one, even if it is not caused by what you are working on right now, still get it fixed.
+- Keep a high standard for UI polish, lint, tests, and test reliability.
+  Fix problems caused by or blocking the requested change, then rerun the affected checks.
+  Report unrelated issues and expand scope only with approval.
 - Be my helpful assistant by suggesting the next steps to improve or work towards completing the project after you have finished a major task.
 - Use subagents when clearly scoped delegation or independent review is likely to materially improve quality or reduce completion time.
 - Always initialize an AGENTS.md in a repo if there is not one already

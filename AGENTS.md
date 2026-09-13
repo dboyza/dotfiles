@@ -53,6 +53,9 @@
 - Preserve the local Pi Calm extension's bundled license and never manage or track its runtime preference file.
   Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 - Keep third-party Pi packages pinned to immutable npm versions or Git commits in `pi/settings.json`.
+- Customize Pi's footer through `pi/extensions/codex-statusline`, not by patching installed packages.
+  Recheck its isolated adapter-reader integration when updating Codex Conversion, and preserve cache diagnostics and error statuses.
+  Keep Codex Conversion's configuration runtime-owned because its atomic writer replaces symlinks; reproduce status-only diagnostics using the extension's setup instructions.
 - Before changing third-party Pi package pins, review published artifacts and runtime dependencies, and keep npm lifecycle scripts disabled through Pi's `npmCommand` configuration.
   Preserve its production-only and legacy-peer flags so configured Git installs do not pull development dependencies or duplicate Pi runtimes.
 - Install the computer-use Python runtime from `pi/computer-use/requirements.txt`, not the upstream requirements or postinstall hook.
