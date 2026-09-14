@@ -1,0 +1,12 @@
+{
+  "bar-preview.png": "https://raw.githubusercontent.com/adriankarlen/bar.wezterm/main/misc/preview.png",
+  "tabline-detail.png": "https://github.com/user-attachments/assets/2b48be12-7875-4282-aeb4-c24b0ed2fc1c",
+  "mark-tabs.png": "https://markholloway.com/blog/assets/wezterm/wezterm_tabs.png",
+  "mozumasu-glass.png": "https://storage.googleapis.com/zenn-user-upload/deployed-images/78039bb7d2e857e7a0b4e84d.png?sha=638c3175b9f2a176f538e2e0e1012a35e4f21ded",
+  "tabline-variant3.png": "https://github.com/user-attachments/assets/cd61edca-8c50-477b-a14a-84a89d369600",
+  "tabline-variant5.png": "https://github.com/user-attachments/assets/ff216ab2-8a60-494d-9b11-9295212143df",
+  "kevin-preview.png": {
+    "source": "https://raw.githubusercontent.com/KevinSilvester/wezterm-config/master/.github/screenshots/demo-2.gif",
+    "note": "First frame extracted for a still preview."
+  }
+}

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WezTerm inspiration | Five setups worth borrowing from</title>
+<style>
+:root{color-scheme:dark;--base:#232136;--deep:#191724;--panel:#2a273f;--line:#44415a;--text:#e0def4;--muted:#b3aec9;--lavender:#c4a7e7;--cyan:#9ccfd8;--rose:#eb6f92;--gold:#f6c177}
+*{box-sizing:border-box;min-width:0}html{scroll-behavior:smooth}body{margin:0;background:var(--base);color:var(--text);font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--cyan);text-underline-offset:4px;overflow-wrap:anywhere}a:hover{color:var(--text)}button,input,select,textarea{font:inherit}button,a,input,select,textarea{touch-action:manipulation}button{cursor:pointer}button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--gold);outline-offset:4px}button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:9px 14px}button:hover{border-color:var(--lavender)}h1,h2,h3,p{margin:0}h1{font-size:clamp(38px,6vw,68px);line-height:1.08;letter-spacing:-.045em;max-width:860px}h2{font-size:clamp(25px,3vw,36px);line-height:1.2;letter-spacing:-.025em}h3{font-size:20px;line-height:1.3}p+p{margin-top:12px}.wrap{max-width:1320px;margin:auto;padding:0 36px}.top{border-bottom:1px solid var(--line)}.top .wrap{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding-top:18px;padding-bottom:18px}.brand{font:600 14px ui-monospace,"Cascadia Mono",monospace;letter-spacing:.06em}.meta,.muted{color:var(--muted)}.meta{font-size:13px}.nav{display:flex;gap:22px;flex-wrap:wrap;font-size:14px}.hero{padding:64px 0 36px}.eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--lavender);margin-bottom:15px}.intro{font-size:20px;max-width:840px;color:var(--muted);margin-top:22px}.current{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px;margin:28px 0 48px}.current h3{margin-bottom:10px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.chip{font-size:12px;padding:3px 10px;border-radius:30px;border:1px solid var(--line);color:var(--muted)}.palette{display:flex;gap:7px;margin-top:18px}.palette span{height:13px;flex:1;border-radius:4px}.section-head{display:flex;justify-content:space-between;gap:18px;align-items:end;margin:42px 0 24px;flex-wrap:wrap}.section-head p{max-width:530px;color:var(--muted)}.feature{border:1px solid var(--line);border-radius:16px;background:var(--deep);overflow:hidden;margin-bottom:28px}.feature-header{padding:25px 28px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.name{display:flex;gap:16px;align-items:start}.number{color:var(--lavender);font:16px ui-monospace,monospace;padding-top:5px}.byline{font-size:13px;color:var(--muted);margin-top:5px}.flag{font-size:12px;color:var(--cyan);border:1px solid #467780;padding:4px 10px;border-radius:20px}.shot{margin:0;padding:0 22px}.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:9px;background:#171520}.shot figcaption{font-size:12px;color:var(--muted);padding:9px 0 0;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.zoom{font-size:12px;padding:4px 9px}.notes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:28px;padding:23px 28px 28px}.notes h4{margin:0 0 7px;color:var(--lavender);font-size:12px;letter-spacing:.07em;text-transform:uppercase}.notes p{font-size:15px;color:var(--muted)}.duo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}.duo .notes{grid-template-columns:minmax(0,1fr);gap:17px}.duo .feature-header{padding:22px}.duo .shot{padding:0 18px}.duo .notes{padding:21px 22px}.strip{padding:20px 24px;background:#171520;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}.strip img{width:100%;height:auto;display:block}.strip p{font-size:12px;color:var(--muted);margin-bottom:9px}.strip img+p{margin-top:20px}.takeaway{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px;padding:30px;border-radius:14px;border:1px solid #706087;background:var(--panel);margin:38px 0}.takeaway h2{margin:7px 0 17px}.takeaway ol{padding-left:22px;margin:0}.takeaway li{margin-bottom:12px;color:var(--muted)}.takeaway strong{color:var(--text)}.detail{border-top:1px solid var(--line);padding-top:20px;margin-top:26px;font-size:14px}.detail summary{cursor:pointer;color:var(--cyan)}.detail p{margin-top:12px}.feedback{border:1px solid var(--line);padding:30px;border-radius:14px;margin:30px 0 50px}.feedback p{color:var(--muted);margin:10px 0 20px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.field{display:flex;flex-direction:column;gap:7px;font-size:14px}.field.wide{grid-column:1/-1}select,textarea{background:var(--deep);color:var(--text);border:1px solid var(--line);padding:11px;border-radius:7px;width:100%}textarea{resize:vertical;min-height:80px}.form-actions{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px}.primary{background:var(--lavender);color:var(--deep);font-weight:650;border-color:var(--lavender)}.form-actions output{font-size:13px;color:var(--cyan)}footer{border-top:1px solid var(--line);padding:28px 0 45px;font-size:13px;color:var(--muted)}dialog{width:min(96vw,1900px);max-width:none;max-height:94vh;padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--deep);color:var(--text)}dialog::backdrop{background:#000c}dialog img{display:block;width:100%;max-height:78vh;object-fit:contain;margin-top:14px}.dialog-top{display:flex;justify-content:space-between;align-items:center;gap:20px}.note-label{color:var(--gold)}@media(max-width:750px){.wrap{padding:0 18px}.hero{padding-top:38px}.current,.duo,.notes,.takeaway,.form-grid{grid-template-columns:minmax(0,1fr)}.notes{gap:20px}.feature-header{padding:22px}.intro{font-size:18px}.takeaway,.feedback{padding:22px}.top .wrap{padding-top:15px;padding-bottom:15px}.shot{padding:0 14px}.nav{gap:16px}.field.wide{grid-column:auto}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><div class="brand">WEZTERM / FIELD NOTES</div><nav class="nav" aria-label="Page sections"><a href="#gallery">The setups</a><a href="#recommendation">My pick for you</a><a href="#feedback">Save your preference</a></nav><span class="meta">Researched September 14, 2026</span></div></header>
+<main class="wrap">
+<section class="hero"><p class="eyebrow">Five real setups. Different kinds of polish.</p><h1>A better home<br>for your terminal tabs.</h1><p class="intro">Rounded capsules, quiet text, colorful segments, and glassy desktops.
+These are the authors' own screenshots, with notes on what would translate well to your setup.</p></section>
+<section class="current" aria-label="Your current configuration">
+<div><h3>Your starting point already has a clear look</h3><p class="muted">Rosé Pine Moon, Hack Nerd Font, 75% window opacity on macOS and Windows, macOS blur, and a centered bottom tab row.
+Your native tabs currently cap at 12 cells, leaving only about eight cells for the number and title.</p><div class="chips"><span class="chip">Lavender active tab</span><span class="chip">Muted inactive tabs</span><span class="chip">No new-tab button</span></div><div class="palette" aria-label="Colors from your configuration"><span style="background:#191724"></span><span style="background:#393552"></span><span style="background:#908caa"></span><span style="background:#c4a7e7"></span><span style="background:#eb6f92"></span><span style="background:#9ccfd8"></span></div></div>
+<div><h3>Which tab row you see matters</h3><p class="muted">With one native WezTerm tab open, your config hides its tab bar.
+Inside tmux, the bottom row is tmux's window list: a solid gray-purple strip with centered names and a cyan active dot.</p><p class="muted">For a visible everyday change, we should style the row you actually use and keep both layers visually coordinated.</p></div>
+</section>
+<div class="section-head" id="gallery"><h2>The shortlist</h2><p>My aesthetic judgments are subjective.
+The screenshots and linked configurations are the evidence behind each comparison.</p></div>
+<article class="feature" id="rounded">
+<div class="feature-header"><div class="name"><span class="number">01</span><div><h3>Rounded tabs + an atmospheric background</h3><p class="byline"><a href="https://github.com/KevinSilvester/wezterm-config" target="_blank" rel="noopener noreferrer">KevinSilvester / wezterm-config</a></p></div></div><span class="flag">My pick for tab shape</span></div>
+<figure class="shot"><img src="assets/kevin-preview.png" alt="KevinSilvester's WezTerm showing rounded blue and gray tabs above a dim illustrated background"><figcaption><span>Author's demo, first frame. <a href="https://raw.githubusercontent.com/KevinSilvester/wezterm-config/master/.github/screenshots/demo-2.gif" target="_blank" rel="noopener noreferrer">Watch the original animated demo</a></span><button class="zoom" data-image="assets/kevin-preview.png">Enlarge screenshot</button></figcaption></figure>
+<div class="notes"><div><h4>Tabs</h4><p>Compact capsules, a bright active fill, muted neighbors, and small icons.
+Rounded ends make the row feel softer without needing a tall toolbar.</p></div><div><h4>The whole setup</h4><p>A dim illustration supplies atmosphere; JetBrainsMono Nerd Font and a tight status row hold it together.
+The config includes a background selector and a focus toggle.</p></div><div><h4>What I would borrow</h4><p>The capsules and clear active state, recolored in your lavender.
+Use short project names and give them more room than your current 12-cell cap.</p></div></div>
+</article>
+<div class="duo">
+<article class="feature" id="quiet"><div class="feature-header"><div class="name"><span class="number">02</span><div><h3>Quiet Rosé Pine</h3><p class="byline"><a href="https://github.com/adriankarlen/bar.wezterm" target="_blank" rel="noopener noreferrer">adriankarlen / bar.wezterm</a></p></div></div></div>
+<figure class="shot"><img src="assets/bar-preview.png" loading="lazy" alt="A Rosé Pine terminal with a coordinated Neovim dashboard and a thin text-based bottom tab and status row"><figcaption><span>Original project preview</span><button class="zoom" data-image="assets/bar-preview.png">Enlarge screenshot</button></figcaption></figure>
+<div class="notes"><div><h4>Tabs</h4><p>Colored names and arrow separators sit on a continuous, understated row.
+The design is inspired by the Rosé Pine tmux theme.</p></div><div><h4>The whole setup</h4><p>The terminal and Neovim share the same restrained colors.
+The dashboard art belongs to Neovim; installing a tab plugin alone will not create that dashboard.</p></div><div><h4>Best fit</h4><p>The closest reference to your current palette.
+Borrow its quiet bar background and selective color, with fewer status items if you prefer a calmer result.</p></div></div>
+</article>
+<article class="feature" id="glass"><div class="feature-header"><div class="name"><span class="number">03</span><div><h3>Glass + slanted tabs</h3><p class="byline"><a href="https://zenn.dev/mozumasu/articles/mozumasu-wezterm-customization?locale=en" target="_blank" rel="noopener noreferrer">mozumasu / WezTerm customization</a></p></div></div></div>
+<figure class="shot"><img src="assets/mozumasu-glass.png" loading="lazy" alt="A blurred transparent terminal on a colorful desktop with compact slanted gray and gold tabs at the top"><figcaption><span>Author's finished appearance</span><button class="zoom" data-image="assets/mozumasu-glass.png">Enlarge screenshot</button></figcaption></figure>
+<div class="notes"><div><h4>Tabs</h4><p>Small parallelograms with generous gaps.
+A single gold tab marks the active session; unnecessary buttons and borders disappear.</p></div><div><h4>The whole setup</h4><p>The blurred desktop does most of the visual work.
+Sparse shell content and a compact prompt let the glass effect breathe.</p></div><div><h4>Best fit</h4><p>A good reference for your existing macOS blur.
+My tradeoff: busy wallpaper can compete with long logs, so readability should decide the final effect.</p></div></div>
+</article>
+</div>
+<article class="feature" id="segmented"><div class="feature-header"><div class="name"><span class="number">04</span><div><h3>A colorful, informative status bar</h3><p class="byline"><a href="https://github.com/michaelbrusegard/tabline.wez" target="_blank" rel="noopener noreferrer">michaelbrusegard / tabline.wez</a></p></div></div><span class="flag">Most flexible tab reference</span></div>
+<div class="strip"><p>Angled separators and a strongly colored mode indicator</p><img src="assets/tabline-detail.png" alt="Tabline's blue angled segments showing mode, workspace, tabs, memory, CPU, time, battery and hostname"><p>Rounded variation</p><img src="assets/tabline-variant3.png" alt="Tabline's teal rounded sections and rounded active tab"><p>Flat variation</p><img src="assets/tabline-variant5.png" alt="Tabline's green mode label with flat rectangular tabs and status sections"></div>
+<div class="notes"><div><h4>Tabs</h4><p>One plugin supports angled, rounded, and flat compositions.
+Its section-based configuration follows Neovim's lualine conventions.</p></div><div><h4>The whole setup</h4><p>Useful context becomes part of the frame: workspace, process, directory, mode, battery, or time.
+These are bar-only screenshots; they do not demonstrate a complete desktop theme.</p></div><div><h4>Best fit</h4><p>Choose this direction if you want a functional dashboard.
+For your setup, I would start with tabs, workspace, and time; CPU and RAM add visual activity.</p></div></div>
+</article>
+<article class="feature" id="minimal"><div class="feature-header"><div class="name"><span class="number">05</span><div><h3>Minimal numbered project tabs</h3><p class="byline"><a href="https://markholloway.com/blog/2024/10/20/session-management-in-wezterm-without-tmux/" target="_blank" rel="noopener noreferrer">Mark Holloway / session management in WezTerm</a></p></div></div><span class="flag">Calmest option</span></div>
+<figure class="shot"><img src="assets/mark-tabs.png" loading="lazy" alt="Mark Holloway's minimal dark terminal showing numbered directory tabs at the top left and a workspace name at the right"><figcaption><span>Author's original screenshot</span><button class="zoom" data-image="assets/mark-tabs.png">Enlarge screenshot</button></figcaption></figure>
+<div class="notes"><div><h4>Tabs</h4><p>Just a number and directory name.
+The active tab is brighter; no large colored shapes demand attention.</p></div><div><h4>The whole setup</h4><p>A solid dark background, generous empty space, and one workspace label produce a focused appearance.
+The article also describes a WezTerm workspace workflow.</p></div><div><h4>Best fit</h4><p>Borrow the naming and restraint if you spend hours reading output.
+This aesthetic can work with your existing tmux workflow as well.</p></div></div>
+</article>
+<section class="takeaway" id="recommendation"><div><p class="eyebrow">My recommendation for your setup</p><h2>Rounded lavender tabs.<br>A quieter bar underneath.</h2><p class="muted">Combine KevinSilvester's tab shape with bar.wezterm's restraint.
+Your existing Rosé Pine Moon palette already supplies the right colors.</p><div class="detail"><span class="note-label">One unusually useful improvement:</span><p class="muted">Your current width budget truncates native tab names quickly.
+Readable project names may improve the result more than adding extra icons.</p></div></div>
+<div><ol><li><strong>Make the active tab unmistakable.</strong> Use one lavender capsule, with dark text and muted inactive tabs.</li><li><strong>Let labels breathe.</strong> Aim for roughly 18-24 cells when space permits, shrinking gracefully in narrow windows.</li><li><strong>Keep the overall palette coordinated.</strong> Carry the same background and accent colors through WezTerm, tmux, and Neovim.</li><li><strong>Choose one primary navigation row.</strong> Style tmux's bottom row if that is your daily tab interface, and match native WezTerm tabs for other sessions.</li></ol></div></section>
+<details class="detail"><summary>Implementation notes for a later change</summary><p class="muted">WezTerm offers native-looking tabs with proportional fonts and a retro bar using terminal cells.
+The retro bar supports the kind of custom labels shown in most of these examples.
+See the <a href="https://wezterm.org/config/appearance.html#tab-bar-appearance-colors" target="_blank" rel="noopener noreferrer">official appearance reference</a>.</p><p class="muted">These references establish a visual direction, not tested compatibility with your complete configuration.
+A later implementation should preserve your macOS, Windows, and WSL branches, coordinate with tmux, and verify long labels and narrow windows.</p></details>
+<section class="feedback" id="feedback"><h2>Keep the parts you like</h2><p>Pick a direction and leave a note about the details you want to borrow.
+Queue your preference, then use Lavish's Send to Agent control to continue with a tailored proposal.</p>
+<form id="preference-form" data-lavish-question="wezterm-direction"><div class="form-grid"><label class="field">Visual direction<select name="direction" required><option value="">Select a reference</option><option>01 - Rounded tabs, adapted to Rosé Pine</option><option>02 - Quiet Rosé Pine text bar</option><option>03 - Glass and slanted tabs</option><option>04 - Segmented tabline dashboard</option><option>05 - Minimal numbered tabs</option><option>A mix of references, described below</option></select></label><label class="field">The row I want to change<select name="row"><option>Not sure which row I use</option><option>The tmux bottom window list</option><option>Native WezTerm tabs</option><option>Both, with a matching style</option></select></label><label class="field wide">Details to borrow<textarea name="notes" placeholder="For example: rounded tabs from 01, the quiet background from 02, and fewer icons."></textarea></label></div><div class="form-actions"><button type="submit" class="primary">Queue preference</button><output id="queue-status" aria-live="polite">Nothing queued.</output></div></form>
+</section>
+</main>
+<footer><div class="wrap"><p><strong>More inspiration:</strong> the community's <a href="https://github.com/wezterm/wezterm/discussions/628" target="_blank" rel="noopener noreferrer">Show your wezterms</a> thread contains many more setups.</p><p>Design source: your existing WezTerm configuration's Rosé Pine colors, adapted into this gallery.
+Screenshots remain credited to their authors and may depict earlier revisions of the linked configs.
+The rounded preview is a still frame from the original GIF; other screenshots are unmodified.
+Research only: your terminal configuration has not been changed.</p></div></footer>
+<dialog id="image-dialog" aria-labelledby="image-title"><div class="dialog-top"><strong id="image-title">Original screenshot</strong><button id="close-dialog">Close</button></div><img id="large-image" alt=""></dialog>
+<script>
+const dialog = document.querySelector('#image-dialog');
+document.querySelectorAll('[data-image]').forEach(button => button.addEventListener('click', () => {
+  const image = document.querySelector('#large-image');
+  image.src = button.dataset.image;
+  image.alt = button.closest('figure').querySelector('img').alt;
+  dialog.showModal();
+}));
+document.querySelector('#close-dialog').addEventListener('click', () => dialog.close());
+document.querySelector('#preference-form').addEventListener('submit', event => {
+  event.preventDefault();
+  const values = Object.fromEntries(new FormData(event.currentTarget));
+  const status = document.querySelector('#queue-status');
+  if (!window.lavish?.queuePrompt) {
+    status.textContent = 'Open this gallery in Lavish to send feedback, or share your preference in chat.';
+    return;
+  }
+  window.lavish.queuePrompt('My WezTerm visual preference is ' + values.direction + '. The row I want to change: ' + values.row + '. Details: ' + (values.notes || 'No additional details.') + '. Prepare a tailored proposal using these preferences.', {
+    tag: 'wezterm-preference', text: values.direction, queueKey: 'wezterm-direction', element: event.currentTarget, data: values
+  });
+  status.textContent = 'Preference queued. Use Send to Agent to submit it.';
+});
+document.querySelector('#preference-form').addEventListener('input', () => {
+  document.querySelector('#queue-status').textContent = 'Selection changed locally. Queue preference when ready.';
+});
+</script>
+</body>
+</html>
