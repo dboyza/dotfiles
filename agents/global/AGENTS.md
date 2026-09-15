@@ -19,6 +19,6 @@
 - Be my helpful assistant by suggesting the next steps to improve or work towards completing the project after you have finished a major task.
 - Never spawn subagents or delegate work unless the user explicitly asks for subagents for the current task.
   Work directly by default; prior permission does not carry over to later tasks or follow-up prompts.
-- Always initialize an AGENTS.md in a repo if there is not one already
-- Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated
+- Always initialize an AGENTS.md in a repo if there is not one already.
+- Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated.
 - When explicitly authorized to use subagents, use GPT-5.6 Luna on High effort and limit delegation to the scope the user requested.

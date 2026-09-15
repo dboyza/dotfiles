@@ -142,8 +142,8 @@ bindkey $'\e[99;6u' copy-selected-region
 
 # ls aliases
 case $(uname -s 2>/dev/null) in
-  Darwin*) alias ls='ls -G' ;;
-  *) alias ls='ls --color=auto' ;;
+  Darwin*) alias ls='ls -mG' ;;
+  *) alias ls='ls -m --color=auto' ;;
 esac
 alias ll="ls -alF"
 alias la="ls -la"

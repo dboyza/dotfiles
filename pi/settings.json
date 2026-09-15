@@ -1,1 +1,14 @@
-{}
+{
+  "theme": "dark",
+  "lastChangelogVersion": "0.85.1",
+  "packages": [
+    "npm:pi-web-access",
+    "npm:pi-subagents",
+    "npm:@juicesharp/rpiv-ask-user-question",
+    "npm:@juicesharp/rpiv-todo",
+    "npm:pi-lens"
+  ],
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-6-astra",
+  "defaultThinkingLevel": "low"
+}
