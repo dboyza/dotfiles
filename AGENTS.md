@@ -1,6 +1,6 @@
 # Repository instructions
 
-- Keep the default Zsh `ls` alias comma-separated with `-m`, preserving platform-specific color flags.
+- Keep the default Zsh `ls` alias in its normal listing layout without `-m`, preserving platform-specific color flags.
 
 - When making a change, keep it compatible with native Windows 11, Windows 11 with WSL, and macOS.
   Use platform-specific branches or fallbacks where behavior and dependencies differ, and verify each platform path as far as the available environment allows.
@@ -24,8 +24,8 @@
   Send Home/End keys rather than Control+A/Control+E so Herdr's prefix remains usable, and bind both CSI and SS3 Home/End sequences in Zsh.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and hide WezTerm's native tab bar when only one native tab exists so the normal tmux interface does not show duplicate tab systems.
-- Center WezTerm's cell-based tab row with left-status padding measured from the whole tab, not an individual split pane.
-  Keep label widths and centering calculations aligned, with display-cell-aware Unicode truncation.
+- Left-align WezTerm's cell-based tabs and tmux's window list.
+  Clear retained WezTerm left-status padding when reloading older centered layouts, and keep tab-label truncation aware of display-cell widths.
 - Coordinate WezTerm and tmux tabs with rounded ends, a lavender active tab, muted inactive tabs, and a transparent bar background.
   Prefer working-directory names while preserving explicit tab or window names; keep native tab widths bounded at 24 cells and reduce tmux's side status in narrow windows.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.

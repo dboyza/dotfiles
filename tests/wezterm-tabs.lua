@@ -51,26 +51,10 @@ local url = wezterm.url.parse('file:///work/project%20name')
 local result = format_title({ tab_index = 11, active_pane = { current_working_dir = url } }, {}, {}, config, false, config.tab_max_width)
 assert(label_text(result):find('12  project name', 1, true), 'URL objects must produce readable numbered names')
 
-for _, cols in ipairs({ 1, 20, 80, 140, 240 }) do
-  for count = 1, 12 do
-    local padding
-    local tabs = {}
-    for index = 1, count do
-      tabs[index] = {}
-    end
-    local window = {
-      active_tab = function()
-        return { get_size = function() return { cols = cols, pixel_width = cols * 10 } end }
-      end,
-      get_dimensions = function() return { pixel_width = cols * 10 } end,
-      mux_window = function() return { tabs = function() return tabs end } end,
-      set_left_status = function(_, text) padding = #text end,
-    }
-    callbacks['update-status'](window)
-    local rendered_width = math.min(config.tab_max_width, math.floor(math.max(0, cols - count + 1) / count))
-    local right = cols - padding - count * rendered_width
-    assert(math.abs(padding - right) <= 1, 'tab row must have balanced margins')
-  end
+for _, event in ipairs({ 'update-status', 'window-resized', 'window-config-reloaded' }) do
+  local padding = string.rep(' ', 40)
+  callbacks[event]({ set_left_status = function(_, text) padding = text end })
+  assert(padding == '', 'left-aligned tabs must clear old centering padding on ' .. event)
 end
 
 return config

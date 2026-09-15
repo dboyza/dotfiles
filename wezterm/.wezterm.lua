@@ -76,7 +76,7 @@ config.switch_to_last_active_tab_when_closing_tab = true
 config.enable_tab_bar = true
 config.hide_tab_bar_if_only_one_tab = true
 config.tab_bar_at_bottom = true
--- Cell-based tabs let the left status area center the row at any font size.
+-- Cell-based tabs keep the rounded labels aligned with the terminal font.
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
@@ -590,33 +590,14 @@ wezterm.on('format-tab-title', function(tab, _tabs, _panes, _config, hover, max_
   }
 end)
 
-local function center_tabs(window)
-  local tab = window:active_tab()
-  if not tab then
-    window:set_left_status('')
-    return
-  end
-  -- Use the whole tab's width so split panes cannot shift the tab row.
-  local size = tab:get_size()
-  local cols = size.cols
-  if size.pixel_width > 0 then
-    cols = math.floor(window:get_dimensions().pixel_width * size.cols / size.pixel_width)
-  end
-  local count = #window:mux_window():tabs()
-  if count == 0 then
-    window:set_left_status('')
-    return
-  end
-  -- The retro renderer reserves one cell per gap when it clamps tab widths.
-  local available = math.max(0, cols - (count - 1))
-  local width = math.min(config.tab_max_width, math.floor(available / count))
-  local padding = math.max(0, math.floor((cols - count * width) / 2))
-  window:set_left_status(string.rep(' ', padding))
+-- Clear padding retained by a running window from older centered tab layouts.
+local function left_align_tabs(window)
+  window:set_left_status('')
 end
 
-wezterm.on('update-status', center_tabs)
-wezterm.on('window-resized', center_tabs)
-wezterm.on('window-config-reloaded', center_tabs)
+wezterm.on('update-status', left_align_tabs)
+wezterm.on('window-resized', left_align_tabs)
+wezterm.on('window-config-reloaded', left_align_tabs)
 
 wezterm.on('new-tab-button-click', function(window, pane, button)
   if button == 'Left' then
