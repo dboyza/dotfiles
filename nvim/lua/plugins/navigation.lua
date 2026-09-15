@@ -12,8 +12,35 @@ return {
     keys = {
       {
         "<leader>e",
-        "<cmd>Neotree toggle reveal filesystem left<cr>",
-        desc = "File explorer",
+        function()
+          if vim.bo.filetype ~= "neo-tree" then
+            vim.t.explorer_return_win = vim.api.nvim_get_current_win()
+            require("neo-tree.command").execute({ action = "focus", source = "filesystem", position = "left" })
+            return
+          end
+
+          local function is_editor(win)
+            return win and vim.api.nvim_win_is_valid(win)
+              and vim.api.nvim_win_get_tabpage(win) == vim.api.nvim_get_current_tabpage()
+              and vim.api.nvim_win_get_config(win).relative == ""
+              and vim.bo[vim.api.nvim_win_get_buf(win)].filetype ~= "neo-tree"
+          end
+
+          local target = vim.t.explorer_return_win
+          if not is_editor(target) then
+            target = nil
+            for _, win in ipairs(vim.api.nvim_tabpage_list_wins(0)) do
+              if is_editor(win) then
+                target = win
+                break
+              end
+            end
+          end
+          if target then
+            vim.api.nvim_set_current_win(target)
+          end
+        end,
+        desc = "Switch between explorer and editor",
       },
     },
     opts = {
