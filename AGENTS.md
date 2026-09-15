@@ -98,6 +98,7 @@
   Configuration edits require only application reloads; moving the checkout or changing Nix declarations requires activation.
 - Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.
 - Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
+- Open Neo-tree at interactive startup and in new tabs without taking editor focus; keep headless commands free of explorer windows.
 - Keep Neovim's entry point small, with core settings in `nvim/lua/config` and plugin declarations in `nvim/lua/plugins`.
 - Initialize Zoxide in the tracked `zsh/.zshrc` after completion setup; Home Manager does not generate this live-linked file.
 - Load Zsh plugins from the managed `~/.config/zsh/plugins` paths instead of searching package-manager directories.
