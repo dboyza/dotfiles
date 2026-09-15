@@ -100,6 +100,7 @@
 - Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
 - Keep Neovim `Space e` switching focus between Neo-tree and the previous editor window without hiding the sidebar.
 - Open Neo-tree at interactive startup and in new tabs without taking editor focus; keep headless commands free of explorer windows.
+- Let Neo-tree close when the last editor window in its tab closes so normal quit commands do not require a second quit for the sidebar.
 - Keep Neovim's entry point small, with core settings in `nvim/lua/config` and plugin declarations in `nvim/lua/plugins`.
 - Initialize Zoxide in the tracked `zsh/.zshrc` after completion setup; Home Manager does not generate this live-linked file.
 - Load Zsh plugins from the managed `~/.config/zsh/plugins` paths instead of searching package-manager directories.
