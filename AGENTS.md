@@ -26,6 +26,9 @@
 - Keep tmux windows in a single bottom status row and hide WezTerm's native tab bar when only one native tab exists so the normal tmux interface does not show duplicate tab systems.
 - Center WezTerm's cell-based tab row with left-status padding measured from the whole tab, not an individual split pane.
   Keep label widths and centering calculations aligned, with display-cell-aware Unicode truncation.
+- Coordinate WezTerm and tmux tabs with rounded ends, a lavender active tab, muted inactive tabs, and a transparent bar background.
+  Prefer working-directory names while preserving explicit tab or window names; keep native tab widths bounded at 24 cells and reduce tmux's side status in narrow windows.
+  Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
 - Never pipe WSL clipboard text directly to `clip.exe`.

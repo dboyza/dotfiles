@@ -80,7 +80,7 @@ config.tab_bar_at_bottom = true
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
-config.tab_max_width = 12
+config.tab_max_width = 24
 config.status_update_interval = 250
 config.window_decorations = 'RESIZE'
 config.window_frame = {
@@ -106,13 +106,13 @@ config.colors = {
   selection_fg = '#191724',
   selection_bg = '#eb6f92',
   tab_bar = {
-    background = 'rgba(35, 33, 54, 0.70)',
+    background = 'rgba(35, 33, 54, 0.0)',
     active_tab = { bg_color = '#c4a7e7', fg_color = '#232136', intensity = 'Bold' },
-    inactive_tab = { bg_color = 'rgba(35, 33, 54, 0.70)', fg_color = '#908caa' },
-    inactive_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
+    inactive_tab = { bg_color = '#2a273f', fg_color = '#908caa' },
+    inactive_tab_hover = { bg_color = '#393552', fg_color = '#e0def4' },
     new_tab = { bg_color = 'rgba(35, 33, 54, 0.45)', fg_color = '#908caa' },
     new_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
-    inactive_tab_edge = 'rgba(35, 33, 54, 0.70)',
+    inactive_tab_edge = 'rgba(35, 33, 54, 0.0)',
   },
 }
 
@@ -523,24 +523,71 @@ wezterm.on('format-window-title', function()
   return ' '
 end)
 
-wezterm.on('format-tab-title', function(tab, _tabs, _panes, _config, _hover, max_width)
+local function clean_tab_title(title)
+  return (title or ''):gsub('%c', ' '):gsub('%s+', ' '):match('^%s*(.-)%s*$')
+end
+
+local function tab_title(tab)
+  local title = clean_tab_title(tab.tab_title)
+  if title ~= '' then
+    return title
+  end
+
+  local pane = tab.active_pane
+  local cwd = pane.current_working_dir
+  if type(cwd) == 'string' then
+    local ok, url = pcall(wezterm.url.parse, cwd)
+    cwd = ok and url or nil
+  end
+  if cwd then
+    local path = cwd.file_path:gsub('\\', '/'):gsub('/+$', '')
+    title = clean_tab_title(path:match('([^/]+)$'))
+    if title ~= '' then
+      return title
+    end
+  end
+
+  title = clean_tab_title(pane.title)
+  return title ~= '' and title or 'shell'
+end
+
+local function fit_tab_label(label, width)
+  if width <= 0 then
+    return ''
+  end
+  if wezterm.column_width(label) > width then
+    label = wezterm.truncate_right(label, width - 1) .. '…'
+  end
+  local padding = width - wezterm.column_width(label)
+  local left = math.floor(padding / 2)
+  return string.rep(' ', left) .. label .. string.rep(' ', padding - left)
+end
+
+wezterm.on('format-tab-title', function(tab, _tabs, _panes, _config, hover, max_width)
   local width = math.max(0, math.min(config.tab_max_width, max_width))
   if width == 0 then
     return { { Text = '' } }
   end
-  local title = tab.tab_title
-  if not title or title == '' then
-    title = tab.active_pane.title
-  end
-  title = (title or ''):gsub('%c', ' '):gsub('%s+', ' '):match('^%s*(.-)%s*$')
-  local label = tostring(tab.tab_index + 1) .. '  ' .. title
-  local available = math.max(1, width - 4)
-  if wezterm.column_width(label) > available then
-    label = wezterm.truncate_right(label, available - 1) .. '…'
-  end
-  local padding = width - wezterm.column_width(label)
-  local left = math.floor(padding / 2)
-  return { { Text = string.rep(' ', left) .. label .. string.rep(' ', padding - left) } }
+  local colors = config.colors.tab_bar
+  local style = tab.is_active and colors.active_tab or (hover and colors.inactive_tab_hover or colors.inactive_tab)
+  local label = tostring(tab.tab_index + 1) .. '  ' .. tab_title(tab)
+  -- Reserve the two rounded ends and one trailing gap; omit them in tiny tabs.
+  local rounded = width >= 7
+  local body = rounded and (' ' .. fit_tab_label(label, width - 5) .. ' ') or fit_tab_label(label, width)
+  return {
+    { Attribute = { Intensity = 'Normal' } },
+    { Background = { Color = colors.background } },
+    { Foreground = { Color = style.bg_color } },
+    { Text = rounded and '' or '' },
+    { Background = { Color = style.bg_color } },
+    { Foreground = { Color = style.fg_color } },
+    { Attribute = { Intensity = style.intensity or 'Normal' } },
+    { Text = body },
+    { Attribute = { Intensity = 'Normal' } },
+    { Background = { Color = colors.background } },
+    { Foreground = { Color = style.bg_color } },
+    { Text = rounded and ' ' or '' },
+  }
 end)
 
 local function center_tabs(window)
