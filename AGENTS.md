@@ -99,7 +99,7 @@
 - Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.
 - Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
 - Keep Neovim `Space e` switching focus between Neo-tree and the previous editor window without hiding the sidebar.
-- Close Neo-tree after opening a file from it; expanding a directory should leave the explorer open.
+- Keep Neo-tree open after selecting a file; use its native `q` binding to close it manually.
 - Open Neo-tree only on request through `Space e` or `:Neotree`, not automatically at startup, in new tabs, or when opening directories.
 - Let Neo-tree close when the last editor window in its tab closes so normal quit commands do not require a second quit for the sidebar.
 - Keep Neovim's entry point small, with core settings in `nvim/lua/config` and plugin declarations in `nvim/lua/plugins`.
