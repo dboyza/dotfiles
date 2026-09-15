@@ -14,7 +14,8 @@
 - Keep the larger adaptive WezTerm launch size scoped to macOS so Windows and WSL retain their existing window dimensions.
 - Keep the macOS WezTerm launch size proportional to the active screen so display scaling changes retain consistently large margins.
 - Keep the macOS WezTerm launch position slightly above vertical center so its outer frame clears the Dock.
-- Keep the WezTerm window background opacity at 0.75 on macOS and native Windows for transparency while retaining readable text.
+- Keep the WezTerm window background opacity at 0.8 on macOS and native Windows for transparency while retaining readable text.
+- Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
 - Keep the WezTerm steady bar cursor at 200% of the font underline thickness across platforms.
 - Keep plain `Control+Arrow` events passing through WezTerm on every platform so Neovim receives its navigation bindings.
 - On macOS, disable only the Mission Control and Spaces symbolic hotkeys that consume `Control+Arrow`; merge those entries without replacing unrelated shortcut preferences.
