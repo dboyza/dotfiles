@@ -8,7 +8,6 @@ return {
       "nvim-tree/nvim-web-devicons",
     },
     cmd = "Neotree",
-    lazy = false,
     keys = {
       {
         "<leader>e",
@@ -49,36 +48,13 @@ return {
       enable_git_status = true,
       filesystem = {
         follow_current_file = { enabled = true },
-        hijack_netrw_behavior = "open_default",
+        hijack_netrw_behavior = "disabled",
       },
       window = {
         position = "left",
         width = 34,
       },
     },
-    config = function(_, opts)
-      require("neo-tree").setup(opts)
-
-      local function show_explorer()
-        -- Leave headless commands alone and keep typing focus in the editor.
-        if #vim.api.nvim_list_uis() > 0 then
-          require("neo-tree.command").execute({
-            action = "show",
-            source = "filesystem",
-            position = "left",
-          })
-        end
-      end
-
-      vim.api.nvim_create_autocmd({ "VimEnter", "TabNewEntered" }, {
-        group = vim.api.nvim_create_augroup("dotfiles_explorer", { clear = true }),
-        callback = vim.schedule_wrap(show_explorer),
-        desc = "Show the file explorer at startup and in new tabs",
-      })
-      if vim.v.vim_did_enter == 1 then
-        vim.schedule(show_explorer)
-      end
-    end,
   },
   {
     "nvim-telescope/telescope.nvim",
