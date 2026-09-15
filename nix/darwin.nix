@@ -1,5 +1,6 @@
 {
   allowUnfreePredicate,
+  config,
   homeDirectory,
   repoDirectory,
   inputs,
@@ -21,7 +22,7 @@ let
       exit 1
     fi
     exec ${pkgs.python3}/bin/python3 ${../scripts/install-macos-apps.py} \
-      --manifest ${./macos-apps.json} --mas ${pkgs.mas}/bin/mas \
+      --manifest ${./macos-apps.json} --mas "${config.homebrew.prefix}/bin/mas" \
       --home ${pkgs.lib.escapeShellArg homeDirectory} --brew "$brew_binary" "$@"
   '';
   runAppInstaller = "/usr/bin/sudo -H --user=${pkgs.lib.escapeShellArg username} -- ${appInstaller}";
@@ -153,12 +154,14 @@ in
 
   users.users.${username} = {
     home = homeDirectory;
-    shell = pkgs.zsh;
+    # Apple's shell is available before Homebrew runs during first activation.
+    shell = "/bin/zsh";
   };
 
   programs.zsh.enable = true;
   environment.shells = [ pkgs.zsh ];
-  fonts.packages = [ pkgs.nerd-fonts.hack ];
+  # The font is installed by Homebrew; avoid a second Nix-owned copy.
+  fonts.packages = [ ];
   system.activationScripts.preActivation.text = pkgs.lib.mkBefore ''
     ${runAppInstaller} --preserve-legacy
   '';
@@ -166,7 +169,7 @@ in
     ${runAppInstaller}
   '';
 
-  homebrew = {
+  homebrew = (import ./homebrew.nix) // {
     enable = true;
     onActivation = {
       autoUpdate = false;
@@ -185,6 +188,7 @@ in
         inputs
         username
         ;
+      homebrewPrefix = config.homebrew.prefix;
       isWSL = false;
     };
     users.${username} = import ./home.nix;

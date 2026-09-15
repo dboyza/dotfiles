@@ -104,7 +104,7 @@ if [[ -n $tmux_command ]]; then
   # Reload must clear the old text-only shortcut so apps receive image-paste keys.
   "$tmux_command" -S "$test_dir/tmux.sock" bind-key -n C-v run-shell 'legacy-text-paste'
   "$tmux_command" -S "$test_dir/tmux.sock" source-file "$repo_dir/tmux/.tmux.conf"
-  if "$tmux_command" -S "$test_dir/tmux.sock" list-keys -T root C-v >/dev/null 2>&1; then
+  if "$tmux_command" -S "$test_dir/tmux.sock" list-keys -T root | grep -Eq -- '-T[[:space:]]+root[[:space:]]+C-v[[:space:]]'; then
     printf 'tmux still intercepts Control+V after configuration reload\n' >&2
     exit 1
   fi
@@ -112,7 +112,7 @@ if [[ -n $tmux_command ]]; then
   "$tmux_command" -S "$test_dir/tmux.sock" run-shell "cat '$test_dir/sample' | #{@clipboard_copy}"
   cmp "$test_dir/sample" "$CLIPBOARD_TEST_FILE"
   # Execute the actual configured paste binding's shell command.
-  paste_binding=$("$tmux_command" -S "$test_dir/tmux.sock" list-keys -T root S-C-v)
+  paste_binding=$("$tmux_command" -S "$test_dir/tmux.sock" list-keys -T root | grep -E -- '-T[[:space:]]+root[[:space:]]+(C-S-v|S-C-v)[[:space:]]')
   [[ $paste_binding == *'/.local/bin/dotfiles-clipboard'*'paste-to-tmux'* ]]
   # Expand HOME inside the isolated tmux server's environment.
   # shellcheck disable=SC2016
@@ -132,6 +132,6 @@ if [[ -n $tmux_command ]]; then
   : >"$CLIPBOARD_TEST_FILE"
   # An empty clipboard is a successful no-op, even with no valid target pane.
   PATH="$fake_bin:$PATH" TMUX="$test_dir/tmux.sock,0,0" dotfiles-clipboard paste-to-tmux %9999
-  "$tmux_command" -S "$test_dir/tmux.sock" list-keys -T copy-mode-vi y | grep -q 'copy-pipe-and-cancel'
+  "$tmux_command" -S "$test_dir/tmux.sock" list-keys -T copy-mode-vi | grep -E -- '-T[[:space:]]+copy-mode-vi[[:space:]]+y[[:space:]]' | grep -q 'copy-pipe-and-cancel'
 fi
 printf 'Shared clipboard selection and UTF-8 round trips passed\n'

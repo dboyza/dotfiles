@@ -54,6 +54,18 @@ if [[ $(uname -s) == Darwin ]]; then
       HOME="$test_dir/home" PATH=/usr/bin:/bin TERM=xterm-256color \
         zsh -dfc 'source "$1"; command -v brew' zsh "$repo_dir/zsh/.zshrc"
     )
+    # A stale pre-migration launcher must not shadow an installed Brew tool.
+    brew_bin=$(dirname "$homebrew_binary")
+    if [[ -x "$brew_bin/codex" ]]; then
+      mkdir -p "$test_dir/home/.local/bin"
+      printf '#!/bin/sh\nexit 99\n' >"$test_dir/home/.local/bin/codex"
+      chmod +x "$test_dir/home/.local/bin/codex"
+      detected_codex=$(
+        HOME="$test_dir/home" PATH=/usr/bin:/bin TERM=xterm-256color \
+          zsh -dfc 'source "$1"; command -v codex' zsh "$repo_dir/zsh/.zshrc"
+      )
+      [[ "$detected_codex" == "$brew_bin/codex" ]] || exit 1
+    fi
     if [[ "$detected_homebrew" != "$homebrew_binary" ]]; then
       printf 'compatibility test: zsh did not initialize Homebrew from %s\n' "$homebrew_binary" >&2
       exit 1
@@ -121,7 +133,7 @@ if command -v tmux >/dev/null 2>&1; then
     printf 'compatibility test: tmux window tabs are not a single visible row\n' >&2
     exit 1
   fi
-  if TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" list-keys -T prefix C-a >/dev/null 2>&1; then
+  if TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" list-keys -T prefix | grep -Eq -- '-T[[:space:]]+prefix[[:space:]]+C-a[[:space:]]'; then
     printf 'compatibility test: tmux still binds C-a in the prefix table\n' >&2
     exit 1
   fi

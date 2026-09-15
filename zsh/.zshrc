@@ -13,21 +13,6 @@ path_prepend "$HOME/.nix-profile/bin"
 unfunction path_prepend
 export PATH
 
-# Homebrew's installer does not persist its environment when bootstrap runs in
-# a child process. Initialize it for interactive macOS shells on both Apple
-# Silicon and Intel installations.
-case $(uname -s 2>/dev/null) in
-  Darwin*)
-    for homebrew_binary in /opt/homebrew/bin/brew /usr/local/bin/brew; do
-      if [ -x "$homebrew_binary" ]; then
-        eval "$("$homebrew_binary" shellenv)"
-        break
-      fi
-    done
-    unset homebrew_binary
-    ;;
-esac
-
 for hm_session_vars in \
   "$HOME/.nix-profile/etc/profile.d/hm-session-vars.sh" \
   "/etc/profiles/per-user/$USER/etc/profile.d/hm-session-vars.sh"; do
@@ -38,8 +23,28 @@ for hm_session_vars in \
 done
 unset hm_session_vars
 
-# Mutable tool launchers must win over older Nix generations and vendor installs.
-path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}")
+# Homebrew owns macOS tools; other platforms use the mutable launchers.
+case $(uname -s 2>/dev/null) in
+  Darwin*)
+    for homebrew_binary in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+      if [ -x "$homebrew_binary" ]; then
+        eval "$("$homebrew_binary" shellenv)"
+        break
+      fi
+    done
+    unset homebrew_binary
+    for homebrew_tool_path in \
+      "$HOMEBREW_PREFIX/opt/make/libexec/gnubin" \
+      "$HOMEBREW_PREFIX/opt/unzip/bin" \
+      "$HOMEBREW_PREFIX/opt/curl/bin"; do
+      if [ -d "$homebrew_tool_path" ]; then
+        path=("$homebrew_tool_path" "${(@)path:#$homebrew_tool_path}")
+      fi
+    done
+    unset homebrew_tool_path
+    ;;
+  *) path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}") ;;
+esac
 export PATH
 
 # History

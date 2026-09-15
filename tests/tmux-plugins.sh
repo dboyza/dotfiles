@@ -55,8 +55,8 @@ fi
 [[ $(test_tmux show-options -gv @continuum-save-interval) == 5 ]]
 [[ $(test_tmux show-options -gv @resurrect-hook-post-save-all) == *save-assistant-sessions.sh* ]]
 [[ $(test_tmux show-options -gv @resurrect-hook-post-restore-all) == *restore-assistant-sessions.sh* ]]
-test_tmux list-keys -T prefix C-s | grep -F '/tmux-resurrect/scripts/save.sh' >/dev/null
-test_tmux list-keys -T prefix C-r | grep -F '/tmux-resurrect/scripts/restore.sh' >/dev/null
+test_tmux list-keys -T prefix | grep -E -- '-T[[:space:]]+prefix[[:space:]]+C-s[[:space:]]' | grep -F '/tmux-resurrect/scripts/save.sh' >/dev/null
+test_tmux list-keys -T prefix | grep -E -- '-T[[:space:]]+prefix[[:space:]]+C-r[[:space:]]' | grep -F '/tmux-resurrect/scripts/restore.sh' >/dev/null
 if test_tmux list-keys -T prefix | grep -F '/tpm/' >/dev/null; then
   printf 'tmux plugin test: TPM bindings remain\n' >&2
   exit 1
@@ -67,7 +67,7 @@ test_tmux bind-key U display-message 'custom update shortcut'
 test_tmux bind-key M-u display-message 'custom cleanup shortcut'
 test_tmux source-file "$repo_dir/tmux/.tmux.conf"
 for key in I U M-u; do
-  test_tmux list-keys -T prefix "$key" | grep -F 'display-message' >/dev/null
+  test_tmux list-keys -T prefix | grep -E -- "-T[[:space:]]+prefix[[:space:]]+${key}[[:space:]]" | grep -F 'display-message' >/dev/null
 done
 [[ -L "$test_home/.config/opencode/plugins/session-tracker.js" ]]
 if command -v jq >/dev/null 2>&1; then

@@ -2,6 +2,7 @@
   config,
   repoDirectory,
   homeDirectory,
+  homebrewPrefix ? null,
   inputs,
   isWSL,
   lib,
@@ -31,9 +32,16 @@ in
     inherit homeDirectory username;
     stateVersion = "24.11";
 
+    # Brew leaves these tools unlinked or GNU-prefixed to avoid replacing Apple tools.
+    sessionPath = lib.optionals pkgs.stdenv.isDarwin [
+      "${homebrewPrefix}/opt/curl/bin"
+      "${homebrewPrefix}/opt/unzip/bin"
+      "${homebrewPrefix}/opt/make/libexec/gnubin"
+    ];
+
     packages =
       with pkgs;
-      [
+      lib.optionals pkgs.stdenv.isLinux [
         bat
         bind
         btop
@@ -89,20 +97,25 @@ in
     ".zshenv" = live "zsh/.zshenv";
     ".zshrc" = live "zsh/.zshrc";
     ".config/zsh/plugins/zsh-autosuggestions.zsh" =
-      managed "${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh";
+      if pkgs.stdenv.isDarwin then
+        managed (
+          config.lib.file.mkOutOfStoreSymlink "${homebrewPrefix}/share/zsh-autosuggestions/zsh-autosuggestions.zsh"
+        )
+      else
+        managed "${pkgs.zsh-autosuggestions}/share/zsh-autosuggestions/zsh-autosuggestions.zsh";
     ".config/zsh/plugins/zsh-syntax-highlighting.zsh" =
-      managed "${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh";
+      if pkgs.stdenv.isDarwin then
+        managed (
+          config.lib.file.mkOutOfStoreSymlink "${homebrewPrefix}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+        )
+      else
+        managed "${pkgs.zsh-syntax-highlighting}/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh";
     ".tmux.conf" = live "tmux/.tmux.conf";
     ".wezterm.lua" = live "wezterm/.wezterm.lua";
     ".config/herdr/config.toml" = live "herdr/config.toml";
     ".config/nvim" = live "nvim";
     ".config/starship.toml" = live "starship/starship.toml";
     ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
-    ".local/bin/dotfiles-tool.mjs" = live "scripts/dotfiles-tool.mjs";
-    ".local/bin/codex" = live "scripts/codex";
-    ".local/bin/pi" = live "scripts/pi";
-    ".local/bin/opencode" = live "scripts/opencode";
-    ".local/bin/herdr" = live "scripts/herdr";
 
     ".codex/AGENTS.md" = live "agents/global/AGENTS.md";
     ".claude/CLAUDE.md" = live "agents/global/AGENTS.md";
@@ -115,6 +128,13 @@ in
     ".tmux/plugins/tmux-resurrect" = managed inputs.tmux-resurrect;
     ".tmux/plugins/tmux-continuum" = managed inputs.tmux-continuum;
     ".tmux/plugins/tmux-assistant-resurrect" = managed inputs.tmux-assistant-resurrect;
+  }
+  // lib.optionalAttrs pkgs.stdenv.isLinux {
+    ".local/bin/dotfiles-tool.mjs" = live "scripts/dotfiles-tool.mjs";
+    ".local/bin/codex" = live "scripts/codex";
+    ".local/bin/pi" = live "scripts/pi";
+    ".local/bin/opencode" = live "scripts/opencode";
+    ".local/bin/herdr" = live "scripts/herdr";
   }
   // lib.optionalAttrs isWSL {
     ".local/bin/win-copy" = live "scripts/win-copy";

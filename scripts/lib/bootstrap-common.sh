@@ -184,7 +184,7 @@ verify_tmux_configuration() (
     return 1
   fi
 
-  if TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" list-keys -T prefix C-a >/dev/null 2>&1; then
+  if TMUX_TMPDIR="$tmux_tmp" tmux -L "$socket_name" list-keys -T prefix | grep -Eq -- '-T[[:space:]]+prefix[[:space:]]+C-a[[:space:]]'; then
     printf 'bootstrap: tmux prefix table still binds C-a\n' >&2
     return 1
   fi
@@ -225,6 +225,12 @@ verify_installation() {
   local command_name missing=0
   local expected_commands=(claude codex gh git herdr kubectl nvim node opencode pi pre-commit rg starship terraform tmux uv zsh)
   export PATH="$HOME/.local/bin:$HOME/.nix-profile/bin:/etc/profiles/per-user/$DOTFILES_USER/bin:/run/current-system/sw/bin:$PATH"
+
+  if [[ "$os" == Darwin ]]; then
+    local brew_binary
+    brew_binary=$(find_homebrew)
+    eval "$("$brew_binary" shellenv)"
+  fi
 
   for command_name in "${expected_commands[@]}"; do
     if ! command -v "$command_name" >/dev/null 2>&1; then

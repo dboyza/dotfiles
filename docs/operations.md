@@ -17,7 +17,7 @@ Run:
 This command requires an existing Nix installation.
 It evaluates and builds the pinned configuration without installing Nix, updating `flake.lock`, activating configuration, or replacing managed files.
 
-Lazygit and Zoxide are included in the shared macOS, Linux, and WSL package set.
+Lazygit and Zoxide are installed through Homebrew on macOS and through Nix on Linux and WSL.
 Run `lazygit` inside a Git checkout to open its terminal interface.
 In Zsh, use `z <directory>` to jump to a frequently visited directory or `zi` for interactive selection with fzf.
 Zoxide initializes in the tracked `zsh/.zshrc`; its directory history remains local runtime data.
@@ -37,7 +37,7 @@ The older `./bootstrap.sh --update` form is an alias for the same behavior.
 
 An update may change `flake.lock`.
 Review and commit that file when the refresh is intentional.
-Codex, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
+On Linux and Windows, Codex, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
 
 After activation, bootstrap verifies managed links, Pi settings, launcher syntax, the tmux prefix, WezTerm configuration, and platform integration.
 The managed-file inventory comes from the evaluated Home Manager configuration, including its platform-specific files.
@@ -47,12 +47,31 @@ tmux plugins are pinned Nix inputs and load directly from their managed paths.
 Use bootstrap to update them along with other declared inputs.
 Resurrect, assistant session restoration, and continuum remain enabled; TPM and tmux-yank are no longer needed.
 
+## Update macOS packages
+
+Homebrew owns macOS user tools, the coding agents, Zsh plugins, and Hack Nerd Font.
+Their declarations live in `nix/homebrew.nix`; GUI app declarations remain in `nix/macos-apps.json` so existing installations can be preserved.
+Bootstrap installs missing packages without upgrading existing installations or removing unlisted packages.
+Update coding tools explicitly:
+
+```sh
+brew update
+brew upgrade codex claude-code pi-coding-agent opencode herdr
+```
+
+Other formulas can be upgraded by name with `brew upgrade <formula>`.
+These versions are outside Nix generations and are not reverted by nix-darwin rollback.
+After migrating from the custom launchers, open a new terminal so command lookup uses Homebrew.
+Old versioned downloads under `~/.local/share/dotfiles/tools` are retained but no longer used by the macOS configuration.
+
 ## Update agent tools at launch
+
+This workflow applies to Linux and native Windows.
 
 Launching `codex`, `pi`, `opencode`, or `herdr` checks the official release source for a newer stable version and installs it before starting the application.
 The first launch requires an internet connection.
 A failed check or installation falls back to the installed version, and concurrent launches coordinate through a per-tool update lock.
-Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on macOS and Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
+Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
 Tool versions are outside Nix generations and are not changed by Nix rollback.
 
 Skip updates for one launch when offline or diagnosing an issue:

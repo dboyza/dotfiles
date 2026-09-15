@@ -34,12 +34,12 @@
 - Never pipe WSL clipboard text directly to `clip.exe`.
   Use the tracked UTF-8-safe `scripts/win-copy` and `scripts/win-paste` helpers for Windows clipboard interoperability.
 - Treat macOS as a supported path, but state clearly when it received static validation only because no macOS runner was available.
-- Keep portable packages and managed home files in `nix/home.nix`, and keep macOS system configuration in `nix/darwin.nix`.
+- Keep Linux packages and shared managed home files in `nix/home.nix`, macOS user packages in `nix/homebrew.nix`, and macOS system configuration in `nix/darwin.nix`.
 - Keep the macOS app inventory in `nix/macos-apps.json` and install missing apps through `scripts/install-macos-apps.py` during nix-darwin activation.
   Skip existing bundles regardless of version or installation source, including user Applications folders and renamed apps found by bundle ID.
   Do not enable Homebrew activation upgrades or put these apps in `environment.systemPackages`, which would replace them on activation.
   Verify direct downloads with pinned checksums and preserve legacy Nix Apps bundles before nix-darwin cleans that directory.
-  Install missing App Store apps by ID with the Nix-provided `mas get`; keep existing-app detection ahead of all App Store commands and leave account authentication interactive.
+  Install missing App Store apps by ID with the Homebrew-provided `mas get`; keep existing-app detection ahead of all App Store commands and leave account authentication interactive.
 - Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
@@ -49,8 +49,8 @@
   Never track Pi authentication, trust decisions, package state, or session transcripts.
 - Pi currently uses factory settings: do not redeploy archived extensions, themes, or model overrides without an explicit request.
   See `pi/DEFAULTS.md`; keep credentials, sessions, and shared instructions outside resets.
-- Keep Codex, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
-  Nix manages the launchers, Node.js, ripgrep, and Linux bubblewrap; package updates happen at launch.
+- On Linux and native Windows, keep Codex, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
+  On Linux, Nix manages the launchers, Node.js, ripgrep, and bubblewrap; package updates happen at launch.
   Preserve offline fallback, serialized updates, and the `DOTFILES_TOOL_UPDATE=0` bypass.
   Verify Herdr downloads against its official release manifest and preserve the bundled ConPTY runtime on Windows.
   Resolve npm executable entries from installed package metadata; OpenCode can publish a native binary rather than a JavaScript launcher.
@@ -90,11 +90,16 @@
 - Keep `./bootstrap.sh --check` non-mutating and require an existing Nix installation instead of installing prerequisites.
 - Run platform prerequisite preflight checks before updating inputs, installing packages, backing up files, or activating configuration.
 - Keep WezTerm executable discovery centralized in `scripts/lib/wezterm.sh` for bootstrap and compatibility tests.
-- Install Hack Nerd Font through nix-darwin on macOS and through Home Manager on Linux so each platform has one font owner.
+- Install Hack Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
+- On macOS, Homebrew owns user command-line packages and coding agents; do not deploy the custom agent launchers there.
+  Keep Homebrew activation install-only with no cleanup, resolve paths from `homebrew.prefix`, and use Brew's `mas` for App Store installation.
+  Declare HashiCorp's Terraform tap as trusted for Homebrew 6 activation; do not disable tap-trust checks globally.
+  Keep GNU make's `libexec/gnubin` and Brew curl/unzip paths in the macOS session PATH.
+  Use Apple's `/bin/zsh` as the login shell so it is available before Homebrew's first activation.
 - Keep the unused .NET test input removed from the pre-commit derivation so macOS checks do not build .NET, Swift, and LLVM.
 - Keep Neovim's Neo-tree sidebar, Bufferline tab row, and Lualine status line visually coordinated with the transparent Rosé Pine terminal theme.
 - Deploy repository-authored home files through `mkOutOfStoreSymlink` using the absolute checkout path from `DOTFILES_REPO`.
-  Keep packaged Zsh and tmux plugins in the Nix store.
+  Keep tmux plugins and Linux Zsh plugins in the Nix store; macOS Zsh plugin links target Homebrew's stable share paths.
   Configuration edits require only application reloads; moving the checkout or changing Nix declarations requires activation.
 - Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.
 - Use a UTF-8 WezTerm loader on Windows that watches and loads the checkout path without requiring Windows symlink privileges.
@@ -109,3 +114,4 @@
 - Let Nix install and pin tmux plugins, and initialize the restoration plugins directly without TPM or tmux-yank.
   Initialize assistant restoration before continuum so restoration hooks are ready when automatic restore runs.
 - Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.
+- Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.

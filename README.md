@@ -76,9 +76,14 @@ Keep this checkout at the same path.
 Run bootstrap after moving it, adding managed paths, or changing Nix packages or system settings.
 Pi can write settings and Lazy can update `nvim/lazy-lock.json` directly in the checkout, so review those changes before committing.
 
-Codex, Pi, opencode, and Herdr check for the latest stable release whenever you launch them.
+On macOS, Homebrew installs user-facing command-line tools, including Codex, Claude Code, Pi, opencode, and Herdr.
+The inventory is in `nix/homebrew.nix`; bootstrap installs missing packages without upgrading existing ones.
+Use `brew update` followed by `brew upgrade codex claude-code pi-coding-agent opencode herdr` to update the coding tools.
+Nix continues to manage configuration, activation dependencies, and tmux plugins.
+
+On Linux and native Windows, Codex, Pi, opencode, and Herdr check for the latest stable release whenever you launch them.
 The first launch installs the tool; later launches update it before starting your session.
-Updates use writable, versioned installations under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools`, separate from the Nix store.
+Updates use writable, versioned installations under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on Linux or `%LOCALAPPDATA%/dotfiles/tools` on Windows, separate from the Nix store.
 If a check or update fails, the launcher starts the installed version, and simultaneous launches share an update lock.
 These four tools no longer need bootstrap for updates.
 Use `DOTFILES_TOOL_UPDATE=0 codex` to skip the update check for a launch; the same variable works with `pi`, `opencode`, and `herdr`.
@@ -104,8 +109,8 @@ cd "$HOME/dotfiles"
 ./bootstrap.sh
 ```
 
-The normal bootstrap is intentionally update-first across Nix inputs, Windows Winget packages, and macOS Homebrew packages.
-It may change `flake.lock` and may upgrade existing Homebrew packages on macOS.
+The normal bootstrap updates Nix inputs and Windows Winget packages; macOS Homebrew installation is install-only.
+It may change `flake.lock`; update existing macOS packages explicitly through Homebrew.
 
 Run the complete local test suite with:
 
@@ -122,7 +127,8 @@ Run the complete local test suite with:
 | `flake.nix` | Defines supported systems, packages, and platform profiles. |
 | `flake.lock` | Pins Nix, Home Manager, nix-darwin, and tmux plugin revisions. |
 | `nix/home.nix` | Defines portable packages and managed home files. |
-| `nix/darwin.nix` | Defines macOS settings, fonts, and Homebrew applications. |
+| `nix/darwin.nix` | Defines macOS settings and Homebrew activation. |
+| `nix/homebrew.nix` | Declares macOS command-line tools, coding agents, and the font cask. |
 | `scripts/dotfiles-tool.mjs` | Checks and installs agent-tool releases at launch. |
 | `agents/` | Stores shared coding-agent instructions and skills. |
 | `pi/` | Stores Pi settings, model overrides, extensions, and themes. |
@@ -131,7 +137,7 @@ Run the complete local test suite with:
 | `tests/` | Contains bootstrap, compatibility, platform evaluation, and integration checks. |
 
 Add portable packages to `nix/home.nix`.
-Add macOS-only settings or applications to `nix/darwin.nix`.
+Add macOS settings to `nix/darwin.nix`, command-line packages to `nix/homebrew.nix`, and desktop applications to `nix/macos-apps.json`.
 Run `./bootstrap.sh --check` before activating configuration changes.
 
 ## Platform Limitations

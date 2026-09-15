@@ -66,6 +66,20 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
    zsh --version
    ```
 
+## Managed command-line tools
+
+Homebrew installs the tools declared in `nix/homebrew.nix`, including Codex CLI, Claude Code, Pi, OpenCode, Herdr, Neovim, tmux, Git, Node.js, Python, and Terraform.
+Terraform uses HashiCorp's official tap.
+Homebrew also owns Zsh plugins and Hack Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
+macOS uses its built-in Zsh as the login shell so first activation does not depend on a Brew executable that has not been installed yet.
+The `zsh` command in your interactive PATH comes from Homebrew.
+The custom coding-tool launchers remain enabled only on Linux and Windows.
+Existing custom tool downloads are retained, but their Home Manager launcher links are removed during migration.
+
+Run `brew update` and then `brew upgrade <package>` for package updates.
+Activation installs missing packages without upgrading existing ones or removing other Homebrew packages.
+The Mac App Store still handles Amphetamine through Homebrew's `mas`; Wallper retains its verified direct-download installer.
+
 ## Managed desktop applications
 
 Activation installs missing copies of Google Chrome, Visual Studio Code, BoringNotch, WezTerm, Wallper, and Amphetamine.
@@ -78,7 +92,7 @@ Apps may still update themselves according to their own preferences.
 
 The inventory lives in `nix/macos-apps.json`, and `scripts/install-macos-apps.py` runs as the primary user during nix-darwin activation.
 Missing Chrome, VS Code, BoringNotch, and WezTerm apps install through Homebrew into `~/Applications`.
-[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) installs through the Mac App Store using the Nix-provided `mas` CLI and app ID `937984704`.
+[Amphetamine](https://apps.apple.com/us/app/amphetamine/id937984704) installs through the Mac App Store using the Homebrew-provided `mas` CLI and app ID `937984704`.
 Sign in to the App Store on a new Mac before activation; macOS may prompt for authentication or administrator permission when installing it.
 An existing Amphetamine installation skips all App Store commands, regardless of version.
 The installer never runs App Store updates.
