@@ -6,6 +6,9 @@ if vim.fn.has("macunix") == 1 then
   local modes = { "n", "x", "s", "o", "i", "c", "t" }
   keymap(modes, "<D-Left>", "<Home>", { desc = "Move to beginning of line" })
   keymap(modes, "<D-Right>", "<End>", { desc = "Move to end of line" })
+  local file_modes = { "n", "x", "s", "o", "i" }
+  keymap(file_modes, "<D-Up>", "<C-Home>", { desc = "Move to beginning of file" })
+  keymap(file_modes, "<D-Down>", "<C-End>", { desc = "Move to end of file" })
 end
 
 keymap({ "n", "x" }, "<leader>y", [["+y]], { desc = "Copy to clipboard" })
