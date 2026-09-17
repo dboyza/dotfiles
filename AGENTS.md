@@ -120,3 +120,5 @@
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
 - Use Tabline.wez for native WezTerm tabs and status updates, with empty left sections to preserve left alignment.
   Keep the clock hidden below 100 columns and avoid `apply_to_config`, which overrides tab width, padding, and bar colors.
+- Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
+  Install the plugin through Herdr on macOS or Linux/WSL; upstream does not support native Windows.

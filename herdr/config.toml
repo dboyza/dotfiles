@@ -21,6 +21,11 @@ split_horizontal = "prefix+minus"
 close_pane = "prefix+x"
 zoom = "prefix+z"
 
+[[keys.command]]
+key = "prefix+v"
+type = "plugin_action"
+command = "persiyanov.reviewr.toggle"
+
 [ui]
 status_indicators = "symbols"
 

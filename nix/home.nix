@@ -113,6 +113,7 @@ in
     ".tmux.conf" = live "tmux/.tmux.conf";
     ".wezterm.lua" = live "wezterm/.wezterm.lua";
     ".config/herdr/config.toml" = live "herdr/config.toml";
+    ".config/herdr/plugins/config/persiyanov.reviewr/config.toml" = live "herdr/reviewr.toml";
     ".config/nvim" = live "nvim";
     ".config/starship.toml" = live "starship/starship.toml";
     ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
