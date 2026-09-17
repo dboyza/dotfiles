@@ -1,5 +1,13 @@
 local keymap = vim.keymap.set
 
+-- Enhanced terminal input can deliver Command directly instead of WezTerm's
+-- translated Home/End events. Give both paths the same native Vim behavior.
+if vim.fn.has("macunix") == 1 then
+  local modes = { "n", "x", "s", "o", "i", "c", "t" }
+  keymap(modes, "<D-Left>", "<Home>", { desc = "Move to beginning of line" })
+  keymap(modes, "<D-Right>", "<End>", { desc = "Move to end of line" })
+end
+
 keymap({ "n", "x" }, "<leader>y", [["+y]], { desc = "Copy to clipboard" })
 keymap("n", "<leader>Y", [["+Y]], { desc = "Copy line to clipboard" })
 keymap({ "n", "x" }, "<leader>p", [["+p]], { desc = "Paste from clipboard" })

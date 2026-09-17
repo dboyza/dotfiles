@@ -24,6 +24,7 @@
   Keep plain Control+V unbound in tmux's root table, including on configuration reload.
 - Use Option+Left/Right for word movement and Command+Left/Right for Home/End on macOS.
   Send Home/End keys rather than Control+A/Control+E so Herdr's prefix remains usable, and bind both CSI and SS3 Home/End sequences in Zsh.
+  Map direct Command+Left/Right events to native Home/End in macOS Neovim too, including insert and command-line modes.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar always visible at the top, including with one tab.
 - Left-align WezTerm's cell-based tabs and tmux's window list.
