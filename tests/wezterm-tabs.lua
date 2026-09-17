@@ -94,6 +94,9 @@ for _, cols in ipairs({ 40, 79, 80, 99, 100, 119, 120, 139, 140, 160 }) do
   local left, right = status(cols)
   assert(left:find(cols < 80 and ' n ' or ' normal ', 1, true))
   assert((left:find('workspace', 1, true) ~= nil) == (cols >= 100))
+  assert(not left:find('', 1, true), 'left strip must start flat and join sections without separate left caps')
+  local _, round_ends = left:gsub('', '')
+  assert(round_ends == (cols >= 100 and 2 or 1), 'mode and workspace must each end with a rounded transition')
   assert(wezterm.column_width(left .. right) < cols - 10, 'status must leave space for tabs')
   if cols >= 100 then
     assert(right:match('^ test.*  $'), 'right status must contain only the rounded hostname')

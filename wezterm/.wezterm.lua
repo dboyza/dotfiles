@@ -602,12 +602,29 @@ local function left_status(window)
   local label = fit_tab_label(mode, cols < 80 and 1 or 10)
   -- An ellipsis is not useful for the one-letter compact mode indicator.
   if cols < 80 then label = mode:sub(1, 1) end
-  local result = capsule(label, '#232136', color)
-  if cols >= 100 then
+  local workspace_background = '#393552'
+  local show_workspace = cols >= 100
+  local result = {
+    { Attribute = { Intensity = 'Bold' } },
+    { Background = { Color = color } },
+    { Foreground = { Color = '#232136' } },
+    { Text = ' ' .. label .. ' ' },
+    -- The mode's round end is drawn over the next section, with no gap.
+    { Background = { Color = show_workspace and workspace_background or bar_background } },
+    { Foreground = { Color = color } },
+    { Text = '' },
+  }
+  if show_workspace then
     local workspace = fit_tab_label(clean_tab_title(window:active_workspace()), 16)
-    result = result .. ' ' .. capsule(wezterm.nerdfonts.md_monitor .. ' ' .. workspace, '#c4a7e7', '#393552')
+    table.insert(result, { Text = ' ' .. wezterm.nerdfonts.md_view_dashboard .. ' ' .. workspace .. ' ' })
+    table.insert(result, { Background = { Color = bar_background } })
+    table.insert(result, { Foreground = { Color = workspace_background } })
+    table.insert(result, { Text = '' })
   end
-  return result .. ' '
+  table.insert(result, { Attribute = { Intensity = 'Normal' } })
+  table.insert(result, { Foreground = { Color = '#908caa' } })
+  table.insert(result, { Text = ' ' })
+  return wezterm.format(result)
 end
 
 local function right_status(window)

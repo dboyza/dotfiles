@@ -7,7 +7,7 @@ Status: implemented, including the visual corrections and hostname-only right st
 - Keep Rosé Pine colors, the existing text contrast, and 0.8 window opacity.
 - Place the native WezTerm bar at the top and keep it visible with one tab.
 - Use a solid `#191724` bar and matching native tab backing colors so rounded caps blend cleanly.
-- Show rounded mode and workspace capsules on the left.
+- Show a connected mode/workspace strip with a flat left edge, rounded transitions, and shared mode-accent text.
 - Use compact numbered tabs with a subtle active surface, muted inactive labels, and a 24-cell maximum.
 - Preserve explicit names; otherwise use directory names for active tabs and process names for inactive tabs.
 - Show only the rounded hostname capsule on the right.
