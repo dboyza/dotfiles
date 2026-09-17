@@ -42,6 +42,11 @@ return {
           },
         },
         pyright = {
+          settings = {
+            python = {
+              analysis = { typeCheckingMode = "off" },
+            },
+          },
           cmd = { "node", mason_path .. "/packages/pyright/node_modules/pyright/langserver.index.js", "--stdio" },
           root_dir = function(bufnr, on_dir)
             local path = vim.api.nvim_buf_get_name(bufnr)
