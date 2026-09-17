@@ -75,8 +75,8 @@ config.hide_mouse_cursor_when_typing = true
 config.switch_to_last_active_tab_when_closing_tab = true
 
 config.enable_tab_bar = true
-config.hide_tab_bar_if_only_one_tab = true
-config.tab_bar_at_bottom = true
+config.hide_tab_bar_if_only_one_tab = false
+config.tab_bar_at_bottom = false
 -- Cell-based tabs keep the rounded labels aligned with the terminal font.
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
@@ -109,13 +109,13 @@ config.colors = {
   selection_fg = '#191724',
   selection_bg = '#eb6f92',
   tab_bar = {
-    background = 'rgba(35, 33, 54, 0.0)',
-    active_tab = { bg_color = '#c4a7e7', fg_color = '#232136', intensity = 'Bold' },
-    inactive_tab = { bg_color = '#2a273f', fg_color = '#908caa' },
-    inactive_tab_hover = { bg_color = '#393552', fg_color = '#e0def4' },
+    background = '#191724',
+    active_tab = { bg_color = '#191724', fg_color = '#e0def4', intensity = 'Normal' },
+    inactive_tab = { bg_color = '#191724', fg_color = '#908caa' },
+    inactive_tab_hover = { bg_color = '#191724', fg_color = '#e0def4' },
     new_tab = { bg_color = 'rgba(35, 33, 54, 0.45)', fg_color = '#908caa' },
     new_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
-    inactive_tab_edge = 'rgba(35, 33, 54, 0.0)',
+    inactive_tab_edge = '#191724',
   },
 }
 
@@ -537,6 +537,13 @@ local function tab_title(tab)
   end
 
   local pane = tab.active_pane
+  if not tab.is_active then
+    local process = clean_tab_title(pane.foreground_process_name):match('([^/\\]+)$')
+    if process and process ~= '' and process:lower() ~= 'wslhost.exe' then
+      return process:gsub('%.exe$', '')
+    end
+    return clean_tab_title(pane.title) ~= '' and clean_tab_title(pane.title) or 'shell'
+  end
   local cwd = pane.current_working_dir
   if type(cwd) == 'string' then
     local ok, url = pcall(wezterm.url.parse, cwd)
@@ -561,15 +568,57 @@ local function fit_tab_label(label, width)
   if wezterm.column_width(label) > width then
     label = wezterm.truncate_right(label, width - 1) .. '…'
   end
-  local padding = width - wezterm.column_width(label)
-  local left = math.floor(padding / 2)
-  return string.rep(' ', left) .. label .. string.rep(' ', padding - left)
+  return label
 end
 
--- Tabline owns tab rendering and status updates; keep its config mutations optional.
+-- Tabline owns rendering. Status components return formatted capsules so both ends
+-- have the same background, rather than joining a square edge to a rounded cap.
 local tabline = wezterm.plugin.require('https://github.com/michaelbrusegard/tabline.wez')
+local bar_background = config.colors.tab_bar.background
+local function capsule(text, foreground, background)
+  return wezterm.format({
+    { Attribute = { Intensity = 'Normal' } },
+    { Background = { Color = bar_background } },
+    { Foreground = { Color = background } },
+    { Text = '' },
+    { Background = { Color = background } },
+    { Foreground = { Color = foreground } },
+    { Text = ' ' .. text .. ' ' },
+    { Background = { Color = bar_background } },
+    { Foreground = { Color = background } },
+    { Text = '' },
+    { Foreground = { Color = '#908caa' } },
+  })
+end
+
+local function status_width(window)
+  return window:active_tab():get_size().cols
+end
+
+local function left_status(window)
+  local cols = status_width(window)
+  local mode = clean_tab_title(window:active_key_table() or 'normal'):gsub('_mode$', '')
+  local color = mode == 'copy' and '#f6c177' or (mode == 'search' and '#eb6f92' or '#c4a7e7')
+  local label = fit_tab_label(mode, cols < 80 and 1 or 10)
+  -- An ellipsis is not useful for the one-letter compact mode indicator.
+  if cols < 80 then label = mode:sub(1, 1) end
+  local result = capsule(label, '#232136', color)
+  if cols >= 100 then
+    local workspace = fit_tab_label(clean_tab_title(window:active_workspace()), 16)
+    result = result .. ' ' .. capsule(wezterm.nerdfonts.md_monitor .. ' ' .. workspace, '#c4a7e7', '#393552')
+  end
+  return result .. ' '
+end
+
+local function right_status(window)
+  local cols = status_width(window)
+  if cols < 100 then return '' end
+  local host = fit_tab_label(clean_tab_title(wezterm.hostname()), cols < 120 and 8 or 20)
+  return host ~= '' and capsule(host, '#232136', '#c4a7e7') .. ' ' or ''
+end
+
 local function tabline_label(tab)
-  return ' ' .. fit_tab_label(tostring(tab.tab_index + 1) .. '  ' .. tab_title(tab), config.tab_max_width - 5) .. ' '
+  return ' ' .. fit_tab_label(tostring(tab.tab_index + 1) .. ' ' .. tab_title(tab), config.tab_max_width - 5) .. ' '
 end
 
 tabline.setup({
@@ -579,12 +628,12 @@ tabline.setup({
     component_separators = { left = '', right = '' },
     section_separators = { left = '', right = '' },
     theme_overrides = {
-      normal_mode = {
-        c = { fg = '#908caa', bg = config.colors.tab_bar.background },
-      },
+      normal_mode = { c = { fg = '#908caa', bg = bar_background } },
+      copy_mode = { c = { fg = '#908caa', bg = bar_background } },
+      search_mode = { c = { fg = '#908caa', bg = bar_background } },
       tab = {
-        active = { fg = '#232136', bg = '#c4a7e7' },
-        inactive = { fg = '#908caa', bg = config.colors.tab_bar.background },
+        active = { fg = '#e0def4', bg = '#393552' },
+        inactive = { fg = '#908caa', bg = bar_background },
         inactive_hover = { fg = '#e0def4', bg = '#393552' },
       },
     },
@@ -592,24 +641,14 @@ tabline.setup({
   sections = {
     tabline_a = {},
     tabline_b = {},
-    tabline_c = {},
-    tab_active = { { Attribute = { Intensity = 'Bold' } }, tabline_label },
+    tabline_c = { left_status },
+    tab_active = { { Attribute = { Intensity = 'Normal' } }, tabline_label },
     tab_inactive = { { Attribute = { Intensity = 'Normal' } }, tabline_label },
-    tabline_x = { { 'datetime', style = '%H:%M', cond = function(window)
-      return window:active_tab():get_size().cols >= 100
-    end } },
+    tabline_x = { right_status },
     tabline_y = {},
     tabline_z = {},
   },
 })
-
--- Clear padding retained by a running window from older centered tab layouts.
-local function left_align_tabs(window)
-  window:set_left_status('')
-end
-
-wezterm.on('window-resized', left_align_tabs)
-wezterm.on('window-config-reloaded', left_align_tabs)
 
 wezterm.on('new-tab-button-click', function(window, pane, button)
   if button == 'Left' then

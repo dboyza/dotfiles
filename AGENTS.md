@@ -25,11 +25,13 @@
 - Use Option+Left/Right for word movement and Command+Left/Right for Home/End on macOS.
   Send Home/End keys rather than Control+A/Control+E so Herdr's prefix remains usable, and bind both CSI and SS3 Home/End sequences in Zsh.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
-- Keep tmux windows in a single bottom status row and hide WezTerm's native tab bar when only one native tab exists so the normal tmux interface does not show duplicate tab systems.
+- Keep tmux windows in a single bottom status row and WezTerm's native tab bar always visible at the top, including with one tab.
 - Left-align WezTerm's cell-based tabs and tmux's window list.
-  Clear retained WezTerm left-status padding when reloading older centered layouts, and keep tab-label truncation aware of display-cell widths.
-- Coordinate WezTerm and tmux tabs with rounded ends, a lavender active tab, muted inactive tabs, and a transparent bar background.
-  Prefer working-directory names while preserving explicit tab or window names; keep native tab widths bounded at 24 cells and reduce tmux's side status in narrow windows.
+  Let Tabline own the left status for mode and workspace; keep tab-label truncation aware of display-cell widths.
+- Coordinate WezTerm and tmux tabs with rounded ends, Rosé Pine colors, muted inactive tabs, and coordinated bar backgrounds.
+  Use lavender status capsules, a subtle active-tab surface, and a solid `#191724` bar in WezTerm; retain lavender active tabs and a transparent bar in tmux.
+  Match native WezTerm tab backing colors to the bar so rounded caps do not reveal mismatched blocks.
+  Prefer working-directory names for active native tabs and process names for inactive native tabs while preserving explicit names; keep native tab widths bounded at 24 cells and reduce side status in narrow windows.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
@@ -118,7 +120,9 @@
 - Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
-- Use Tabline.wez for native WezTerm tabs and status updates, with empty left sections to preserve left alignment.
-  Keep the clock hidden below 100 columns and avoid `apply_to_config`, which overrides tab width, padding, and bar colors.
+- Use Tabline.wez for native WezTerm tabs and status updates, with rounded mode/workspace and hostname capsules.
+  Show only hostname on the right; omit CPU, RAM, time, and battery.
+  Hide workspace and hostname below 100 columns and compact the mode label below 80.
+  Avoid `apply_to_config`, which overrides tab width, padding, and bar colors.
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
   Install the plugin through Herdr on macOS or Linux/WSL; upstream does not support native Windows.
