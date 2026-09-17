@@ -59,19 +59,29 @@ assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
 assert(callbacks['window-resized'] == nil and callbacks['window-config-reloaded'] == nil,
   'reload and resize must not clear Tabline status')
 
+-- Focus and hover must change only styling, never the directory label.
 for _, fixture in ipairs({
-  { process = '/opt/homebrew/bin/nvim', expected = 'nvim' },
-  { process = 'C:\\Program Files\\PowerShell\\pwsh.exe', expected = 'pwsh' },
-  { process = 'C:\\Windows\\wslhost.exe', title = 'zsh', expected = 'zsh' },
-  { title = 'ssh', expected = 'ssh' },
-  { process = '/bin/zsh', explicit = 'custom', expected = 'custom' },
+  { path = '/work/dotfiles', expected = 'dotfiles' },
+  { path = 'C:\\work\\project', expected = 'project' },
+  { path = '/work/a-very-long-directory-name', truncated = true },
+  { path = '/work/日本語の長いプロジェクト名', truncated = true },
+  { path = '/work/🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲', truncated = true },
+  { path = '/work/dotfiles', explicit = 'custom', expected = 'custom' },
 }) do
-  local result = format_title({ tab_index = 1, is_active = false, tab_title = fixture.explicit,
-    active_pane = { foreground_process_name = fixture.process, title = fixture.title,
-      current_working_dir = { file_path = '/work/should-not-appear' } },
-  }, {}, {}, config, false, config.tab_max_width)
-  assert(label_text(result):find(fixture.expected, 1, true), 'inactive tab must display ' .. fixture.expected)
-  assert(not label_text(result):find('should-not-appear', 1, true))
+  local previous
+  for _, state in ipairs({ { active = true }, { active = false }, { active = false, hover = true } }) do
+    local result = format_title({ tab_index = 1, is_active = state.active, tab_title = fixture.explicit,
+      active_pane = { foreground_process_name = '/bin/zsh', title = 'zsh',
+        current_working_dir = { file_path = fixture.path } },
+    }, {}, {}, config, state.hover, config.tab_max_width)
+    local label = label_text(result)
+    if previous then assert(label == previous, 'focus must not change a tab name') end
+    assert(wezterm.column_width(label) <= 20, 'tab including rounded ends must stay compact')
+    if fixture.expected then assert(label:find(fixture.expected, 1, true)) end
+    if fixture.truncated then assert(label:find('…', 1, true), 'long names must end with an ellipsis') end
+    previous = label
+    wezterm.format(result)
+  end
 end
 
 local original_hostname = wezterm.hostname

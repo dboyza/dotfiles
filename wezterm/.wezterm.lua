@@ -81,7 +81,7 @@ config.tab_bar_at_bottom = false
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
-config.tab_max_width = 24
+config.tab_max_width = 20
 config.status_update_interval = 250
 config.window_decorations = 'RESIZE'
 config.window_frame = {
@@ -537,13 +537,6 @@ local function tab_title(tab)
   end
 
   local pane = tab.active_pane
-  if not tab.is_active then
-    local process = clean_tab_title(pane.foreground_process_name):match('([^/\\]+)$')
-    if process and process ~= '' and process:lower() ~= 'wslhost.exe' then
-      return process:gsub('%.exe$', '')
-    end
-    return clean_tab_title(pane.title) ~= '' and clean_tab_title(pane.title) or 'shell'
-  end
   local cwd = pane.current_working_dir
   if type(cwd) == 'string' then
     local ok, url = pcall(wezterm.url.parse, cwd)

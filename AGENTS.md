@@ -31,7 +31,7 @@
 - Coordinate WezTerm and tmux tabs with rounded ends, Rosé Pine colors, muted inactive tabs, and coordinated bar backgrounds.
   Use lavender status capsules, a subtle active-tab surface, and a solid `#191724` bar in WezTerm; retain lavender active tabs and a transparent bar in tmux.
   Match native WezTerm tab backing colors to the bar so rounded caps do not reveal mismatched blocks.
-  Prefer working-directory names for active native tabs and process names for inactive native tabs while preserving explicit names; keep native tab widths bounded at 24 cells and reduce side status in narrow windows.
+  Use the same working-directory name for active and inactive native tabs while preserving explicit names; truncate with a display-cell-aware ellipsis and keep native tab widths bounded at 20 cells and reduce side status in narrow windows.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
