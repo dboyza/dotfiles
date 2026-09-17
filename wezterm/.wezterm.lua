@@ -566,39 +566,48 @@ local function fit_tab_label(label, width)
   return string.rep(' ', left) .. label .. string.rep(' ', padding - left)
 end
 
-wezterm.on('format-tab-title', function(tab, _tabs, _panes, _config, hover, max_width)
-  local width = math.max(0, math.min(config.tab_max_width, max_width))
-  if width == 0 then
-    return { { Text = '' } }
-  end
-  local colors = config.colors.tab_bar
-  local style = tab.is_active and colors.active_tab or (hover and colors.inactive_tab_hover or colors.inactive_tab)
-  local label = tostring(tab.tab_index + 1) .. '  ' .. tab_title(tab)
-  -- Reserve the two rounded ends and one trailing gap; omit them in tiny tabs.
-  local rounded = width >= 7
-  local body = rounded and (' ' .. fit_tab_label(label, width - 5) .. ' ') or fit_tab_label(label, width)
-  return {
-    { Attribute = { Intensity = 'Normal' } },
-    { Background = { Color = colors.background } },
-    { Foreground = { Color = style.bg_color } },
-    { Text = rounded and '' or '' },
-    { Background = { Color = style.bg_color } },
-    { Foreground = { Color = style.fg_color } },
-    { Attribute = { Intensity = style.intensity or 'Normal' } },
-    { Text = body },
-    { Attribute = { Intensity = 'Normal' } },
-    { Background = { Color = colors.background } },
-    { Foreground = { Color = style.bg_color } },
-    { Text = rounded and ' ' or '' },
-  }
-end)
+-- Tabline owns tab rendering and status updates; keep its config mutations optional.
+local tabline = wezterm.plugin.require('https://github.com/michaelbrusegard/tabline.wez')
+local function tabline_label(tab)
+  return ' ' .. fit_tab_label(tostring(tab.tab_index + 1) .. '  ' .. tab_title(tab), config.tab_max_width - 5) .. ' '
+end
+
+tabline.setup({
+  options = {
+    theme = config.color_scheme,
+    tab_separators = { left = ' ', right = '' },
+    component_separators = { left = '', right = '' },
+    section_separators = { left = '', right = '' },
+    theme_overrides = {
+      normal_mode = {
+        c = { fg = '#908caa', bg = config.colors.tab_bar.background },
+      },
+      tab = {
+        active = { fg = '#232136', bg = '#c4a7e7' },
+        inactive = { fg = '#908caa', bg = config.colors.tab_bar.background },
+        inactive_hover = { fg = '#e0def4', bg = '#393552' },
+      },
+    },
+  },
+  sections = {
+    tabline_a = {},
+    tabline_b = {},
+    tabline_c = {},
+    tab_active = { { Attribute = { Intensity = 'Bold' } }, tabline_label },
+    tab_inactive = { { Attribute = { Intensity = 'Normal' } }, tabline_label },
+    tabline_x = { { 'datetime', style = '%H:%M', cond = function(window)
+      return window:active_tab():get_size().cols >= 100
+    end } },
+    tabline_y = {},
+    tabline_z = {},
+  },
+})
 
 -- Clear padding retained by a running window from older centered tab layouts.
 local function left_align_tabs(window)
   window:set_left_status('')
 end
 
-wezterm.on('update-status', left_align_tabs)
 wezterm.on('window-resized', left_align_tabs)
 wezterm.on('window-config-reloaded', left_align_tabs)
 

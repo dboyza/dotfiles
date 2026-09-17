@@ -118,3 +118,5 @@
 - Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
+- Use Tabline.wez for native WezTerm tabs and status updates, with empty left sections to preserve left alignment.
+  Keep the clock hidden below 100 columns and avoid `apply_to_config`, which overrides tab width, padding, and bar colors.

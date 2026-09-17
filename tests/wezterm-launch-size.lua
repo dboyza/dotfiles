@@ -42,6 +42,7 @@ local function verify_launch_geometry(
     action_callback = function(callback)
       return callback
     end,
+    plugin = { require = function() return { setup = function() end } end },
     config_builder = function()
       return {}
     end,
