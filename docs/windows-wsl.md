@@ -103,6 +103,7 @@ winget upgrade --exact --id wez.wezterm
 
 The loader continues to read the checkout after a WezTerm upgrade.
 On WSL, the selected distribution must remain available for Windows WezTerm to read that configuration.
+See the [shared keyboard guide](keybindings.md) for portable shortcuts, multiplexer prefixes, and native Windows limitations.
 If automatic reload misses an edit across the WSL filesystem, reload WezTerm with `Ctrl+Shift+R`.
 See [operations](operations.md) for non-mutating checks, testing, and recovery.
 

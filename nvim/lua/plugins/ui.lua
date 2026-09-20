@@ -6,19 +6,33 @@ return {
     keys = {
       {
         "<C-/>",
-        function() Snacks.terminal.toggle(nil, { cwd = require("config.project").root() }) end,
+        function()
+          Snacks.terminal.toggle(nil, { cwd = require("config.project").root() })
+        end,
         mode = { "n", "t" },
         desc = "Toggle project terminal",
       },
       {
+        "<C-_>",
+        function()
+          Snacks.terminal.toggle(nil, { cwd = require("config.project").root() })
+        end,
+        mode = { "n", "t" },
+        desc = "Toggle project terminal (legacy encoding)",
+      },
+      {
         "<leader>ft",
-        function() Snacks.terminal.toggle(nil, { cwd = require("config.project").root() }) end,
+        function()
+          Snacks.terminal.toggle(nil, { cwd = require("config.project").root() })
+        end,
         desc = "Toggle project terminal",
       },
       {
         "<leader>cR",
         function()
-          if vim.bo.modified then vim.cmd.write() end
+          if vim.bo.modified then
+            vim.cmd.write()
+          end
           Snacks.rename.rename_file()
         end,
         desc = "Rename file and update imports",

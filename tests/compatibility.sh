@@ -158,6 +158,10 @@ if command -v nvim >/dev/null 2>&1; then
   nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-project.lua"
 fi
 
+if command -v herdr >/dev/null 2>&1; then
+  HERDR_CONFIG_PATH="$repo_dir/herdr/config.toml" herdr config check
+fi
+
 if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoLogo -NoProfile -NonInteractive -File "$repo_dir/tests/windows.ps1"
 fi

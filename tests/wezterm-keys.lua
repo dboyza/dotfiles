@@ -41,17 +41,61 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
   for _, direction in ipairs({ 'LeftArrow', 'RightArrow', 'UpArrow', 'DownArrow' }) do
     sent_key(direction, 'CTRL', direction, 'CTRL')
   end
+  assert(config.leader.key == 'Space' and config.leader.mods == 'CTRL|SHIFT')
+  sent_key('p', 'CTRL|SHIFT', 'p', 'CTRL|SHIFT')
+  sent_key('f', 'CTRL|SHIFT', 'f', 'CTRL|SHIFT')
+  sent_key('UpArrow', 'CTRL|SHIFT', 'UpArrow', 'CTRL|SHIFT')
+  sent_key('DownArrow', 'CTRL|SHIFT', 'DownArrow', 'CTRL|SHIFT')
+  sent_key('-', 'CTRL', '-', 'CTRL')
+  sent_key('_', 'CTRL', '_', 'CTRL')
   assert(binding('v', 'CTRL') == nil, 'Control+V must reach the application')
   assert(binding('v', 'CTRL|SHIFT').name == 'PasteFrom', 'portable text paste must remain available')
+
+  for key, direction in pairs({ h = 'Left', j = 'Down', k = 'Up', l = 'Right' }) do
+    assert(binding(key, 'LEADER').value == direction)
+    local resize = binding(key, 'LEADER|SHIFT')
+    assert(resize.name == 'AdjustPaneSize' and resize.value[1] == direction)
+  end
+  local seen = {}
+  for _, entry in ipairs(config.keys) do
+    local chord = entry.mods .. '+' .. entry.key
+    assert(not seen[chord], 'duplicate WezTerm binding: ' .. chord)
+    seen[chord] = true
+  end
+  for _, context in ipairs({
+    { alt = false, title = '', process = 'zsh', sends = false },
+    { alt = true, title = '', process = 'nvim', sends = true },
+    { alt = false, title = 'tmux:session', process = 'zsh', sends = true },
+    { alt = false, title = '', process = 'tmux', sends = true },
+  }) do
+    local performed
+    local pane = {
+      is_alt_screen_active = function() return context.alt end,
+      get_title = function() return context.title end,
+      get_foreground_process_name = function() return context.process end,
+    }
+    local window = { perform_action = function(_, action) performed = action end }
+    for _, key in ipairs({ 'PageUp', 'PageDown' }) do
+      for _, mods in ipairs({ 'NONE', 'CTRL' }) do
+        binding(key, mods)(window, pane)
+        if context.sends then
+          assert(performed.name == 'SendKey' and performed.value.key == key and performed.value.mods == mods)
+        else
+          assert(performed.name == (mods == 'CTRL' and 'ScrollByLine' or 'ScrollByPage'))
+        end
+      end
+    end
+  end
 
   if triple:find('darwin') then
     sent_key('LeftArrow', 'CMD', 'Home', 'NONE')
     sent_key('RightArrow', 'CMD', 'End', 'NONE')
     sent_key('h', 'CMD', 'Home', 'NONE')
     sent_key('l', 'CMD', 'End', 'NONE')
-    for key, sequence in pairs({ LeftArrow = '\x1bb', RightArrow = '\x1bf' }) do
-      assert(binding(key, 'ALT').name == 'SendString' and binding(key, 'ALT').value == sequence)
-    end
+    sent_key('LeftArrow', 'ALT', 'LeftArrow', 'CTRL')
+    sent_key('RightArrow', 'ALT', 'RightArrow', 'CTRL')
+    sent_key('UpArrow', 'CMD', 'Home', 'CTRL')
+    sent_key('DownArrow', 'CMD', 'End', 'CTRL')
     local performed
     local pane = {}
     local window = { perform_action = function(_, action, target)

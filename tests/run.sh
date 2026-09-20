@@ -10,6 +10,7 @@ node --test "$repo_dir/tests/tool-updates.test.mjs" "$repo_dir/tests/pi-statusli
 "$repo_dir/tests/wsl-clipboard.sh"
 "$repo_dir/tests/clipboard.sh"
 "$repo_dir/tests/tmux-plugins.sh"
+python3 -B "$repo_dir/tests/keyboard-routing.py"
 "$repo_dir/tests/compatibility.sh"
 "$repo_dir/tests/nix-evaluation.sh"
 "$repo_dir/tests/live-config.sh"

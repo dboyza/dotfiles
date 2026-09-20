@@ -67,6 +67,7 @@ Open a new Zsh session, restart Neovim or Pi, or run `tmux source-file ~/.tmux.c
 WezTerm normally reloads configuration automatically.
 Windows WezTerm uses a small loader pointing at the checkout instead of a copied config.
 
+See the [shared keyboard guide](docs/keybindings.md) for cross-platform navigation, clipboard, pane controls, and prefix shortcuts.
 Neovim options and mappings live in `nvim/lua/config`; plugin configuration lives in `nvim/lua/plugins`.
 See the [Neovim workflow guide](docs/neovim.md) for formatting, Problems, search-and-replace, testing, debugging, terminal, and file-renaming shortcuts.
 Zsh, tmux, and Neovim share the `dotfiles-clipboard` command for copy and paste.

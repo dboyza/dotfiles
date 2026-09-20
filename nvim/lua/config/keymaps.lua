@@ -28,13 +28,20 @@ local function move_word_forward_in_line()
   end
 end
 
-local function move_window_or_tmux(direction)
+local function move_window_or_pane(direction)
   local tmux_direction = ({ h = "L", j = "D", k = "U", l = "R" })[direction]
   local current_window = vim.api.nvim_get_current_win()
 
   vim.cmd.wincmd(direction)
 
   if vim.api.nvim_get_current_win() ~= current_window then
+    return
+  end
+
+  -- Herdr can be nested inside tmux. Focus the nearest enclosing pane first.
+  if vim.env.HERDR_ENV == "1" and vim.env.HERDR_PANE_ID and vim.fn.executable("herdr") == 1 then
+    local herdr_direction = ({ h = "left", j = "down", k = "up", l = "right" })[direction]
+    vim.fn.system({ "herdr", "pane", "focus", "--direction", herdr_direction, "--pane", vim.env.HERDR_PANE_ID })
     return
   end
 
@@ -54,35 +61,34 @@ keymap("n", "<leader>x", "<cmd>wq<cr>", { desc = "Save and quit" })
 keymap("n", "<leader>[", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
 keymap("n", "<leader>]", "<cmd>bnext<cr>", { desc = "Next buffer" })
 keymap("n", "<leader>bd", "<cmd>bdelete<cr>", { desc = "Delete buffer" })
+keymap("n", "<leader>\\", "<cmd>vsplit<cr>", { desc = "Vertical split" })
 keymap("n", "<leader>|", "<cmd>vsplit<cr>", { desc = "Vertical split" })
 keymap("n", "<leader>-", "<cmd>split<cr>", { desc = "Horizontal split" })
 keymap("n", "<A-h>", function()
-  move_window_or_tmux("h")
-end, { desc = "Move to left window or tmux pane" })
+  move_window_or_pane("h")
+end, { desc = "Move to left window or enclosing pane" })
 keymap("n", "<A-j>", function()
-  move_window_or_tmux("j")
-end, { desc = "Move to lower window or tmux pane" })
+  move_window_or_pane("j")
+end, { desc = "Move to lower window or enclosing pane" })
 keymap("n", "<A-k>", function()
-  move_window_or_tmux("k")
-end, { desc = "Move to upper window or tmux pane" })
+  move_window_or_pane("k")
+end, { desc = "Move to upper window or enclosing pane" })
 keymap("n", "<A-l>", function()
-  move_window_or_tmux("l")
-end, { desc = "Move to right window or tmux pane" })
+  move_window_or_pane("l")
+end, { desc = "Move to right window or enclosing pane" })
 
 keymap({ "n", "x" }, "<C-h>", move_word_back_in_line, { desc = "Move back one word on current line" })
 keymap({ "n", "x" }, "<C-l>", move_word_forward_in_line, { desc = "Move forward one word on current line" })
-keymap({ "n", "x" }, "<C-j>", "5j", { desc = "Move down 5 lines" })
-keymap({ "n", "x" }, "<C-k>", "5k", { desc = "Move up 5 lines" })
+keymap({ "n", "x" }, "<C-j>", "5<C-e>", { desc = "Scroll down 5 lines" })
+keymap({ "n", "x" }, "<C-k>", "5<C-y>", { desc = "Scroll up 5 lines" })
 keymap("x", "J", ":move '>+1<cr>gv=gv", { desc = "Move selection down" })
 keymap("x", "K", ":move '<-2<cr>gv=gv", { desc = "Move selection up" })
 
 keymap("n", "<leader>w", "<cmd>write<cr>", { desc = "Save file" })
 keymap("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit window" })
 keymap("n", "<Esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })
-keymap("n", "<A-Up>", "<cmd>resize +2<cr>", { desc = "Make window taller" })
-keymap("n", "<A-Down>", "<cmd>resize -2<cr>", { desc = "Make window shorter" })
-keymap("n", "<A-Left>", "<cmd>vertical resize -4<cr>", { desc = "Make window narrower" })
-keymap("n", "<A-Right>", "<cmd>vertical resize +4<cr>", { desc = "Make window wider" })
+keymap({ "n", "x", "i" }, "<A-Left>", move_word_back_in_line, { desc = "Move back one word on current line" })
+keymap({ "n", "x", "i" }, "<A-Right>", move_word_forward_in_line, { desc = "Move forward one word on current line" })
 keymap("t", "<Esc><Esc>", [[<C-\><C-n>]], { desc = "Exit terminal mode" })
 keymap("n", "[d", function()
   vim.diagnostic.jump({ count = -1, float = true })

@@ -318,8 +318,14 @@ local function scroll_or_send_key(key, mods, scroll_action)
   end)
 end
 
-config.leader = { key = 'Space', mods = 'CTRL' }
+-- Keep Control+Space available for completion and application shortcuts.
+config.leader = { key = 'Space', mods = 'CTRL|SHIFT', timeout_milliseconds = 1500 }
+if is_macos then
+  config.send_composed_key_when_left_alt_is_pressed = false
+  config.send_composed_key_when_right_alt_is_pressed = true
+end
 config.keys = {
+  { key = 'phys:Space', mods = 'CTRL|SHIFT', action = wezterm.action.DisableDefaultAssignment },
   {
     key = 'r',
     mods = 'CTRL|SHIFT',
@@ -328,7 +334,7 @@ config.keys = {
   {
     key = 'f',
     mods = 'CTRL|SHIFT',
-    action = wezterm.action.Search({ CaseSensitiveString = '' }),
+    action = wezterm.action.SendKey({ key = 'f', mods = 'CTRL|SHIFT' }),
   },
   {
     key = 'k',
@@ -353,7 +359,7 @@ config.keys = {
   {
     key = 'p',
     mods = 'CTRL|SHIFT',
-    action = powershell_tab_action(),
+    action = wezterm.action.SendKey({ key = 'p', mods = 'CTRL|SHIFT' }),
   },
   {
     key = 'w',
@@ -428,7 +434,7 @@ config.keys = {
   {
     key = 'p',
     mods = 'LEADER',
-    action = powershell_tab_action(),
+    action = wezterm.action.ActivateTabRelative(-1),
   },
   {
     key = 'PageUp',
@@ -452,8 +458,48 @@ config.keys = {
   },
 }
 
+-- Shared pane vocabulary: h/j/k/l focus, H/J/K/L resize, backslash/minus split.
+for key, direction in pairs({ h = 'Left', j = 'Down', k = 'Up', l = 'Right' }) do
+  table.insert(config.keys, { key = key, mods = 'LEADER', action = wezterm.action.ActivatePaneDirection(direction) })
+  table.insert(config.keys, { key = key, mods = 'LEADER|SHIFT', action = wezterm.action.AdjustPaneSize({ direction, 5 }) })
+end
+local leader_bindings = {
+  { key = 'n', action = wezterm.action.ActivateTabRelative(1) },
+  { key = 'p', mods = 'LEADER|SHIFT', action = powershell_tab_action() },
+  { key = '\\', action = wezterm.action.SplitHorizontal({ domain = 'CurrentPaneDomain' }) },
+  { key = '-', action = wezterm.action.SplitVertical({ domain = 'CurrentPaneDomain' }) },
+  { key = 'x', action = wezterm.action.CloseCurrentPane({ confirm = true }) },
+  { key = 'z', action = wezterm.action.TogglePaneZoomState },
+  { key = 'y', action = wezterm.action.ActivateCopyMode },
+  { key = 'f', action = wezterm.action.Search({ CaseSensitiveString = '' }) },
+  { key = 'q', action = wezterm.action.QuickSelect },
+  { key = 'Space', action = wezterm.action.ActivateCommandPalette },
+  { key = 'Enter', action = wezterm.action.ToggleFullScreen },
+  { key = '=', action = wezterm.action.IncreaseFontSize },
+  { key = '_', action = wezterm.action.DecreaseFontSize },
+  { key = '0', action = wezterm.action.ResetFontSize },
+}
+for _, binding in ipairs(leader_bindings) do
+  binding.mods = binding.mods or 'LEADER'
+  table.insert(config.keys, binding)
+end
+-- Avoid host defaults stealing Pi navigation/undo or Neovim's terminal toggle.
+for _, key in ipairs({ 'UpArrow', 'DownArrow' }) do
+  table.insert(config.keys, {
+    key = key,
+    mods = 'CTRL|SHIFT',
+    action = wezterm.action.SendKey({ key = key, mods = 'CTRL|SHIFT' }),
+  })
+end
+for _, key in ipairs({ '-', '_' }) do
+  table.insert(config.keys, { key = key, mods = 'CTRL', action = wezterm.action.SendKey({ key = key, mods = 'CTRL' }) })
+  table.insert(config.keys, { key = key, mods = 'CTRL|SHIFT', action = wezterm.action.SendKey({ key = '_', mods = 'CTRL' }) })
+end
+
 if is_macos then
   local mac_key_bindings = {
+    { key = 'UpArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'Home', mods = 'CTRL' }) },
+    { key = 'DownArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'End', mods = 'CTRL' }) },
     {
       key = 'h',
       mods = 'CMD',
@@ -477,12 +523,12 @@ if is_macos then
     {
       key = 'LeftArrow',
       mods = 'ALT',
-      action = wezterm.action.SendString('\x1bb'),
+      action = wezterm.action.SendKey({ key = 'LeftArrow', mods = 'CTRL' }),
     },
     {
       key = 'RightArrow',
       mods = 'ALT',
-      action = wezterm.action.SendString('\x1bf'),
+      action = wezterm.action.SendKey({ key = 'RightArrow', mods = 'CTRL' }),
     },
     {
       key = 'LeftArrow',

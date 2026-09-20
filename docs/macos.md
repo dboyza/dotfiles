@@ -175,13 +175,15 @@ MacBook keyboard aliases include:
 - `Option+Left` and `Option+Right` to move by a word.
 - `Control+Left` and `Control+Right` also move by a word in Codex and Zsh once the macOS shortcuts are disabled.
 - `Command+Left` and `Command+Right` for Home and End, moving to the beginning or end of the current line.
+- `Command+H` and `Command+L` also send Home and End; `Command+Up` and `Command+Down` send Control+Home and Control+End for Neovim file navigation.
 - `Fn+Left` and `Fn+Right` provide the same Home and End keys on a MacBook keyboard.
 - `Command+C` to copy selected terminal text.
 - `Command+V` to paste text or attach a clipboard screenshot in Codex, including inside tmux.
   Image-only clipboards send `Control+V` to the application; text and copied file paths use normal terminal paste.
   `Control+Shift+V` remains available for text-only paste.
 
-The tmux prefix is `Control+G`, while the Herdr prefix is `Control+A`.
+The WezTerm prefix is `Control+Shift+Space`, the tmux prefix is `Control+G`, and the Herdr prefix is `Control+A`.
+See the [shared keyboard guide](keybindings.md) for pane controls and application shortcuts.
 Plain `Control+V` passes through tmux so applications can handle their own image paste.
 
 WezTerm reloads checkout edits automatically; `Control+Shift+R` also reloads its configuration.

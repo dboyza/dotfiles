@@ -17,12 +17,22 @@
 - Keep the WezTerm window background opacity at 0.8 on macOS and native Windows for transparency while retaining readable text.
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
 - Keep the WezTerm steady bar cursor at 200% of the font underline thickness across platforms.
+- Treat keybindings as one end-to-end contract across host OS shortcuts, WezTerm, tmux, Herdr, shells, Neovim, and configured agent applications.
+  Every keybinding change must preserve the most consistent, sensible, ergonomic behavior possible across native Windows, WSL, and MacBook keyboards.
+  Audit enclosing-layer interception, inherited defaults, editor modes, legacy terminal encodings, and laptop accessibility before assigning a chord; keep portable shortcuts plus appropriate Command/Option aliases.
+  Do not make essential actions depend only on a function-key row, Home/End/Insert keys, or OS-reserved shortcuts.
+  Update `docs/keybindings.md` and affected routing tests alongside changes, documenting intentional differences and migrations.
+- Keep WezTerm's prefix on `Control+Shift+Space` so `Control+Space` reaches completion, and preserve the distinct tmux and Herdr prefixes below.
+  Across multiplexers, use prefix `h/j/k/l` for focus, `H/J/K/L` for resizing, and backslash/minus for side-by-side/stacked splits.
+  Route fullscreen application Page keys through tmux; reserve shell Page keys and explicit copy mode for scrollback.
+  Let nested Neovim handle Alt pane navigation first, then the nearest enclosing Herdr pane before outer tmux.
 - Keep plain `Control+Arrow` events passing through WezTerm on every platform so Neovim receives its navigation bindings.
 - On macOS, disable only the Mission Control and Spaces symbolic hotkeys that consume `Control+Arrow`; merge those entries without replacing unrelated shortcut preferences.
 - Keep MacBook-safe Command aliases for clipboard and Page Up or Page Down behavior while retaining the portable bindings for external keyboards.
 - On macOS, route image-only Command+V paste to the application's Control+V handler and preserve normal terminal paste for text and copied file paths.
   Keep plain Control+V unbound in tmux's root table, including on configuration reload.
 - Use Option+Left/Right for word movement and Command+Left/Right for Home/End on macOS.
+  Translate Option+Left/Right to Control+Left/Right so shell and editor word navigation agree.
   Send Home/End keys rather than Control+A/Control+E so Herdr's prefix remains usable, and bind both CSI and SS3 Home/End sequences in Zsh.
   Map direct Command+Left/Right events to native Home/End in macOS Neovim too, including insert and command-line modes.
   Keep Command+H/L as Home/End aliases in both macOS WezTerm and Neovim, overriding WezTerm's default Command+H hide action.

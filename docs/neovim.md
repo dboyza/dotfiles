@@ -7,6 +7,7 @@ Use `:Lazy` and `:Mason` to inspect installation progress or errors.
 
 `Space` is the leader key.
 Press it and pause to see available shortcuts.
+See the [shared keyboard guide](keybindings.md) for word movement, Command aliases, window controls, and terminal/multiplexer routing.
 
 ## Completion and formatting
 
@@ -102,7 +103,7 @@ nvim-dap reads these when starting a session; use valid JSON without trailing co
 | `Space cR` | Rename the current file and notify language servers |
 
 The terminal opens in a bottom split and reuses the project's shell session.
-`Space ft` is available when a terminal cannot distinguish `Control+/`.
+`Control+_` handles the legacy encoding of `Control+/`; `Space ft` is the portable Normal-mode fallback.
 File renaming saves a modified buffer before prompting for its new path.
 Neo-tree move and rename actions also notify language servers so supported servers can update imports.
 Inspect and save any affected buffers after a rename.
