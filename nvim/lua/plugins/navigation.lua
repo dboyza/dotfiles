@@ -1,5 +1,18 @@
 return {
   {
+    "rhysd/accelerated-jk",
+    init = function()
+      vim.g.accelerated_jk_acceleration_limit = 150
+      vim.g.accelerated_jk_acceleration_table = { 4, 8, 12, 16, 20, 24, 28, 32 }
+    end,
+    keys = {
+      { "j", "<Plug>(accelerated_jk_j)", desc = "Accelerated down", remap = true },
+      { "k", "<Plug>(accelerated_jk_k)", desc = "Accelerated up", remap = true },
+      { "<Down>", "<Plug>(accelerated_jk_j)", desc = "Accelerated down", remap = true },
+      { "<Up>", "<Plug>(accelerated_jk_k)", desc = "Accelerated up", remap = true },
+    },
+  },
+  {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
     dependencies = {
