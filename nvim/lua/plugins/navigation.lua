@@ -1,5 +1,20 @@
 return {
   {
+    "rhysd/accelerated-jk",
+    init = function()
+      vim.g.accelerated_jk_acceleration_limit = 150
+      -- Stay at one line for 40 repeats, then build speed gradually.
+      -- The limit above resets the streak after a pause; it is not the onset delay.
+      vim.g.accelerated_jk_acceleration_table = { 40, 48, 56, 64, 72, 80, 88, 96 }
+    end,
+    keys = {
+      { "j", "<Plug>(accelerated_jk_j)", desc = "Accelerated down", remap = true },
+      { "k", "<Plug>(accelerated_jk_k)", desc = "Accelerated up", remap = true },
+      { "<Down>", "<Plug>(accelerated_jk_j)", desc = "Accelerated down", remap = true },
+      { "<Up>", "<Plug>(accelerated_jk_k)", desc = "Accelerated up", remap = true },
+    },
+  },
+  {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
     dependencies = {
