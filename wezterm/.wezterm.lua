@@ -455,6 +455,16 @@ config.keys = {
 if is_macos then
   local mac_key_bindings = {
     {
+      key = 'h',
+      mods = 'CMD',
+      action = wezterm.action.SendKey({ key = 'Home', mods = 'NONE' }),
+    },
+    {
+      key = 'l',
+      mods = 'CMD',
+      action = wezterm.action.SendKey({ key = 'End', mods = 'NONE' }),
+    },
+    {
       key = 'c',
       mods = 'CMD',
       action = wezterm.action.CopyTo('Clipboard'),

@@ -47,6 +47,8 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
   if triple:find('darwin') then
     sent_key('LeftArrow', 'CMD', 'Home', 'NONE')
     sent_key('RightArrow', 'CMD', 'End', 'NONE')
+    sent_key('h', 'CMD', 'Home', 'NONE')
+    sent_key('l', 'CMD', 'End', 'NONE')
     for key, sequence in pairs({ LeftArrow = '\x1bb', RightArrow = '\x1bf' }) do
       assert(binding(key, 'ALT').name == 'SendString' and binding(key, 'ALT').value == sequence)
     end
@@ -72,6 +74,7 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     binding('v', 'CMD')(window, pane)
     assert(performed.name == 'PasteFrom', 'unavailable clipboard probe must preserve text paste')
   else
+    assert(binding('h', 'CMD') == nil and binding('l', 'CMD') == nil)
     assert(binding('v', 'CMD') == nil, 'macOS paste must not change Windows or WSL')
     assert(binding('LeftArrow', 'ALT') == nil and binding('LeftArrow', 'CMD') == nil)
   end
