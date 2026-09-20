@@ -130,6 +130,5 @@
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
   Install the plugin through Herdr on macOS or Linux/WSL; upstream does not support native Windows.
 
-- Keep accelerated `j`/`k` and Up/Down movement in Normal mode through `rhysd/accelerated-jk`, preserving native counted motions.
 - Use Snacks indent guides with animation disabled and theme-coordinated guide colors in Neovim.
   Keep macOS held-key repeat preferences in `nix/darwin.nix`; these affect all applications, not only Neovim.
