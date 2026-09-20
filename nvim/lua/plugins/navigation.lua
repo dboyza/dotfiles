@@ -61,6 +61,14 @@ return {
       close_if_last_window = true,
       event_handlers = {
         {
+          event = "file_moved",
+          handler = function(data) Snacks.rename.on_rename_file(data.source, data.destination) end,
+        },
+        {
+          event = "file_renamed",
+          handler = function(data) Snacks.rename.on_rename_file(data.source, data.destination) end,
+        },
+        {
           event = "file_opened",
           handler = function()
             require("neo-tree.command").execute({ action = "close" })

@@ -3,7 +3,30 @@ return {
     "folke/snacks.nvim",
     priority = 1000,
     lazy = false,
+    keys = {
+      {
+        "<C-/>",
+        function() Snacks.terminal.toggle(nil, { cwd = require("config.project").root() }) end,
+        mode = { "n", "t" },
+        desc = "Toggle project terminal",
+      },
+      {
+        "<leader>ft",
+        function() Snacks.terminal.toggle(nil, { cwd = require("config.project").root() }) end,
+        desc = "Toggle project terminal",
+      },
+      {
+        "<leader>cR",
+        function()
+          if vim.bo.modified then vim.cmd.write() end
+          Snacks.rename.rename_file()
+        end,
+        desc = "Rename file and update imports",
+      },
+    },
     opts = {
+      input = { enabled = true },
+      terminal = { win = { position = "bottom", height = 0.3, border = "rounded" } },
       indent = {
         enabled = true,
         animate = { enabled = false },
@@ -20,6 +43,14 @@ return {
       require("catppuccin").setup({
         flavour = "mocha",
         transparent_background = true,
+        integrations = {
+          dap = true,
+          dap_ui = true,
+          grug_far = true,
+          lsp_trouble = true,
+          neotest = true,
+          snacks = { enabled = true },
+        },
       })
       vim.cmd.colorscheme("catppuccin")
 

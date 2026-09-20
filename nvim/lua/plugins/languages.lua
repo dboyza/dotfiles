@@ -7,7 +7,7 @@ return {
       keymap = { preset = "super-tab" },
       appearance = { nerd_font_variant = "mono" },
       completion = {
-        documentation = { auto_show = false, auto_show_delay_ms = 500 },
+        documentation = { auto_show = true, auto_show_delay_ms = 300 },
       },
       fuzzy = { implementation = "lua" },
       signature = { enabled = true },
@@ -68,6 +68,9 @@ return {
         },
       }
       local capabilities = require("blink.cmp").get_lsp_capabilities()
+      capabilities = vim.tbl_deep_extend("force", capabilities, {
+        workspace = { fileOperations = { didRename = true, willRename = true } },
+      })
       local ensure_installed = {
         "bash-language-server",
         "lua-language-server",
@@ -78,6 +81,8 @@ return {
         "prettierd",
         "shfmt",
         "uv",
+        "debugpy",
+        "js-debug-adapter",
       }
 
       for server, config in pairs(servers) do
@@ -98,7 +103,13 @@ return {
   },
   {
     "stevearc/conform.nvim",
+    event = "BufWritePre",
     keys = {
+      {
+        "<leader>tf",
+        function() require("config.project").toggle_format() end,
+        desc = "Toggle project format on save",
+      },
       {
         "<leader>cf",
         function()
@@ -109,15 +120,18 @@ return {
       },
     },
     opts = {
+      format_on_save = function(bufnr) return require("config.project").format_on_save(bufnr) end,
       default_format_opts = { lsp_format = "fallback" },
       formatters_by_ft = {
         javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascriptreact = { "prettierd", "prettier", stop_after_first = true },
         json = { "prettierd", "prettier", stop_after_first = true },
         lua = { "stylua" },
         markdown = { "prettierd", "prettier", stop_after_first = true },
         python = { "ruff_format" },
         sh = { "shfmt" },
         typescript = { "prettierd", "prettier", stop_after_first = true },
+        typescriptreact = { "prettierd", "prettier", stop_after_first = true },
       },
       formatters = {
         ruff_format = {

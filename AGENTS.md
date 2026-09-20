@@ -123,6 +123,11 @@
 - Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
+- Keep Neovim's IDE shortcuts under `Space T` for tests and `Space r` for debugging, preserving `Space d` for diagnostics and `Space t` for toggles.
+  Document changes in `docs/neovim.md`.
+  Scope format-on-save toggles and terminal working directories through `config.project`; toggles last for the current Neovim session.
+  Run Jest and Vitest through Node entry points with argument arrays, avoiding platform-specific `.bin` shims and whitespace-split executable paths.
+  Keep debug adapters managed by Mason, and keep test runners in the user's project environment.
 - Use Tabline.wez for native WezTerm tabs and status updates, with a connected mode/workspace strip and a separate rounded hostname capsule.
   Keep the mode flush left, draw its rounded end over the workspace background, and use the current mode accent for both labels.
   Show only hostname on the right; omit CPU, RAM, time, and battery.

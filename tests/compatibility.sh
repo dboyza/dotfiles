@@ -155,6 +155,7 @@ if command -v nvim >/dev/null 2>&1; then
   export XDG_DATA_HOME="$test_dir/data"
   export XDG_STATE_HOME="$test_dir/state"
   nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-core.lua"
+  nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-project.lua"
 fi
 
 if command -v pwsh >/dev/null 2>&1; then

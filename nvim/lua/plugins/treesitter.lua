@@ -21,6 +21,7 @@ return {
         "markdown_inline",
         "python",
         "typescript",
+        "tsx",
       }
       local function install_parsers()
         local has_compiler = vim.fn.executable("cc") == 1 or vim.fn.executable("gcc") == 1 or vim.fn.executable("clang") == 1
