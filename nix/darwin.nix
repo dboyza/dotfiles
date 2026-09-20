@@ -45,8 +45,8 @@ in
       NSGlobalDomain = {
         AppleInterfaceStyle = "Dark";
         # Fast held-key navigation, with a short delay before repetition.
-        KeyRepeat = 1;
-        InitialKeyRepeat = 15;
+        KeyRepeat = 0;
+        InitialKeyRepeat = 10;
         ApplePressAndHoldEnabled = false;
         NSAutomaticCapitalizationEnabled = true;
         NSAutomaticPeriodSubstitutionEnabled = true;
