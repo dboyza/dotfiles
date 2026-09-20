@@ -93,7 +93,7 @@ config.window_frame = {
   button_fg = '#e0def4',
   button_bg = 'rgba(35, 33, 54, 0.00)',
   button_hover_fg = '#191724',
-  button_hover_bg = 'rgba(196, 167, 231, 0.85)',
+  button_hover_bg = 'rgba(196, 167, 231, .85)',
 }
 
 config.inactive_pane_hsb = {
