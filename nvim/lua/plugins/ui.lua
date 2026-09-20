@@ -1,5 +1,18 @@
 return {
   {
+    "folke/snacks.nvim",
+    priority = 1000,
+    lazy = false,
+    opts = {
+      indent = {
+        enabled = true,
+        animate = { enabled = false },
+        indent = { char = "│" },
+        scope = { char = "│" },
+      },
+    },
+  },
+  {
     "catppuccin/nvim",
     name = "catppuccin",
     priority = 1000,
@@ -11,6 +24,8 @@ return {
       vim.cmd.colorscheme("catppuccin")
 
       local set = vim.api.nvim_set_hl
+      set(0, "SnacksIndent", { fg = "#44415a" })
+      set(0, "SnacksIndentScope", { fg = "#c4a7e7" })
       set(0, "Normal", { bg = "none" })
       set(0, "NormalNC", { bg = "none" })
       set(0, "NormalFloat", { bg = "none" })

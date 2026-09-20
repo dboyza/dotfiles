@@ -44,6 +44,10 @@ in
     defaults = {
       NSGlobalDomain = {
         AppleInterfaceStyle = "Dark";
+        # Fast held-key navigation, with a short delay before repetition.
+        KeyRepeat = 1;
+        InitialKeyRepeat = 15;
+        ApplePressAndHoldEnabled = false;
         NSAutomaticCapitalizationEnabled = true;
         NSAutomaticPeriodSubstitutionEnabled = true;
         "com.apple.trackpad.scaling" = 1.0;
