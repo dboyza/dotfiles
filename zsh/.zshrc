@@ -174,3 +174,8 @@ if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init zsh)"
 fi
 alias python=python3.14
+# The following lines have been added by Docker Desktop to enable Docker CLI completions.
+fpath=(/Users/dboyza/.docker/completions $fpath)
+autoload -Uz compinit
+(( ${+_comps[docker]} )) || compinit
+# End of Docker CLI completions
