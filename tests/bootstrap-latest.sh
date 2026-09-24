@@ -219,6 +219,7 @@ mkdir -p "$fake_etc/static"
 printf 'existing bash config\n' >"$fake_etc/bashrc"
 printf 'existing zsh config\n' >"$fake_etc/zshrc"
 export BOOTSTRAP_DARWIN_ETC_DIR="$fake_etc"
+export BOOTSTRAP_APP_PYTHON="$fake_bin/noop"
 export BOOTSTRAP_TEST_OS=Darwin
 
 rm -f "$BOOTSTRAP_TEST_NIX_LOG"

@@ -7,6 +7,8 @@ import json
 import os
 from pathlib import Path
 import plistlib
+import platform
+import re
 import shutil
 import subprocess
 import tempfile
@@ -64,10 +66,41 @@ def publish_bundle(source, destination, bundle, writable=False):
             staged.rename(target)
 
 
-def install_zip(app, destination, roots, spotlight):
+def check_strafe_toolchain():
+    arch = platform.machine()
+    if arch not in ("arm64", "x86_64"):
+        raise RuntimeError(f"Unsupported Strafe architecture: {arch}")
+    version = subprocess.check_output(["/usr/bin/xcrun", "swift", "--version"], text=True)
+    match = re.search(r"Swift version (\d+)\.(\d+)", version)
+    if not match or tuple(map(int, match.groups())) < (6, 3):
+        raise RuntimeError("Building Strafe requires Apple's Swift 6.3 or newer; update Command Line Tools or Xcode")
+    return arch
+
+
+def build_strafe(source):
+    # The pinned upstream bundler hard-codes arm64; build for the host instead.
+    arch = check_strafe_toolchain()
+    script = source / "Scripts/bundle.sh"
+    contents = script.read_text()
+    if contents.count("--arch arm64") != 1:
+        raise RuntimeError("Unexpected Strafe build script; review the pinned source")
+    script.write_text(contents.replace("--arch arm64", f"--arch {arch}"))
+    # Resolve Apple's tools before any user-installed compiler wrappers.
+    subprocess.run(["/bin/bash", str(script)], cwd=source, check=True,
+                   env=dict(os.environ, PATH="/usr/bin:/bin:/usr/sbin:/sbin"))
+    return source / "build/strafe.app"
+
+
+def check_macos_version(app):
     version = subprocess.check_output(["/usr/bin/sw_vers", "-productVersion"], text=True).strip()
     if tuple(map(int, version.split("."))) < tuple(map(int, app["minimum_macos"].split("."))):
         raise RuntimeError(f"{app['bundle']} requires macOS {app['minimum_macos']} or later")
+
+
+def install_zip(app, destination, roots, spotlight):
+    check_macos_version(app)
+    if app.get("build") == "strafe":
+        check_strafe_toolchain()
     with tempfile.TemporaryDirectory(prefix="dotfiles-app-") as work:
         archive = Path(work) / "app.zip"
         subprocess.run(["/usr/bin/curl", "--fail", "--location", "--proto", "=https",
@@ -76,7 +109,12 @@ def install_zip(app, destination, roots, spotlight):
             raise RuntimeError(f"Checksum mismatch for {app['bundle']}")
         extracted = Path(work) / "extracted"
         subprocess.run(["/usr/bin/ditto", "-x", "-k", str(archive), str(extracted)], check=True)
-        source = extracted / app["bundle"]
+        if "build" in app:
+            if app["build"] != "strafe":
+                raise RuntimeError(f"Unknown source builder: {app['build']}")
+            source = build_strafe(extracted / app["source_directory"])
+        else:
+            source = extracted / app["bundle"]
         if bundle_id(source) != app["id"]:
             raise RuntimeError(f"Unexpected application identity for {app['bundle']}")
         subprocess.run(["/usr/bin/codesign", "--verify", "--deep", "--strict", str(source)], check=True)
@@ -111,6 +149,7 @@ def main():
     parser.add_argument("--applications-root", action="append", type=Path)
     parser.add_argument("--spotlight", default="/usr/bin/mdfind")
     parser.add_argument("--preserve-legacy", action="store_true")
+    parser.add_argument("--check-prerequisites", action="store_true")
     args = parser.parse_args()
     apps = json.loads(args.manifest.read_text())
     destination = args.home / "Applications"
@@ -122,6 +161,12 @@ def main():
         existing = find_app(app, roots, args.spotlight)
         if existing:
             print(f"Skipping {app['bundle']}: already installed at {existing}")
+            continue
+        if args.check_prerequisites:
+            if "url" in app:
+                check_macos_version(app)
+            if app.get("build") == "strafe":
+                check_strafe_toolchain()
             continue
         if "app_store_id" in app:
             try:

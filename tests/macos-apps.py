@@ -157,6 +157,50 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual((current / "Contents/Info.plist").read_bytes(), before)
 
+    def test_requested_apps_preserve_existing_bundles(self):
+        manifest = json.loads((INSTALLER.parent.parent / "nix/macos-apps.json").read_text())
+        apps = [app for app in manifest if app["id"] in {
+            "ru.starmel.OpenSuperWhisper", "eu.exelban.Stats", "com.rileycx.strafe"}]
+        self.assertEqual(len(apps), 3)
+        for app in apps:
+            self.bundle(self.system / ("Renamed " + app["bundle"]), app, "0.1")
+        result = self.run_cli(apps)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_preflight_existing_strafe_needs_no_toolchain(self):
+        app = {"bundle": "strafe.app", "id": "com.rileycx.strafe", "build": "strafe"}
+        self.bundle(self.system / app["bundle"], app)
+        result = self.run_cli([app], extra=["--check-prerequisites"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [])
+
+    def test_preflight_does_not_install_missing_casks(self):
+        result = self.run_cli([self.chrome], extra=["--check-prerequisites"])
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.calls(), [])
+        self.assertFalse((self.destination / self.chrome["bundle"]).exists())
+
+    def test_strafe_native_architecture_and_toolchain(self):
+        for arch in ("arm64", "x86_64"):
+            source = self.base / arch
+            (source / "Scripts").mkdir(parents=True)
+            script = source / "Scripts/bundle.sh"
+            script.write_text("swift build --arch arm64\n")
+            with patch.object(installer.platform, "machine", return_value=arch), \
+                 patch.object(installer.subprocess, "check_output", return_value="Apple Swift version 6.3.1"), \
+                 patch.object(installer.subprocess, "run") as run:
+                self.assertEqual(installer.build_strafe(source), source / "build/strafe.app")
+                self.assertIn("--arch " + arch, script.read_text())
+                self.assertEqual(run.call_args.kwargs["cwd"], source)
+                self.assertTrue(run.call_args.kwargs["check"])
+            with patch.object(installer.platform, "machine", return_value=arch), \
+                 patch.object(installer.subprocess, "check_output", return_value="Apple Swift version 6.2"), \
+                 patch.object(installer.subprocess, "run") as run:
+                with self.assertRaisesRegex(RuntimeError, "Swift 6.3"):
+                    installer.build_strafe(source)
+                run.assert_not_called()
+
     def test_zip_checksum_failure_does_not_extract_or_install(self):
         def fake_download(command, **kwargs):
             self.assertEqual(command[0], "/usr/bin/curl")

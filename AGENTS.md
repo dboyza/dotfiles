@@ -150,3 +150,8 @@
   Keep the first 40 repeats at one line; tune onset with the acceleration table because `acceleration_limit` controls the pause between repeats that resets acceleration.
 - Use Snacks indent guides with animation disabled and theme-coordinated guide colors in Neovim.
   Keep macOS held-key repeat preferences in `nix/darwin.nix`; these affect all applications, not only Neovim.
+
+- Build missing Strafe apps from the checksum-pinned source in `nix/macos-apps.json`, using the native Apple toolchain and host architecture.
+  Preserve existing bundles and leave Accessibility authorization interactive.
+- Install macOS Python 3.11–3.14 with user-owned uv runtimes during activation, without upgrades or executable-link replacement.
+  Homebrew remains the default Python owner; do not add a duplicate Python.org installer.

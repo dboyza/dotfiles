@@ -35,6 +35,8 @@ preflight_platform_installation() {
     return 1
   fi
   printf '  Apple Command Line Tools: installed\n'
+  "${BOOTSTRAP_APP_PYTHON:-/usr/bin/python3}" "$repo_dir/scripts/install-macos-apps.py" \
+    --manifest "$repo_dir/nix/macos-apps.json" --home "$HOME" --brew brew --check-prerequisites
 
   if find_homebrew >/dev/null; then
     printf '  Homebrew: installed; existing desktop apps will be preserved\n'

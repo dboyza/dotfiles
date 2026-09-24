@@ -30,5 +30,24 @@
     "bundle": "Amphetamine.app",
     "id": "com.if.Amphetamine",
     "app_store_id": 937984704
+  },
+  {
+    "bundle": "OpenSuperWhisper.app",
+    "id": "ru.starmel.OpenSuperWhisper",
+    "cask": "opensuperwhisper"
+  },
+  {
+    "bundle": "Stats.app",
+    "id": "eu.exelban.Stats",
+    "cask": "stats"
+  },
+  {
+    "bundle": "strafe.app",
+    "id": "com.rileycx.strafe",
+    "url": "https://codeload.github.com/rileycx/strafe/zip/37ec57e0dd7ae91c22225bc36bf5cd210ff9cba7",
+    "sha256": "f7b0985469aaa2402754dea18ec77caf6c074205bc9802429165664335e36d3c",
+    "minimum_macos": "15.0",
+    "source_directory": "strafe-37ec57e0dd7ae91c22225bc36bf5cd210ff9cba7",
+    "build": "strafe"
   }
 ]

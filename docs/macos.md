@@ -51,6 +51,13 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
    The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, Hack Nerd Font, WezTerm, and tracked configuration.
    It may request your macOS password.
    Desktop apps are installed only when absent; activation does not update or replace existing versions.
+   The inventory includes OpenSuperWhisper, Stats, and Strafe.
+   Missing Strafe installations are built from checksum-verified, pinned source for Apple Silicon or Intel and require macOS 15+ and Apple's Swift 6.3+ toolchain.
+   After its first installation, open `~/Applications/strafe.app`, grant Accessibility access in System Settings, then quit and reopen Strafe.
+   Existing Strafe installations are skipped, preserving their signatures and permissions.
+   Python 3.11, 3.12, 3.13, and 3.14 are installed through uv in your user account without upgrading existing runtimes or replacing executable links.
+   Select a runtime with `uv run --python 3.12 python`, substituting the desired version.
+   Homebrew continues to provide the default Python 3.14; an existing Python.org installation is left alone and is not recreated.
 
 3. Close every Terminal window after the script prints `Bootstrap complete`.
 
