@@ -11,9 +11,9 @@
 - Store shared global agent instructions in `agents/global/AGENTS.md`, and ensure global Codex, Claude, opencode, and Pi instruction symlinks target that file rather than this one.
   Pi's global instruction path is `~/.pi/agent/AGENTS.md`, not `~/.pi/AGENTS.md`.
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
-- Keep the larger adaptive WezTerm launch size scoped to macOS so Windows and WSL retain their existing window dimensions.
-- Keep the macOS WezTerm launch size proportional to the active screen so display scaling changes retain consistently large margins.
-- Keep the macOS WezTerm launch position slightly above vertical center so its outer frame clears the Dock.
+- Maximize the WezTerm window on macOS at GUI startup using the native window API so it fills the available desktop area across display scaling settings.
+  Preserve the bounded proportional launch geometry on Windows and Linux/WSL.
+- Keep macOS WezTerm tab navigation on `Command+[` / `Command+]` and tab close on `Command+W` with confirmation, alongside the portable shortcuts.
 - Keep the WezTerm window background opacity at 0.8 on macOS and native Windows for transparency while retaining readable text.
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
 - Keep the WezTerm steady bar cursor at 200% of the font underline thickness across platforms.

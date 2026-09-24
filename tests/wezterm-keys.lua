@@ -87,7 +87,15 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     end
   end
 
+  assert(binding('w', 'CTRL|SHIFT').name == 'CloseCurrentTab')
+  assert(binding('w', 'CTRL|SHIFT').value.confirm == true)
+  if not triple:find('darwin') then
+    assert(binding('[', 'CMD') == nil and binding(']', 'CMD') == nil and binding('w', 'CMD') == nil)
+  end
   if triple:find('darwin') then
+    assert(binding('[', 'CMD').name == 'ActivateTabRelative' and binding('[', 'CMD').value == -1)
+    assert(binding(']', 'CMD').name == 'ActivateTabRelative' and binding(']', 'CMD').value == 1)
+    assert(binding('w', 'CMD').name == 'CloseCurrentTab' and binding('w', 'CMD').value.confirm == true)
     sent_key('LeftArrow', 'CMD', 'Home', 'NONE')
     sent_key('RightArrow', 'CMD', 'End', 'NONE')
     sent_key('h', 'CMD', 'Home', 'NONE')

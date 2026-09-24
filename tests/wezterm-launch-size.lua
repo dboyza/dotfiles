@@ -9,12 +9,16 @@ local function verify_launch_geometry(
   expected_y
 )
   local callbacks = {}
+  local maximized = false
   local actual_width
   local actual_height
   local actual_x
   local actual_y
 
   local gui_window = {}
+  function gui_window:maximize()
+    maximized = true
+  end
   function gui_window:set_inner_size(width, height)
     actual_width = width
     actual_height = height
@@ -80,6 +84,14 @@ local function verify_launch_geometry(
   assert(callbacks['gui-startup'], 'WezTerm config did not register gui-startup')
   callbacks['gui-startup']()
 
+  if target_triple:find('darwin') then
+    assert(maximized, 'macOS must launch maximized')
+    assert(actual_width == nil and actual_height == nil and actual_x == nil and actual_y == nil,
+      'manual geometry must not override macOS maximization')
+    return
+  end
+  assert(not maximized, 'non-macOS launch geometry must remain unchanged')
+
   assert(
     actual_width == expected_width and actual_height == expected_height,
     string.format(
@@ -105,8 +117,11 @@ local function verify_launch_geometry(
 end
 
 local large_screen = { x = 0, y = 0, width = 4000, height = 2500 }
-verify_launch_geometry('aarch64-apple-darwin', large_screen, 3760, 2250, 120, 100)
+verify_launch_geometry('aarch64-apple-darwin', large_screen)
+verify_launch_geometry('x86_64-apple-darwin', { x = -1512, y = 0, width = 1512, height = 982 })
+verify_launch_geometry('aarch64-apple-darwin', nil)
 verify_launch_geometry('x86_64-pc-windows-msvc', large_screen, 1800, 1200, 1100, 650)
 verify_launch_geometry('x86_64-unknown-linux-gnu', large_screen, 1800, 1200, 1100, 650)
 
+verify_launch_geometry('x86_64-pc-windows-msvc', { x = 0, y = 0, width = 1000, height = 1000 }, 880, 840, 60, 80)
 print('WezTerm launch geometry passed')

@@ -38,7 +38,10 @@ WezTerm also has prefix `P` for PowerShell, `f` for terminal search, `q` for Qui
 Prefix `=` / `_` / `0` increases / decreases / resets font size; macOS also retains `Command+=` / `Command+-` / `Command+0`.
 PowerShell tabs fall back to the default domain when PowerShell is unavailable.
 `Control+Shift+T` creates a terminal tab, `Control+Tab` and `Control+Shift+Tab` switch terminal tabs, and `Control+Shift+W` closes a terminal tab with confirmation.
-On macOS, `Command+T` and `Command+W` retain native tab behavior.
+On macOS, use `Command+[` / `Command+]` for the previous / next WezTerm tab, `Command+T` for a new tab, and `Command+W` to close the current tab with confirmation.
+The two-key bracket shortcuts work directly from shells, tmux, Herdr, and Neovim because WezTerm handles them first.
+Existing `Command+Shift+[` / `Command+Shift+]` and portable `Control+Tab` / `Control+Shift+Tab` shortcuts remain available.
+WezTerm launches maximized on macOS, filling the available desktop area while respecting the menu bar and Dock.
 Herdr prefix `v` toggles Reviewr, `d` detaches, and `?` shows its full shortcut list.
 Herdr also has a native Windows launcher; its Reviewr plugin is supported here only on macOS and Linux/WSL.
 

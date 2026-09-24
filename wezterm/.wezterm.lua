@@ -5,25 +5,10 @@ local mux = wezterm.mux
 local target_triple = wezterm.target_triple:lower()
 local is_windows = target_triple:find('windows') ~= nil
 local is_macos = target_triple:find('darwin') ~= nil
-local launch_max_width
-local launch_max_height
-local launch_width_ratio = is_macos and 0.94 or 0.88
-local launch_height_ratio = is_macos and 0.90 or 0.84
-local launch_upward_offset_ratio = is_macos and 0.01 or 0
-
-if not is_macos then
-  launch_max_width = 1800
-  launch_max_height = 1200
-end
-
-local function launch_dimension(screen_dimension, ratio, maximum)
-  local dimension = math.max(1, math.floor(screen_dimension * ratio))
-  return maximum and math.min(maximum, dimension) or dimension
-end
-
+-- Preserve the existing bounded launch geometry outside macOS.
 local function launch_size(screen)
-  return launch_dimension(screen.width, launch_width_ratio, launch_max_width),
-    launch_dimension(screen.height, launch_height_ratio, launch_max_height)
+  return math.min(1800, math.max(1, math.floor(screen.width * 0.88))),
+    math.min(1200, math.max(1, math.floor(screen.height * 0.84)))
 end
 
 local function platform_font(weight)
@@ -498,6 +483,9 @@ end
 
 if is_macos then
   local mac_key_bindings = {
+    { key = '[', mods = 'CMD', action = wezterm.action.ActivateTabRelative(-1) },
+    { key = ']', mods = 'CMD', action = wezterm.action.ActivateTabRelative(1) },
+    { key = 'w', mods = 'CMD', action = wezterm.action.CloseCurrentTab({ confirm = true }) },
     { key = 'UpArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'Home', mods = 'CTRL' }) },
     { key = 'DownArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'End', mods = 'CTRL' }) },
     {
@@ -730,10 +718,18 @@ wezterm.on('gui-startup', function(cmd)
 
   local _tab, _pane, window = mux.spawn_window(spawn_cmd or {})
   local gui_window = window:gui_window()
+  if not gui_window then
+    return
+  end
+  if is_macos then
+    gui_window:maximize()
+    return
+  end
+
   local screens = wezterm.gui.screens()
   local screen = screens.active or screens.main
 
-  if not gui_window or not screen then
+  if not screen then
     return
   end
 
@@ -742,12 +738,7 @@ wezterm.on('gui-startup', function(cmd)
   gui_window:set_inner_size(width, height)
   gui_window:set_position(
     screen.x + math.max(0, math.floor((screen.width - width) / 2)),
-    screen.y
-      + math.max(
-        0,
-        math.floor((screen.height - height) / 2)
-          - math.floor(screen.height * launch_upward_offset_ratio)
-      )
+    screen.y + math.max(0, math.floor((screen.height - height) / 2))
   )
 end)
 return config
