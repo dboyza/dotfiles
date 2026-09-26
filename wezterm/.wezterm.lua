@@ -71,7 +71,7 @@ config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
 config.tab_max_width = 8
 config.status_update_interval = is_macos and 250 or 1000
-config.window_padding = { left = 24, right = 24, top = 20, bottom = 16 }
+config.window_padding = { left = 28, right = 28, top = 24, bottom = 20 }
 config.window_decorations = 'RESIZE'
 config.window_frame = {
   border_left_width = '2px',
