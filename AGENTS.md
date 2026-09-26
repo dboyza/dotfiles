@@ -16,7 +16,7 @@
 - Keep macOS WezTerm tab navigation on `Command+[` / `Command+]` and tab close on `Command+W` with confirmation, alongside the portable shortcuts.
 - Keep the WezTerm window background opacity at 0.8 on macOS and native Windows for transparency while retaining readable text.
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
-- Keep the WezTerm steady bar cursor at 200% of the font underline thickness across platforms.
+- Keep the WezTerm steady bar cursor at 150% of the font underline thickness across platforms.
 - Treat keybindings as one end-to-end contract across host OS shortcuts, WezTerm, tmux, Herdr, shells, Neovim, and configured agent applications.
   Every keybinding change must preserve the most consistent, sensible, ergonomic behavior possible across native Windows, WSL, and MacBook keyboards.
   Audit enclosing-layer interception, inherited defaults, editor modes, legacy terminal encodings, and laptop accessibility before assigning a chord; keep portable shortcuts plus appropriate Command/Option aliases.
