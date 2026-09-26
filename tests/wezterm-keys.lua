@@ -42,6 +42,8 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     sent_key(direction, 'CTRL', direction, 'CTRL')
   end
   assert(config.leader.key == 'Space' and config.leader.mods == 'CTRL|SHIFT')
+  assert(binding('m', 'LEADER').value == 'toggle-window-size')
+  assert((binding('m', 'CMD|SHIFT') ~= nil) == (triple:find('darwin') ~= nil))
   sent_key('p', 'CTRL|SHIFT', 'p', 'CTRL|SHIFT')
   sent_key('f', 'CTRL|SHIFT', 'f', 'CTRL|SHIFT')
   sent_key('UpArrow', 'CTRL|SHIFT', 'UpArrow', 'CTRL|SHIFT')

@@ -35,6 +35,9 @@ Use Home instead of relying on shell `Control+A` while inside Herdr.
 | `r` | Use `Control+Shift+R` | Reload configuration | Reload configuration |
 
 WezTerm also has prefix `P` for PowerShell, `f` for terminal search, `q` for Quick Select, `Space` for its command palette, and `Enter` for fullscreen.
+Use prefix `m` to toggle between the large launch size and a smaller centered window; macOS also supports `Command+Shift+M`.
+The smaller size is half the active screen's width and height, capped at 70% of the large size on very large displays.
+Leave fullscreen before using the size toggle; Linux window positioning depends on the window manager and is unavailable under Wayland.
 Prefix `=` / `_` / `0` increases / decreases / resets font size; macOS also retains `Command+=` / `Command+-` / `Command+0`.
 PowerShell tabs fall back to the default domain when PowerShell is unavailable.
 `Control+Shift+T` creates a terminal tab, `Control+Tab` and `Control+Shift+Tab` switch terminal tabs, and `Control+Shift+W` closes a terminal tab with confirmation.

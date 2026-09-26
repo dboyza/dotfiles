@@ -16,6 +16,10 @@ local function verify_launch_geometry(
   local actual_y
 
   local gui_window = {}
+  function gui_window:get_dimensions()
+    return { pixel_width = actual_width, pixel_height = actual_height, is_full_screen = self.fullscreen }
+  end
+  function gui_window:restore() end
   function gui_window:maximize()
     maximized = true
   end
@@ -84,10 +88,12 @@ local function verify_launch_geometry(
   assert(callbacks['gui-startup'], 'WezTerm config did not register gui-startup')
   callbacks['gui-startup']()
 
+  local toggle = assert(callbacks['toggle-window-size'])
   assert(not maximized, 'launch must not maximize the window')
   if not screen then
     assert(actual_width == nil and actual_height == nil and actual_x == nil and actual_y == nil,
       'missing screens must preserve the default window geometry')
+    toggle(gui_window)
     return
   end
 
@@ -113,6 +119,18 @@ local function verify_launch_geometry(
       expected_y
     )
   )
+  toggle(gui_window)
+  local small_width = math.max(1, math.floor(math.min(screen.width * 0.50, expected_width * 0.70)))
+  local small_height = math.max(1, math.floor(math.min(screen.height * 0.50, expected_height * 0.70)))
+  assert(actual_width == small_width and actual_height == small_height, 'first toggle must shrink')
+  assert(actual_x == screen.x + math.floor((screen.width - small_width) / 2))
+  assert(actual_y == screen.y + math.floor((screen.height - small_height) / 2))
+  toggle(gui_window)
+  assert(actual_width == expected_width and actual_height == expected_height, 'second toggle must restore large size')
+  gui_window.fullscreen = true
+  toggle(gui_window)
+  assert(actual_width == expected_width and actual_height == expected_height, 'fullscreen geometry must be untouched')
+
 end
 
 local large_screen = { x = 0, y = 0, width = 4000, height = 2500 }

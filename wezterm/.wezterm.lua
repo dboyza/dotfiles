@@ -14,6 +14,35 @@ local function launch_size(screen)
     math.min(1200, math.max(1, math.floor(screen.height * 0.84)))
 end
 
+local function center_window(window, screen, width, height)
+  window:set_inner_size(width, height)
+  window:set_position(
+    screen.x + math.max(0, math.floor((screen.width - width) / 2)),
+    screen.y + math.max(0, math.floor((screen.height - height) / 2))
+  )
+end
+
+wezterm.on('toggle-window-size', function(window)
+  local dimensions = window:get_dimensions()
+  -- Native fullscreen owns geometry until the user leaves it.
+  if dimensions.is_full_screen then return end
+  local screens = wezterm.gui.screens()
+  local screen = screens.active or screens.main
+  if not screen then return end
+  local large_width, large_height = launch_size(screen)
+  local small_width = math.max(1, math.floor(math.min(screen.width * 0.50, large_width * 0.70)))
+  local small_height = math.max(1, math.floor(math.min(screen.height * 0.50, large_height * 0.70)))
+  -- Derive the state from geometry so manual resizing and reloads stay sensible.
+  local is_small = dimensions.pixel_width <= (small_width + large_width) / 2
+    and dimensions.pixel_height <= (small_height + large_height) / 2
+  window:restore()
+  if is_small then
+    center_window(window, screen, large_width, large_height)
+  else
+    center_window(window, screen, small_width, small_height)
+  end
+end)
+
 local function platform_font(weight)
   local fonts = {
     { family = 'Hack Nerd Font', weight = weight },
@@ -461,6 +490,7 @@ for key, direction in pairs({ h = 'Left', j = 'Down', k = 'Up', l = 'Right' }) d
   table.insert(config.keys, { key = key, mods = 'LEADER|SHIFT', action = wezterm.action.AdjustPaneSize({ direction, 5 }) })
 end
 local leader_bindings = {
+  { key = 'm', action = wezterm.action.EmitEvent('toggle-window-size') },
   { key = 'n', action = wezterm.action.ActivateTabRelative(1) },
   { key = 'p', mods = 'LEADER|SHIFT', action = powershell_tab_action() },
   { key = '\\', action = wezterm.action.SplitHorizontal({ domain = 'CurrentPaneDomain' }) },
@@ -496,6 +526,7 @@ end
 if is_macos then
   local mac_key_bindings = {
     { key = '[', mods = 'CMD', action = wezterm.action.ActivateTabRelative(-1) },
+    { key = 'm', mods = 'CMD|SHIFT', action = wezterm.action.EmitEvent('toggle-window-size') },
     { key = ']', mods = 'CMD', action = wezterm.action.ActivateTabRelative(1) },
     { key = 'w', mods = 'CMD', action = wezterm.action.CloseCurrentTab({ confirm = true }) },
     { key = 'UpArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'Home', mods = 'CTRL' }) },
@@ -763,10 +794,6 @@ wezterm.on('gui-startup', function(cmd)
 
   local width, height = launch_size(screen)
 
-  gui_window:set_inner_size(width, height)
-  gui_window:set_position(
-    screen.x + math.max(0, math.floor((screen.width - width) / 2)),
-    screen.y + math.max(0, math.floor((screen.height - height) / 2))
-  )
+  center_window(gui_window, screen, width, height)
 end)
 return config
