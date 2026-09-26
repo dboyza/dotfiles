@@ -90,6 +90,31 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+// WezTerm's rectangular frame is clipped by macOS at the corners. Draw the
+// missing arcs in small click-through panels instead of covering the terminal.
+final class CornerOutline: NSView {
+    static let diameter: CGFloat = 12
+    let corner: Int
+    init(corner: Int) {
+        self.corner = corner
+        super.init(frame: CGRect(x: 0, y: 0, width: Self.diameter, height: Self.diameter))
+    }
+    required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
+    override func draw(_ dirtyRect: NSRect) {
+        let right = corner % 2 == 1
+        let top = corner >= 2
+        let radius: CGFloat = 10
+        let center = CGPoint(x: right ? bounds.width - radius - 0.5 : radius + 0.5,
+                             y: top ? bounds.height - radius - 0.5 : radius + 0.5)
+        let start: CGFloat = top ? (right ? 0 : 90) : (right ? 270 : 180)
+        let path = NSBezierPath()
+        path.appendArc(withCenter: center, radius: radius, startAngle: start, endAngle: start + 90)
+        path.lineWidth = 1
+        lavender.setStroke()
+        path.stroke()
+    }
+}
+
 func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> DispatchSourceFileSystemObject? {
     let descriptor = open(directory.path, O_EVTONLY)
     guard descriptor >= 0 else { return nil }
@@ -104,6 +129,12 @@ func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> Dispatc
 final class Companion: NSObject, NSApplicationDelegate {
     let tabsPanel = OverlayPanel()
     let clockPanel = OverlayPanel()
+    let corners: [OverlayPanel] = (0..<4).map { corner in
+        let panel = OverlayPanel()
+        panel.ignoresMouseEvents = true
+        panel.contentView = CornerOutline(corner: corner)
+        return panel
+    }
     var timer: Timer?
     var stateWatcher: DispatchSourceFileSystemObject?
     var observer: AXObserver?
@@ -144,6 +175,11 @@ final class Companion: NSObject, NSApplicationDelegate {
     }
 
     func hide() {
+        for panel in corners { panel.orderOut(nil) }
+        hideBadges()
+    }
+
+    func hideBadges() {
         tabsPanel.orderOut(nil)
         clockPanel.orderOut(nil)
         if !heartbeatTitle.isEmpty {
@@ -192,10 +228,18 @@ final class Companion: NSObject, NSApplicationDelegate {
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
         else { hide(); return }
         observe(pid: app.processIdentifier, window: window)
+        let extent = CornerOutline.diameter
+        for (index, panel) in corners.enumerated() {
+            let position = CGRect(x: index % 2 == 1 ? frame.maxX - extent : frame.minX,
+                                  y: index >= 2 ? frame.maxY - extent : frame.minY,
+                                  width: extent, height: extent)
+            if panel.frame != position { panel.setFrame(position, display: true) }
+            panel.orderFrontRegardless()
+        }
         let widths = snapshot.tabs.map { CGFloat(max(28, String($0.index + 1).count * 10 + 14)) }
         let width = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1) * 4)
         guard let (tabFrame, clockFrame) = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width)
-        else { hide(); return }
+        else { hideBadges(); return }
         if currentTabs != snapshot.tabs || currentTitle != snapshot.title {
             currentTabs = snapshot.tabs
             currentTitle = snapshot.title
@@ -243,7 +287,24 @@ extension CGRect {
     var area: CGFloat { isNull ? 0 : width * height }
 }
 
-if CommandLine.arguments.contains("--test") {
+if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
+   CommandLine.arguments.count > argument + 1 {
+    let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 120, pixelsHigh: 120,
+        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+    bitmap.size = NSSize(width: 60, height: 60)
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+    NSColor.black.setFill()
+    NSRect(x: 0, y: 0, width: 60, height: 60).fill()
+    let context = NSGraphicsContext.current!.cgContext
+    context.translateBy(x: 20, y: 20)
+    let corner = CornerOutline(corner: 0)
+    corner.draw(corner.bounds)
+    NSGraphicsContext.restoreGraphicsState()
+    try bitmap.representation(using: .png, properties: [:])!.write(
+        to: URL(fileURLWithPath: CommandLine.arguments[argument + 1]))
+} else if CommandLine.arguments.contains("--test") {
     let screen = CGRect(x: 0, y: 0, width: 1512, height: 944)
     let frame = CGRect(x: 45, y: 60, width: 1421, height: 864)
     let normal = placement(frame: frame, visible: screen, tabWidth: 92)!

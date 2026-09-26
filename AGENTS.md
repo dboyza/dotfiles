@@ -47,6 +47,7 @@
   Keep the native numbered tab bar and centered clock as the Windows/Linux and macOS fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep the thin lavender window border and native tab backing colors matched to the dark bar.
+  Complete macOS border corners with small click-through arcs in the companion; native rectangular borders are clipped at the window radius.
   Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.

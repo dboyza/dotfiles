@@ -219,6 +219,7 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
 The native `WezTerm Floating Tabs` companion places clickable tab numbers above the focused WezTerm window, straddling its lavender border, with the clock centered above the same window.
 The badges follow window moves and resizes without taking keyboard focus.
+Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.
 Other applications do not get overlays.
 
 macOS activation builds the helper from `wezterm/floating-tabs/main.swift` using Apple's Command Line Tools and installs it into `~/Applications/WezTerm Floating Tabs.app`.
