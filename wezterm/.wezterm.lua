@@ -30,8 +30,8 @@ wezterm.on('toggle-window-size', function(window)
   local screen = screens.active or screens.main
   if not screen then return end
   local large_width, large_height = launch_size(screen)
-  local small_width = math.max(1, math.floor(math.min(screen.width * 0.50, large_width * 0.70)))
-  local small_height = math.max(1, math.floor(math.min(screen.height * 0.50, large_height * 0.70)))
+  local small_width = math.max(1, math.floor(math.min(screen.width * 0.55, large_width * 0.70)))
+  local small_height = math.max(1, math.floor(math.min(screen.height * 0.55, large_height * 0.70)))
   -- Derive the state from geometry so manual resizing and reloads stay sensible.
   local is_small = dimensions.pixel_width <= (small_width + large_width) / 2
     and dimensions.pixel_height <= (small_height + large_height) / 2
@@ -526,7 +526,7 @@ end
 if is_macos then
   local mac_key_bindings = {
     { key = '[', mods = 'CMD', action = wezterm.action.ActivateTabRelative(-1) },
-    { key = 'm', mods = 'CMD|SHIFT', action = wezterm.action.EmitEvent('toggle-window-size') },
+    { key = 'm', mods = 'CMD', action = wezterm.action.EmitEvent('toggle-window-size') },
     { key = ']', mods = 'CMD', action = wezterm.action.ActivateTabRelative(1) },
     { key = 'w', mods = 'CMD', action = wezterm.action.CloseCurrentTab({ confirm = true }) },
     { key = 'UpArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'Home', mods = 'CTRL' }) },
