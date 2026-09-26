@@ -39,11 +39,14 @@
   Use Command+Up/Down for native Control+Home/End file navigation in Neovim editing modes.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar always visible at the top, including with one tab.
-- Keep WezTerm tabs as compact rounded number badges at the top left, with a centered lavender clock and a thin lavender window border.
-  Use native format-tab-title and update-status callbacks; hide the clock when tabs would overlap it.
-  WezTerm's border settings do not provide a configurable corner radius.
-  Center the clock using the full window pixel width and terminal cell width, including the padded area.
-  Keep native tab backing colors matched to the dark bar and preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
+- On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across the focused window's upper edge.
+  Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
+  Exchange only window identities, tab IDs, and freshness timestamps through the private state directory.
+  Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, focus changes, or there is no room above the window.
+  Keep the native numbered tab bar and centered clock as the Windows/Linux and macOS fallback.
+  Center the native clock using the full window pixel width and terminal cell width, including the padded area.
+  Keep the thin lavender window border and native tab backing colors matched to the dark bar.
+  Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.

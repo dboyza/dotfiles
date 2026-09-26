@@ -214,3 +214,35 @@ brew upgrade --cask wezterm
 ```
 
 See [operations](operations.md) for non-mutating checks, testing, and recovery.
+
+## Floating WezTerm tabs
+
+The native `WezTerm Floating Tabs` companion places clickable tab numbers above the focused WezTerm window, straddling its lavender border, with the clock centered above the same window.
+The badges follow window moves and resizes without taking keyboard focus.
+Other applications do not get overlays.
+
+macOS activation builds the helper from `wezterm/floating-tabs/main.swift` using Apple's Command Line Tools and installs it into `~/Applications/WezTerm Floating Tabs.app`.
+To install or update it without activating the rest of the dotfiles, run:
+
+```sh
+./scripts/install-wezterm-floating-tabs.sh
+open -g "$HOME/Applications/WezTerm Floating Tabs.app"
+```
+
+Allow **WezTerm Floating Tabs** in **System Settings > Privacy & Security > Accessibility** when prompted.
+The helper needs this permission to identify and follow WezTerm's focused window.
+It does not need Screen Recording permission and does not read terminal text.
+After installing, reload the WezTerm configuration or restart WezTerm; subsequent GUI sessions start the helper automatically.
+Rebuilding a locally signed app may require granting Accessibility access again.
+
+Click a number to switch tabs, or keep using the existing terminal shortcuts.
+The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
+The helper uses the native tab bar when WezTerm is not focused, enters fullscreen, or sits too close to the menu bar for external badges.
+If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
+To stop the helper for the current WezTerm session, quit `wezterm-floating-tabs` in Activity Monitor.
+Windows and Linux/WSL retain their native numbered tabs and clock; the floating companion is macOS-only.
+
+The private `~/.local/state/dotfiles/wezterm-floating-tabs` directory contains only the latest window identity, tab IDs, acknowledgment, and click request.
+Window titles include an opaque identity so the companion never attaches another WezTerm process's tabs to the wrong window.
+It does not collect command lines, working directories, terminal contents, or session history.
+Run `./tests/wezterm-floating-tabs.sh` on macOS to check the native layout and the real WezTerm bridge in an isolated fixture home.

@@ -70,7 +70,7 @@ config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
 config.tab_max_width = 8
-config.status_update_interval = 1000
+config.status_update_interval = is_macos and 250 or 1000
 config.window_padding = { left = 24, right = 24, top = 20, bottom = 16 }
 config.window_decorations = 'RESIZE'
 config.window_frame = {
@@ -578,7 +578,87 @@ config.mouse_bindings = {
   },
 }
 
-wezterm.on('format-window-title', function()
+-- The macOS companion exchanges tab IDs only, never terminal text or commands.
+local overlay_root = is_macos and wezterm.home_dir
+  and (wezterm.home_dir .. '/.local/state/dotfiles/wezterm-floating-tabs/') or nil
+local overlay_app = is_macos and wezterm.home_dir
+  and (wezterm.home_dir .. '/Applications/WezTerm Floating Tabs.app') or nil
+local overlay_available = false
+if overlay_app then
+  local file = io.open(overlay_app .. '/Contents/MacOS/wezterm-floating-tabs', 'rb')
+  if file then file:close(); overlay_available = true end
+end
+
+local function overlay_title(window_id)
+  if not wezterm.GLOBAL.floating_tabs_token then
+    wezterm.GLOBAL.floating_tabs_token = tostring(os.time()) .. tostring({}):gsub('%W', '')
+  end
+  return 'WezTerm [' .. wezterm.GLOBAL.floating_tabs_token .. ':' .. tostring(window_id) .. ']'
+end
+
+local function overlay_read(name)
+  local file = io.open(overlay_root .. name, 'r')
+  if not file then return nil end
+  local text = file:read(65536)
+  file:close()
+  local ok, result = pcall(wezterm.json_parse, text or '')
+  return ok and type(result) == 'table' and result or nil
+end
+
+local function overlay_fresh(reply, title)
+  return reply and reply.title == title and type(reply.updated) == 'number'
+    and math.abs(os.time() - reply.updated) < 3
+end
+
+local function update_floating_tabs(window)
+  if not overlay_available or not window.is_focused then return end
+  local focused = window:is_focused()
+  local title = overlay_title(window:mux_window():window_id())
+  local tabs = window:mux_window():tabs_with_info()
+  if focused then
+    if not wezterm.GLOBAL.floating_tabs_started then
+      wezterm.GLOBAL.floating_tabs_started = true
+      wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
+    end
+    local snapshot = { title = title, updated = os.time(), tabs = {} }
+    for _, tab in ipairs(tabs) do
+      table.insert(snapshot.tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
+    end
+    local temporary = overlay_root .. 'current.' .. wezterm.GLOBAL.floating_tabs_token .. '.tmp'
+    local file = io.open(temporary, 'w')
+    if file then
+      file:write(wezterm.json_encode(snapshot))
+      file:close()
+      os.rename(temporary, overlay_root .. 'current.json')
+    end
+    local request = overlay_read('activate.json')
+    if request and request.title == title then
+      os.remove(overlay_root .. 'activate.json')
+      if overlay_fresh(request, title) then
+        for _, tab in ipairs(tabs) do
+          if tab.tab:tab_id() == request.tab_id then
+            window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
+            break
+          end
+        end
+      end
+    end
+  end
+  local ready = focused and overlay_fresh(overlay_read('ready.json'), title) or false
+  local overrides = window:get_config_overrides() or {}
+  local show_native = not ready
+  if overrides.enable_tab_bar ~= show_native then
+    overrides.enable_tab_bar = show_native
+    window:set_config_overrides(overrides)
+  end
+end
+
+wezterm.on('format-window-title', function(tab)
+  if overlay_available and tab then
+    local mux_tab = wezterm.mux.get_tab(tab.tab_id)
+    local window = mux_tab and mux_tab:window()
+    if window then return overlay_title(window:window_id()) end
+  end
   return ' '
 end)
 
@@ -610,6 +690,7 @@ wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
 end)
 
 wezterm.on('update-status', function(window)
+  update_floating_tabs(window)
   window:set_left_status('')
   local size = window:active_tab():get_size()
   -- The tab bar spans the full window, including terminal padding.

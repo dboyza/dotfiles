@@ -174,6 +174,8 @@ in
     # Keep user-owned runtimes available without upgrading them or replacing PATH links.
     /usr/bin/sudo -H --user=${pkgs.lib.escapeShellArg username} -- \
       ${config.homebrew.prefix}/bin/uv python install --no-bin 3.11 3.12 3.13 3.14
+    /usr/bin/sudo -H --user=${pkgs.lib.escapeShellArg username} -- \
+      /bin/bash ${pkgs.lib.escapeShellArg "${repoDirectory}/scripts/install-wezterm-floating-tabs.sh"}
   '';
 
   homebrew = (import ./homebrew.nix) // {
