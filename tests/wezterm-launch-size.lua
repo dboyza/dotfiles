@@ -84,13 +84,12 @@ local function verify_launch_geometry(
   assert(callbacks['gui-startup'], 'WezTerm config did not register gui-startup')
   callbacks['gui-startup']()
 
-  if target_triple:find('darwin') then
-    assert(maximized, 'macOS must launch maximized')
+  assert(not maximized, 'launch must not maximize the window')
+  if not screen then
     assert(actual_width == nil and actual_height == nil and actual_x == nil and actual_y == nil,
-      'manual geometry must not override macOS maximization')
+      'missing screens must preserve the default window geometry')
     return
   end
-  assert(not maximized, 'non-macOS launch geometry must remain unchanged')
 
   assert(
     actual_width == expected_width and actual_height == expected_height,
@@ -117,8 +116,8 @@ local function verify_launch_geometry(
 end
 
 local large_screen = { x = 0, y = 0, width = 4000, height = 2500 }
-verify_launch_geometry('aarch64-apple-darwin', large_screen)
-verify_launch_geometry('x86_64-apple-darwin', { x = -1512, y = 0, width = 1512, height = 982 })
+verify_launch_geometry('aarch64-apple-darwin', large_screen, 3760, 2200, 120, 150)
+verify_launch_geometry('x86_64-apple-darwin', { x = -1512, y = 0, width = 1512, height = 982 }, 1421, 864, -1467, 59)
 verify_launch_geometry('aarch64-apple-darwin', nil)
 verify_launch_geometry('x86_64-pc-windows-msvc', large_screen, 1800, 1200, 1100, 650)
 verify_launch_geometry('x86_64-unknown-linux-gnu', large_screen, 1800, 1200, 1100, 650)

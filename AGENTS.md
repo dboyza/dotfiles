@@ -11,10 +11,10 @@
 - Store shared global agent instructions in `agents/global/AGENTS.md`, and ensure global Codex, Claude, opencode, and Pi instruction symlinks target that file rather than this one.
   Pi's global instruction path is `~/.pi/agent/AGENTS.md`, not `~/.pi/AGENTS.md`.
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
-- Maximize the WezTerm window on macOS at GUI startup using the native window API so it fills the available desktop area across display scaling settings.
+- Launch WezTerm centered on macOS at 94% of the active screen width and 88% of its height, without maximizing.
   Preserve the bounded proportional launch geometry on Windows and Linux/WSL.
 - Keep macOS WezTerm tab navigation on `Command+[` / `Command+]` and tab close on `Command+W` with confirmation, alongside the portable shortcuts.
-- Keep the WezTerm window background opacity at 0.8 on macOS and native Windows for transparency while retaining readable text.
+- Keep the WezTerm window background opacity at 0.7 on macOS and native Windows for transparency while retaining readable text.
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
 - Keep the WezTerm steady bar cursor at 150% of the font underline thickness across platforms.
 - Treat keybindings as one end-to-end contract across host OS shortcuts, WezTerm, tmux, Herdr, shells, Neovim, and configured agent applications.
@@ -39,12 +39,11 @@
   Use Command+Up/Down for native Control+Home/End file navigation in Neovim editing modes.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar always visible at the top, including with one tab.
-- Left-align WezTerm's cell-based tabs and tmux's window list.
-  Let Tabline own the left status for mode and workspace; keep tab-label truncation aware of display-cell widths.
-- Coordinate WezTerm and tmux tabs with rounded ends, Rosé Pine colors, muted inactive tabs, and coordinated bar backgrounds.
-  Use lavender status capsules, a subtle active-tab surface, and a solid `#191724` bar in WezTerm; retain lavender active tabs and a transparent bar in tmux.
-  Match native WezTerm tab backing colors to the bar so rounded caps do not reveal mismatched blocks.
-  Use the same working-directory name for active and inactive native tabs while preserving explicit names; truncate with a display-cell-aware ellipsis and keep native tab widths bounded at 20 cells and reduce side status in narrow windows.
+- Keep WezTerm tabs as compact rounded number badges at the top left, with a centered lavender clock and a thin lavender window border.
+  Use native format-tab-title and update-status callbacks; hide the clock when tabs would overlap it.
+  WezTerm's border settings do not provide a configurable corner radius.
+  Center the clock using the full window pixel width and terminal cell width, including the padded area.
+  Keep native tab backing colors matched to the dark bar and preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
@@ -138,11 +137,6 @@
   Scope format-on-save toggles and terminal working directories through `config.project`; toggles last for the current Neovim session.
   Run Jest and Vitest through Node entry points with argument arrays, avoiding platform-specific `.bin` shims and whitespace-split executable paths.
   Keep debug adapters managed by Mason, and keep test runners in the user's project environment.
-- Use Tabline.wez for native WezTerm tabs and status updates, with a connected mode/workspace strip and a separate rounded hostname capsule.
-  Keep the mode flush left, draw its rounded end over the workspace background, and use the current mode accent for both labels.
-  Show only hostname on the right; omit CPU, RAM, time, and battery.
-  Hide workspace and hostname below 100 columns and compact the mode label below 80.
-  Avoid `apply_to_config`, which overrides tab width, padding, and bar colors.
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
   Install the plugin through Herdr on macOS or Linux/WSL; upstream does not support native Windows.
 

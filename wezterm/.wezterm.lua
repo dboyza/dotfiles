@@ -5,8 +5,11 @@ local mux = wezterm.mux
 local target_triple = wezterm.target_triple:lower()
 local is_windows = target_triple:find('windows') ~= nil
 local is_macos = target_triple:find('darwin') ~= nil
--- Preserve the existing bounded launch geometry outside macOS.
+-- Leave desktop margins on macOS; retain bounded geometry elsewhere.
 local function launch_size(screen)
+  if is_macos then
+    return math.max(1, math.floor(screen.width * 0.94)), math.max(1, math.floor(screen.height * 0.88))
+  end
   return math.min(1800, math.max(1, math.floor(screen.width * 0.88))),
     math.min(1200, math.max(1, math.floor(screen.height * 0.84)))
 end
@@ -66,10 +69,19 @@ config.tab_bar_at_bottom = false
 config.use_fancy_tab_bar = false
 config.show_new_tab_button_in_tab_bar = false
 config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
-config.tab_max_width = 20
-config.status_update_interval = 250
+config.tab_max_width = 8
+config.status_update_interval = 1000
+config.window_padding = { left = 24, right = 24, top = 20, bottom = 16 }
 config.window_decorations = 'RESIZE'
 config.window_frame = {
+  border_left_width = '2px',
+  border_right_width = '2px',
+  border_top_height = '2px',
+  border_bottom_height = '2px',
+  border_left_color = '#c4a7e7',
+  border_right_color = '#c4a7e7',
+  border_top_color = '#c4a7e7',
+  border_bottom_color = '#c4a7e7',
   font = platform_font('Bold'),
   active_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
   inactive_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
@@ -106,12 +118,12 @@ config.colors = {
 
 if is_windows then
   config.win32_system_backdrop = 'Acrylic'
-  config.window_background_opacity = 0.8
+  config.window_background_opacity = 0.7
   config.window_frame.font_size = 10.0
 end
 
 if is_macos then
-  config.window_background_opacity = 0.8
+  config.window_background_opacity = 0.7
   config.macos_window_background_blur = 50
   config.font_size = 15.0
   config.window_frame.font_size = 13.0
@@ -570,139 +582,55 @@ wezterm.on('format-window-title', function()
   return ' '
 end)
 
-local function clean_tab_title(title)
-  return (title or ''):gsub('%c', ' '):gsub('%s+', ' '):match('^%s*(.-)%s*$')
-end
-
-local function tab_title(tab)
-  local title = clean_tab_title(tab.tab_title)
-  if title ~= '' then
-    return title
-  end
-
-  local pane = tab.active_pane
-  local cwd = pane.current_working_dir
-  if type(cwd) == 'string' then
-    local ok, url = pcall(wezterm.url.parse, cwd)
-    cwd = ok and url or nil
-  end
-  if cwd then
-    local path = cwd.file_path:gsub('\\', '/'):gsub('/+$', '')
-    title = clean_tab_title(path:match('([^/]+)$'))
-    if title ~= '' then
-      return title
-    end
-  end
-
-  title = clean_tab_title(pane.title)
-  return title ~= '' and title or 'shell'
-end
-
-local function fit_tab_label(label, width)
-  if width <= 0 then
-    return ''
-  end
-  if wezterm.column_width(label) > width then
-    label = wezterm.truncate_right(label, width - 1) .. '…'
-  end
-  return label
-end
-
--- Tabline owns rendering. Status components return formatted capsules so both ends
--- have the same background, rather than joining a square edge to a rounded cap.
-local tabline = wezterm.plugin.require('https://github.com/michaelbrusegard/tabline.wez')
+-- Native numbered tabs keep the top-left corner compact without a plugin.
 local bar_background = config.colors.tab_bar.background
 local function capsule(text, foreground, background)
-  return wezterm.format({
-    { Attribute = { Intensity = 'Normal' } },
+  return {
+    { Attribute = { Intensity = 'Bold' } },
     { Background = { Color = bar_background } },
     { Foreground = { Color = background } },
     { Text = '' },
     { Background = { Color = background } },
     { Foreground = { Color = foreground } },
-    { Text = ' ' .. text .. ' ' },
+    { Text = text },
     { Background = { Color = bar_background } },
     { Foreground = { Color = background } },
     { Text = '' },
-    { Foreground = { Color = '#908caa' } },
-  })
-end
-
-local function status_width(window)
-  return window:active_tab():get_size().cols
-end
-
-local function left_status(window)
-  local cols = status_width(window)
-  local mode = clean_tab_title(window:active_key_table() or 'normal'):gsub('_mode$', '')
-  local color = mode == 'copy' and '#f6c177' or (mode == 'search' and '#eb6f92' or '#c4a7e7')
-  local label = fit_tab_label(mode, cols < 80 and 1 or 10)
-  -- An ellipsis is not useful for the one-letter compact mode indicator.
-  if cols < 80 then label = mode:sub(1, 1) end
-  local workspace_background = '#393552'
-  local show_workspace = cols >= 100
-  local result = {
-    { Attribute = { Intensity = 'Bold' } },
-    { Background = { Color = color } },
-    { Foreground = { Color = '#232136' } },
-    { Text = ' ' .. label .. ' ' },
-    -- The mode's round end is drawn over the next section, with no gap.
-    { Background = { Color = show_workspace and workspace_background or bar_background } },
-    { Foreground = { Color = color } },
-    { Text = '' },
+    { Attribute = { Intensity = 'Normal' } },
   }
-  if show_workspace then
-    local workspace = fit_tab_label(clean_tab_title(window:active_workspace()), 16)
-    table.insert(result, { Text = ' ' .. wezterm.nerdfonts.md_view_dashboard .. ' ' .. workspace .. ' ' })
-    table.insert(result, { Background = { Color = bar_background } })
-    table.insert(result, { Foreground = { Color = workspace_background } })
-    table.insert(result, { Text = '' })
+end
+
+wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
+  local label = tostring(tab.tab_index + 1)
+  if max_width < #label + 2 then
+    return wezterm.truncate_right(label, math.max(0, max_width))
   end
-  table.insert(result, { Attribute = { Intensity = 'Normal' } })
-  table.insert(result, { Foreground = { Color = '#908caa' } })
-  table.insert(result, { Text = ' ' })
-  return wezterm.format(result)
-end
+  return capsule(label, tab.is_active and '#191724' or '#e0def4',
+    tab.is_active and '#c4a7e7' or (hover and '#6e6a86' or '#393552'))
+end)
 
-local function right_status(window)
-  local cols = status_width(window)
-  if cols < 100 then return '' end
-  local host = fit_tab_label(clean_tab_title(wezterm.hostname()), cols < 120 and 8 or 20)
-  return host ~= '' and capsule(host, '#232136', '#c4a7e7') .. ' ' or ''
-end
-
-local function tabline_label(tab)
-  return ' ' .. fit_tab_label(tostring(tab.tab_index + 1) .. ' ' .. tab_title(tab), config.tab_max_width - 5) .. ' '
-end
-
-tabline.setup({
-  options = {
-    theme = config.color_scheme,
-    tab_separators = { left = ' ', right = '' },
-    component_separators = { left = '', right = '' },
-    section_separators = { left = '', right = '' },
-    theme_overrides = {
-      normal_mode = { c = { fg = '#908caa', bg = bar_background } },
-      copy_mode = { c = { fg = '#908caa', bg = bar_background } },
-      search_mode = { c = { fg = '#908caa', bg = bar_background } },
-      tab = {
-        active = { fg = '#e0def4', bg = '#393552' },
-        inactive = { fg = '#908caa', bg = bar_background },
-        inactive_hover = { fg = '#e0def4', bg = '#393552' },
-      },
-    },
-  },
-  sections = {
-    tabline_a = {},
-    tabline_b = {},
-    tabline_c = { left_status },
-    tab_active = { { Attribute = { Intensity = 'Normal' } }, tabline_label },
-    tab_inactive = { { Attribute = { Intensity = 'Normal' } }, tabline_label },
-    tabline_x = { right_status },
-    tabline_y = {},
-    tabline_z = {},
-  },
-})
+wezterm.on('update-status', function(window)
+  window:set_left_status('')
+  local size = window:active_tab():get_size()
+  -- The tab bar spans the full window, including terminal padding.
+  local cell_width = size.pixel_width / math.max(1, size.cols)
+  local cols = cell_width > 0 and math.floor(window:get_dimensions().pixel_width / cell_width) or size.cols
+  local tabs_width = 0
+  for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+    tabs_width = tabs_width + #tostring(tab.index + 1) + 2
+  end
+  local clock = ' ' .. wezterm.strftime('%H:%M:%S') .. ' '
+  local clock_width = wezterm.column_width(clock) + 2
+  local clock_start = math.floor((cols - clock_width) / 2)
+  -- Hide the clock when tabs reach the center, rather than clipping its digits.
+  if clock_start < tabs_width + 1 then
+    window:set_right_status('')
+    return
+  end
+  local items = capsule(clock, '#191724', '#c4a7e7')
+  table.insert(items, { Text = string.rep(' ', cols - clock_start - clock_width) })
+  window:set_right_status(wezterm.format(items))
+end)
 
 wezterm.on('new-tab-button-click', function(window, pane, button)
   if button == 'Left' then
@@ -719,10 +647,6 @@ wezterm.on('gui-startup', function(cmd)
   local _tab, _pane, window = mux.spawn_window(spawn_cmd or {})
   local gui_window = window:gui_window()
   if not gui_window then
-    return
-  end
-  if is_macos then
-    gui_window:maximize()
     return
   end
 

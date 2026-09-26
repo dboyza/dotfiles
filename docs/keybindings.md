@@ -41,7 +41,8 @@ PowerShell tabs fall back to the default domain when PowerShell is unavailable.
 On macOS, use `Command+[` / `Command+]` for the previous / next WezTerm tab, `Command+T` for a new tab, and `Command+W` to close the current tab with confirmation.
 The two-key bracket shortcuts work directly from shells, tmux, Herdr, and Neovim because WezTerm handles them first.
 Existing `Command+Shift+[` / `Command+Shift+]` and portable `Control+Tab` / `Control+Shift+Tab` shortcuts remain available.
-WezTerm launches maximized on macOS, filling the available desktop area while respecting the menu bar and Dock.
+WezTerm launches centered on macOS at 94% of the screen width and 88% of its height, leaving desktop margins instead of maximizing.
+Its top bar uses numbered tab badges and a centered clock, which hides when tabs need the space.
 Herdr prefix `v` toggles Reviewr, `d` detaches, and `?` shows its full shortcut list.
 Herdr also has a native Windows launcher; its Reviewr plugin is supported here only on macOS and Linux/WSL.
 

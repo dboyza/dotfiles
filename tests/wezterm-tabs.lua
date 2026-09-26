@@ -1,127 +1,59 @@
--- Run with WezTerm itself so Unicode widths use its actual renderer helpers.
+-- Run with WezTerm itself to validate formatting and display-cell widths.
 local wezterm = require 'wezterm'
 local callbacks = {}
 local original_on = wezterm.on
-wezterm.on = function(name, callback)
-  callbacks[name] = callback
-end
+wezterm.on = function(name, callback) callbacks[name] = callback end
 local config = dofile(wezterm.config_dir .. '/../wezterm/.wezterm.lua')
 wezterm.on = original_on
 
-local format_title = assert(callbacks['format-tab-title'])
-local function label_text(result)
-  local parts = {}
-  for _, item in ipairs(result) do
-    if item.Text then
-      table.insert(parts, item.Text)
-    end
-  end
-  return table.concat(parts)
-end
-
--- Tabline emits bounded labels; WezTerm clips them further when tabs are crowded.
-for _, title in ipairs({ 'shell', 'a very long project name with spaces', '日本語のプロジェクト', '🌲 café', '' }) do
-  for _, state in ipairs({ { active = true }, { active = false }, { active = false, hover = true } }) do
-    local result = format_title({ tab_index = 0, tab_title = title, is_active = state.active, active_pane = { title = 'fallback' } }, {}, {}, config, state.hover, config.tab_max_width)
-    assert(wezterm.column_width(label_text(result)) <= config.tab_max_width, 'rounded tab must fit the configured cell limit')
-    wezterm.format(result) -- Validate the formatting against WezTerm's real API.
-  end
-end
-
-for _, fixture in ipairs({
-  { title = ' custom ', cwd = 'file:///work/project', expected = 'custom' },
-  { cwd = 'file:///work/dotfiles/', expected = 'dotfiles' },
-  { cwd = 'file:///C:/work/my%20project/', expected = 'my project' },
-  { cwd = 'file://remote/home/user/project', expected = 'project' },
-  { cwd = { file_path = 'C:\\work\\dotfiles\\' }, expected = 'dotfiles' },
-  { cwd = { file_path = '/home/user/café' }, expected = 'café' },
-  { title = '  ', pane_title = '  ssh\nserver  ', expected = 'ssh server' },
-  { pane_title = '', expected = 'shell' },
-}) do
-  local result = format_title({
-    tab_index = 0,
-    is_active = true,
-    tab_title = fixture.title,
-    active_pane = { title = fixture.pane_title or 'fallback', current_working_dir = fixture.cwd },
-  }, {}, {}, config, false, config.tab_max_width)
-  assert(label_text(result):find(fixture.expected, 1, true), 'tab must display ' .. fixture.expected)
-end
-
-local url = wezterm.url.parse('file:///work/project%20name')
-local result = format_title({ tab_index = 11, is_active = true, active_pane = { current_working_dir = url } }, {}, {}, config, false, config.tab_max_width)
-assert(label_text(result):find('12 project name', 1, true), 'URL objects must produce readable numbered names')
-
-assert(config.colors.tab_bar.background == '#191724', 'bar must have a solid dark background')
-for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) do
-  assert(config.colors.tab_bar[style].bg_color == config.colors.tab_bar.background, 'native tab backing must match rounded cap backgrounds')
-end
-assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
-assert(callbacks['window-resized'] == nil and callbacks['window-config-reloaded'] == nil,
-  'reload and resize must not clear Tabline status')
-
--- Focus and hover must change only styling, never the directory label.
-for _, fixture in ipairs({
-  { path = '/work/dotfiles', expected = 'dotfiles' },
-  { path = 'C:\\work\\project', expected = 'project' },
-  { path = '/work/a-very-long-directory-name', truncated = true },
-  { path = '/work/日本語の長いプロジェクト名', truncated = true },
-  { path = '/work/🌲🌲🌲🌲🌲🌲🌲🌲🌲🌲', truncated = true },
-  { path = '/work/dotfiles', explicit = 'custom', expected = 'custom' },
-}) do
-  local previous
-  for _, state in ipairs({ { active = true }, { active = false }, { active = false, hover = true } }) do
-    local result = format_title({ tab_index = 1, is_active = state.active, tab_title = fixture.explicit,
-      active_pane = { foreground_process_name = '/bin/zsh', title = 'zsh',
-        current_working_dir = { file_path = fixture.path } },
-    }, {}, {}, config, state.hover, config.tab_max_width)
-    local label = label_text(result)
-    if previous then assert(label == previous, 'focus must not change a tab name') end
-    assert(wezterm.column_width(label) <= 20, 'tab including rounded ends must stay compact')
-    if fixture.expected then assert(label:find(fixture.expected, 1, true)) end
-    if fixture.truncated then assert(label:find('…', 1, true), 'long names must end with an ellipsis') end
-    previous = label
-    wezterm.format(result)
-  end
-end
-
-local original_hostname = wezterm.hostname
-wezterm.hostname = function() return 'test-host-with-long-name' end
 local function plain(text)
   return text:gsub('\27%[[%d;:]*m', '')
 end
-local function status(cols, mode)
-  local left, right
-  callbacks['update-status']({
-    active_key_table = function() return mode end,
-    active_workspace = function() return 'workspace-with-long-name' end,
-    active_tab = function() return { get_size = function() return { cols = cols } end } end,
-    set_left_status = function(_, text) left = plain(text) end,
-    set_right_status = function(_, text) right = plain(text) end,
-  }, {})
-  return left, right
-end
-for _, cols in ipairs({ 40, 79, 80, 99, 100, 119, 120, 139, 140, 160 }) do
-  local left, right = status(cols)
-  assert(left:find(cols < 80 and ' n ' or ' normal ', 1, true))
-  assert((left:find('workspace', 1, true) ~= nil) == (cols >= 100))
-  assert(not left:find('', 1, true), 'left strip must start flat and join sections without separate left caps')
-  local _, round_ends = left:gsub('', '')
-  assert(round_ends == (cols >= 100 and 2 or 1), 'mode and workspace must each end with a rounded transition')
-  assert(wezterm.column_width(left .. right) < cols - 10, 'status must leave space for tabs')
-  if cols >= 100 then
-    assert(right:match('^ test.*  $'), 'right status must contain only the rounded hostname')
-    assert(wezterm.column_width(right) <= (cols < 120 and 13 or 25))
-  else
-    assert(right == '', 'narrow windows must prioritize tabs')
+local format_title = assert(callbacks['format-tab-title'])
+for _, index in ipairs({ 0, 8, 9, 99 }) do
+  for _, width in ipairs({ 1, 2, 4, 8 }) do
+    for _, state in ipairs({ { active = true }, { active = false }, { hover = true } }) do
+      local result = format_title({ tab_index = index, is_active = state.active,
+        tab_title = 'ignored name', active_pane = {} }, {}, {}, config, state.hover, width)
+      local text = type(result) == 'string' and result or plain(wezterm.format(result))
+      assert(wezterm.column_width(text) <= width, 'numbered tabs must fit even in crowded windows')
+      if width >= #tostring(index + 1) + 2 then
+        assert(text == '' .. tostring(index + 1) .. '', 'tabs must contain only their number')
+      end
+    end
   end
 end
-for _, mode in ipairs({ 'copy_mode', 'search_mode', 'custom_table' }) do
-  local left = status(160, mode)
-  assert(left:find(mode:gsub('_mode$', ''):sub(1, 6), 1, true), 'mode must update without clearing workspace')
-end
-wezterm.hostname = function() return '' end
-local _, no_host = status(160)
-assert(no_host == '', 'missing hostname must not leave an empty capsule')
-wezterm.hostname = original_hostname
 
+assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
+for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) do
+  assert(config.colors.tab_bar[style].bg_color == config.colors.tab_bar.background)
+end
+local original_strftime = wezterm.strftime
+wezterm.strftime = function() return '17:07:02' end
+for _, cols in ipairs({ 12, 20, 40, 79, 80, 100, 139, 160 }) do
+  for _, count in ipairs({ 1, 3, 10, 30 }) do
+    local tabs, tabs_width = {}, 0
+    for index = 0, count - 1 do
+      tabs[#tabs + 1] = { index = index }
+      tabs_width = tabs_width + #tostring(index + 1) + 2
+    end
+    local left, right
+    callbacks['update-status']({
+      active_tab = function() return { get_size = function() return { cols = math.max(1, cols - 3), pixel_width = math.max(1, cols - 3) * 18 } end } end,
+      get_dimensions = function() return { pixel_width = cols * 18 } end,
+      mux_window = function() return { tabs_with_info = function() return tabs end } end,
+      set_left_status = function(_, text) left = text end,
+      set_right_status = function(_, text) right = plain(text) end,
+    })
+    assert(left == '', 'tabs must start at the left edge')
+    local clock_start = math.floor((cols - 12) / 2)
+    if clock_start < tabs_width + 1 then
+      assert(right == '', 'crowded tabs must hide the clock')
+    else
+      assert(right:find(' 17:07:02 ', 1, true) == 1)
+      assert(cols - wezterm.column_width(right) == clock_start, 'clock must be centered')
+    end
+  end
+end
+wezterm.strftime = original_strftime
 return config
