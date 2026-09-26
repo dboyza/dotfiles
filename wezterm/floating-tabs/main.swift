@@ -90,10 +90,22 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
+func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> DispatchSourceFileSystemObject? {
+    let descriptor = open(directory.path, O_EVTONLY)
+    guard descriptor >= 0 else { return nil }
+    let watcher = DispatchSource.makeFileSystemObjectSource(
+        fileDescriptor: descriptor, eventMask: .write, queue: .main)
+    watcher.setEventHandler(handler: onChange)
+    watcher.setCancelHandler { close(descriptor) }
+    watcher.resume()
+    return watcher
+}
+
 final class Companion: NSObject, NSApplicationDelegate {
     let tabsPanel = OverlayPanel()
     let clockPanel = OverlayPanel()
     var timer: Timer?
+    var stateWatcher: DispatchSourceFileSystemObject?
     var observer: AXObserver?
     var observedWindow: AXUIElement?
     var observedPID: pid_t = 0
@@ -114,6 +126,10 @@ final class Companion: NSObject, NSApplicationDelegate {
             let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
             _ = AXIsProcessTrustedWithOptions(options)
         }
+        // Watch the directory: atomic snapshot replacement changes the inode,
+        // so watching current.json itself would lose subsequent updates.
+        stateWatcher = watchDirectory(stateDirectory) { [weak self] in self?.refresh() }
+        // Retain a slow timer for the clock, heartbeat and stale-helper recovery.
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.refresh() }
         NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refresh),
             name: NSWorkspace.didActivateApplicationNotification, object: nil)
@@ -237,7 +253,22 @@ if CommandLine.arguments.contains("--test") {
     precondition(placement(frame: frame, visible: screen, tabWidth: 1400)!.1 == nil)
     let second = frame.offsetBy(dx: -1512, dy: 300)
     precondition(placement(frame: second, visible: screen.offsetBy(dx: -1512, dy: 300), tabWidth: 30)!.0.minX == second.minX + 6)
-    print("Floating tab geometry passed")
+    let fixture = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: fixture, withIntermediateDirectories: true)
+    var changes = 0
+    let watcher = watchDirectory(fixture) { changes += 1 }!
+    for text in ["first snapshot", "replacement snapshot"] {
+        let previous = changes
+        try Data(text.utf8).write(to: fixture.appendingPathComponent("current.json"), options: .atomic)
+        let deadline = Date().addingTimeInterval(1)
+        while changes == previous && Date() < deadline {
+            RunLoop.current.run(until: Date().addingTimeInterval(0.005))
+        }
+        precondition(changes > previous, "Atomic snapshot replacement must wake the observer")
+    }
+    watcher.cancel()
+    try FileManager.default.removeItem(at: fixture)
+    print("Floating tab geometry and snapshot notifications passed")
 } else {
     let app = NSApplication.shared
     let companion = Companion()

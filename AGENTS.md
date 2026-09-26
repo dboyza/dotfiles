@@ -42,6 +42,7 @@
 - On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across the focused window's upper edge.
   Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
   Exchange only window identities, tab IDs, and freshness timestamps through the private state directory.
+  Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, focus changes, or there is no room above the window.
   Keep the native numbered tab bar and centered clock as the Windows/Linux and macOS fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
