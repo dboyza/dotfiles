@@ -107,6 +107,7 @@
 - Treat native Windows as the host-integration target for WezTerm, fonts, PowerShell, and WSL clipboard interoperation rather than as a Nix-provisioned shell environment.
 - In setup documentation, label PowerShell commands separately from WSL shell commands so Windows-host actions cannot be confused with Linux guest actions.
 - Keep the section index at the top of `README.md` synchronized with every level-two and level-three heading.
+- Keep the README's WezTerm screenshot in `docs/images/wezterm-macos.png`, using a clean terminal listing and including the companion's floating badges.
 - Keep `bootstrap.sh` as the thin public entry point, with shared and platform-specific behavior in `scripts/lib/`.
 - Keep the bootstrap managed-target inventory centralized so backup and verification always operate on the same paths.
   Evaluate enabled Home Manager `home.file` targets once before backup; do not maintain a second list in shell scripts.

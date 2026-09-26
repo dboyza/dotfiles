@@ -3,6 +3,11 @@
 This repository recreates the same terminal and editor environment on Ubuntu, Windows 11 with WSL, and macOS.
 One bootstrap command installs the configured tools, activates tracked configuration, and verifies the result.
 
+![WezTerm on macOS with a translucent dark background, lavender rounded border, floating numbered tab, and centered clock](docs/images/wezterm-macos.png)
+
+WezTerm on macOS with the floating-tabs companion enabled.
+Windows and Linux use the native numbered tab bar and centered clock.
+
 Sections:
 
 - [Quick Start](#quick-start)
