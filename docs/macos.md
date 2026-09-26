@@ -235,6 +235,18 @@ The helper needs this permission to identify and follow WezTerm's focused window
 It does not need Screen Recording permission and does not read terminal text.
 After installing, reload the WezTerm configuration or restart WezTerm; subsequent GUI sessions start the helper automatically.
 Rebuilding a locally signed app may require granting Accessibility access again.
+An enabled switch can still refer to an older build's code signature; toggling it may not replace that stale record.
+Quit the helper in Activity Monitor, reset only its permission, and relaunch it:
+
+```sh
+tccutil reset Accessibility com.dboyza.wezterm-floating-tabs
+open -g "$HOME/Applications/WezTerm Floating Tabs.app"
+```
+
+Enable the new Accessibility entry when prompted.
+This does not reset permissions for any other application.
+The grant remains manual; neither activation nor WezTerm startup changes macOS permissions.
+WezTerm launches the installed helper once when the first window in a new GUI process receives focus, so no separate login item is needed.
 
 Click a number to switch tabs, or keep using the existing terminal shortcuts.
 The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
