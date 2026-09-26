@@ -13,7 +13,7 @@
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
 - Launch WezTerm centered on macOS at 94% of the active screen width and 88% of its height, without maximizing.
   Preserve the bounded proportional launch geometry on Windows and Linux/WSL.
-  Keep prefix `m` and macOS `Command+M` toggling between that large geometry and a smaller centered window, leaving native fullscreen untouched.
+  Keep prefix `m` and macOS `Command+Shift+M` toggling between that large geometry and a smaller centered window, leaving native fullscreen untouched.
 - Keep macOS WezTerm tab navigation on `Command+[` / `Command+]` and tab close on `Command+W` with confirmation, alongside the portable shortcuts.
 - Keep the WezTerm window background opacity at 0.7 on macOS and native Windows for transparency while retaining readable text.
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.

@@ -526,7 +526,7 @@ end
 if is_macos then
   local mac_key_bindings = {
     { key = '[', mods = 'CMD', action = wezterm.action.ActivateTabRelative(-1) },
-    { key = 'm', mods = 'CMD', action = wezterm.action.EmitEvent('toggle-window-size') },
+    { key = 'm', mods = 'CMD|SHIFT', action = wezterm.action.EmitEvent('toggle-window-size') },
     { key = ']', mods = 'CMD', action = wezterm.action.ActivateTabRelative(1) },
     { key = 'w', mods = 'CMD', action = wezterm.action.CloseCurrentTab({ confirm = true }) },
     { key = 'UpArrow', mods = 'CMD', action = wezterm.action.SendKey({ key = 'Home', mods = 'CTRL' }) },
