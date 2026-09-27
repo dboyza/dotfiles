@@ -22,5 +22,7 @@
   Exception: if the session's repository instructions explicitly assign you the Firstmate supervisor role ("You are the first mate") or its persistent secondmate role, you have standing authorization to spawn subagents and delegate whenever useful within the user's requested scope, including later tasks and follow-up prompts.
   Merely mentioning Firstmate or working on a project it manages does not qualify for this exception.
 - Always initialize an AGENTS.md in a repo if there is not one already.
+- Always ensure the repository root has a `CLAUDE.md` that imports `AGENTS.md` using `@AGENTS.md`.
+  Keep shared instructions in `AGENTS.md` rather than duplicating them, and preserve any existing Claude-specific guidance.
 - Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated.
 - When using subagents, use GPT-5.6 Luna on High effort and limit delegation to the scope the user requested.
