@@ -217,7 +217,7 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
 ## Floating WezTerm tabs
 
-The native `WezTerm Floating Tabs` companion places clickable tab numbers above the focused WezTerm window, straddling its lavender border, with the clock centered above the same window.
+The native `WezTerm Floating Tabs` companion places clickable tab numbers above each visible WezTerm window, straddling its lavender border, with the clock centered above the same window.
 The badges follow window moves and resizes without taking keyboard focus.
 Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.
 Other applications do not get overlays.
@@ -231,7 +231,7 @@ open -g "$HOME/Applications/WezTerm Floating Tabs.app"
 ```
 
 Allow **WezTerm Floating Tabs** in **System Settings > Privacy & Security > Accessibility** when prompted.
-The helper needs this permission to identify and follow WezTerm's focused window.
+The helper needs this permission to identify and follow WezTerm windows.
 It does not need Screen Recording permission and does not read terminal text.
 After installing, reload the WezTerm configuration or restart WezTerm; subsequent GUI sessions start the helper automatically.
 Rebuilding a locally signed app may require granting Accessibility access again.
@@ -246,16 +246,17 @@ open -g "$HOME/Applications/WezTerm Floating Tabs.app"
 Enable the new Accessibility entry when prompted.
 This does not reset permissions for any other application.
 The grant remains manual; neither activation nor WezTerm startup changes macOS permissions.
-WezTerm launches the installed helper once when the first window in a new GUI process receives focus, so no separate login item is needed.
+WezTerm launches the installed helper once when the first window in a new GUI process updates its status, so no separate login item is needed.
 
-Click a number to switch tabs, or keep using the existing terminal shortcuts.
+Click a number to focus its window and switch tabs, or keep using the existing terminal shortcuts.
 The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
-The helper uses the native tab bar when WezTerm is not focused, enters fullscreen, or sits too close to the menu bar for external badges.
+The helper uses the native tab bar when another application is focused, a window enters fullscreen, or it sits too close to the menu bar for external badges.
 If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
 To stop the helper for the current WezTerm session, quit `wezterm-floating-tabs` in Activity Monitor.
 Windows and Linux/WSL retain their native numbered tabs and clock; the floating companion is macOS-only.
 
-The private `~/.local/state/dotfiles/wezterm-floating-tabs` directory contains only the latest window identity, tab IDs, acknowledgment, and click request.
+The private `~/.local/state/dotfiles/wezterm-floating-tabs` directory contains separate snapshots, acknowledgments, and click requests for each window, identified by GUI process and window ID.
+Closed-window snapshots expire and are cleaned up after 30 seconds.
 Window titles include an opaque identity so the companion never attaches another WezTerm process's tabs to the wrong window.
 It does not collect command lines, working directories, terminal contents, or session history.
 Run `./tests/wezterm-floating-tabs.sh` on macOS to check the native layout and the real WezTerm bridge in an isolated fixture home.

@@ -22,10 +22,11 @@ local function write(name, data)
 end
 local focused, overrides, activated = true, { font_size = 17 }, nil
 local selected = 0
+local window_id = 42
 local window = {
   is_focused = function() return focused end,
   mux_window = function() return {
-    window_id = function() return 42 end,
+    window_id = function() return window_id end,
     tabs_with_info = function() return {
       { index = 0, is_active = selected == 0, tab = { tab_id = function() return 11 end } },
       { index = 1, is_active = selected == 1, tab = { tab_id = function() return 12 end } },
@@ -45,42 +46,43 @@ local window = {
 }
 local update = assert(callbacks['update-status'])
 update(window)
-local snapshot = read('current.json')
+local key = wezterm.GLOBAL.floating_tabs_token .. '-42'
+local snapshot = read('window-' .. key .. '.json')
 assert(#snapshot.tabs == 2 and snapshot.tabs[2].id == 12)
 assert(overrides.enable_tab_bar == true and overrides.font_size == 17, 'missing helper must keep native tabs')
-write('ready.json', { title = snapshot.title, updated = os.time() })
+write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() })
 update(window)
 assert(overrides.enable_tab_bar == false, 'only an acknowledged window can hide native tabs')
-write('activate.json', { title = snapshot.title, updated = os.time(), tab_id = 12 })
+write('activate-' .. key .. '.json', { title = snapshot.title, updated = os.time(), tab_id = 12 })
 update(window)
 assert(activated == '{"ActivateTab":1}', 'click must activate the requested tab index')
-assert(read('current.json').tabs[2].active, 'click must publish the new selection in the same update')
+assert(read('window-' .. key .. '.json').tabs[2].active, 'click must publish the new selection in the same update')
 activated = nil
 for _, request in ipairs({
   { title = snapshot.title, updated = os.time() - 10, tab_id = 12 },
   { title = snapshot.title, updated = os.time(), tab_id = 999 },
   { title = 'another process', updated = os.time(), tab_id = 12 },
 }) do
-  write('activate.json', request)
+  write('activate-' .. key .. '.json', request)
   update(window)
   assert(activated == nil, 'stale, foreign, and removed tabs must never activate')
 end
 for _, reply in ipairs({ 'broken json', { title = snapshot.title, updated = os.time() - 10 },
   { title = 'another window', updated = os.time() } }) do
-  write('ready.json', reply)
+  write('ready-' .. key .. '.json', reply)
   update(window)
   assert(overrides.enable_tab_bar == true, 'invalid or stale acknowledgments must restore native tabs')
 end
-write('ready.json', { title = snapshot.title, updated = os.time() })
+write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() })
 focused = false
 update(window)
-assert(overrides.enable_tab_bar == true, 'inactive windows keep native tabs')
+assert(overrides.enable_tab_bar == false, 'acknowledged inactive windows retain floating tabs')
 assert(spawned == 1, 'helper must launch only once per GUI process')
 -- Keyboard switching must publish from the title event without a status tick.
 focused = true
 update(window)
 local original_get_tab = wezterm.mux.get_tab
-local window_id = 42
+window_id = 42
 wezterm.mux.get_tab = function() return { window = function() return {
   window_id = function() return window_id end,
 } end } end
@@ -89,10 +91,25 @@ local titles = {
   { tab_id = 12, tab_index = 1, is_active = false },
 }
 callbacks['format-window-title'](titles[1], nil, titles)
-assert(read('current.json').tabs[1].active, 'title event must publish selection without waiting for polling')
+assert(read('window-' .. key .. '.json').tabs[1].active, 'title event must publish selection without waiting for polling')
 window_id = 99
 callbacks['format-window-title'](titles[1], nil, titles)
-assert(read('current.json').title == snapshot.title, 'background windows must not replace the focused snapshot')
+assert(read('window-' .. key .. '.json').title == snapshot.title, 'background windows must not replace another snapshot')
+local second = read('window-' .. wezterm.GLOBAL.floating_tabs_token .. '-99.json')
+assert(second.title ~= snapshot.title and second.tabs[1].active, 'background windows must publish independently')
+-- Acknowledgment and clicks must be routed independently while both are live.
+local second_key = wezterm.GLOBAL.floating_tabs_token .. '-99'
+write('ready-' .. second_key .. '.json', { title = second.title, updated = os.time() })
+write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() - 10 })
+write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), tab_id = 12 })
+window_id = 42
+activated = nil
+update(window)
+assert(activated == nil and overrides.enable_tab_bar == true, 'other windows cannot consume a click or acknowledgment')
+window_id = 99
+update(window)
+assert(activated == '{"ActivateTab":1}' and overrides.enable_tab_bar == false, 'background click must target its own window')
+assert(read('window-' .. second_key .. '.json').tabs[2].active)
 wezterm.mux.get_tab = original_get_tab
 wezterm.home_dir, wezterm.background_child_process = original_home, original_spawn
 return config

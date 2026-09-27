@@ -41,12 +41,13 @@
   Use Command+Up/Down for native Control+Home/End file navigation in Neovim editing modes.
 - Keep tmux on `Control+G` and Herdr on `Control+A` so their prefixes do not collide when Herdr runs inside tmux.
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar always visible at the top, including with one tab.
-- On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across the focused window's upper edge.
+- On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across each visible window's upper edge.
   Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
   An enabled Accessibility entry can retain an old ad-hoc code signature after rebuilding; recover with a helper-only `tccutil reset Accessibility com.dboyza.wezterm-floating-tabs`, then a fresh manual grant.
   Exchange only window identities, tab IDs, and freshness timestamps through the private state directory.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
-  Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, focus changes, or there is no room above the window.
+  Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, another application gains focus, or there is no room above the window.
+  Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep the native numbered tab bar and centered clock as the Windows/Linux and macOS fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep the thin lavender window border and native tab backing colors matched to the dark bar.

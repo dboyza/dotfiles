@@ -7,6 +7,7 @@ struct Tab: Codable, Equatable {
     let active: Bool
 }
 struct Snapshot: Codable {
+    let key: String
     let title: String
     let updated: Double
     let tabs: [Tab]
@@ -80,7 +81,7 @@ final class OverlayPanel: NSPanel {
         backgroundColor = .clear
         isOpaque = false
         hasShadow = false
-        level = .floating
+        level = .normal
         hidesOnDeactivate = false
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         isMovable = false
@@ -126,7 +127,15 @@ func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> Dispatc
     return watcher
 }
 
-final class Companion: NSObject, NSApplicationDelegate {
+final class WindowOverlay {
+    let key: String
+    let onChange: () -> Void
+    init(key: String, onChange: @escaping () -> Void) { self.key = key; self.onChange = onChange }
+    deinit {
+        if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
+        hide()
+        for panel in corners + [tabsPanel, clockPanel] { panel.close() }
+    }
     let tabsPanel = OverlayPanel()
     let clockPanel = OverlayPanel()
     let corners: [OverlayPanel] = (0..<4).map { corner in
@@ -135,8 +144,6 @@ final class Companion: NSObject, NSApplicationDelegate {
         panel.contentView = CornerOutline(corner: corner)
         return panel
     }
-    var timer: Timer?
-    var stateWatcher: DispatchSourceFileSystemObject?
     var observer: AXObserver?
     var observedWindow: AXUIElement?
     var observedPID: pid_t = 0
@@ -150,24 +157,6 @@ final class Companion: NSObject, NSApplicationDelegate {
         formatter.dateFormat = "HH:mm:ss"
         return formatter
     }()
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        NSApp.setActivationPolicy(.accessory)
-        if !AXIsProcessTrusted() {
-            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-            _ = AXIsProcessTrustedWithOptions(options)
-        }
-        // Watch the directory: atomic snapshot replacement changes the inode,
-        // so watching current.json itself would lose subsequent updates.
-        stateWatcher = watchDirectory(stateDirectory) { [weak self] in self?.refresh() }
-        // Retain a slow timer for the clock, heartbeat and stale-helper recovery.
-        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.refresh() }
-        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refresh),
-            name: NSWorkspace.didActivateApplicationNotification, object: nil)
-        refresh()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) { hide() }
 
     func write(_ reply: Reply, name: String) {
         guard let data = try? JSONEncoder().encode(reply) else { return }
@@ -183,7 +172,7 @@ final class Companion: NSObject, NSApplicationDelegate {
         tabsPanel.orderOut(nil)
         clockPanel.orderOut(nil)
         if !heartbeatTitle.isEmpty {
-            try? FileManager.default.removeItem(at: stateDirectory.appendingPathComponent("ready.json"))
+            try? FileManager.default.removeItem(at: stateDirectory.appendingPathComponent("ready-\(key).json"))
             heartbeatTitle = ""
         }
     }
@@ -196,7 +185,7 @@ final class Companion: NSObject, NSApplicationDelegate {
         var newObserver: AXObserver?
         let callback: AXObserverCallback = { _, _, _, context in
             guard let context else { return }
-            Unmanaged<Companion>.fromOpaque(context).takeUnretainedValue().refresh()
+            Unmanaged<WindowOverlay>.fromOpaque(context).takeUnretainedValue().onChange()
         }
         guard AXObserverCreate(pid, callback, &newObserver) == .success, let newObserver else { return }
         observer = newObserver
@@ -207,34 +196,20 @@ final class Companion: NSObject, NSApplicationDelegate {
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(newObserver), .commonModes)
     }
 
-    @objc func refresh() {
-        guard AXIsProcessTrusted(),
-              let app = NSWorkspace.shared.frontmostApplication,
-              app.bundleIdentifier == "org.wezfurlong.wezterm" || app.bundleIdentifier == "com.github.wez.wezterm",
-              let data = try? Data(contentsOf: stateDirectory.appendingPathComponent("current.json")),
-              let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
-              abs(Date().timeIntervalSince1970 - snapshot.updated) < 3,
-              !snapshot.tabs.isEmpty
-        else { hide(); return }
-        let application = AXUIElementCreateApplication(app.processIdentifier)
-        AXUIElementSetMessagingTimeout(application, 0.1)
-        guard let value = attribute(application, kAXFocusedWindowAttribute), CFGetTypeID(value) == AXUIElementGetTypeID()
-        else { hide(); return }
-        let window = unsafeBitCast(value, to: AXUIElement.self)
-        guard attribute(window, kAXTitleAttribute) as? String == snapshot.title,
-              attribute(window, "AXFullScreen") as? Bool != true,
+    func refresh(snapshot: Snapshot, window: AXUIElement, pid: pid_t, number: Int) {
+        guard attribute(window, "AXFullScreen") as? Bool != true,
               attribute(window, kAXMinimizedAttribute) as? Bool != true,
               let frame = windowFrame(window),
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
         else { hide(); return }
-        observe(pid: app.processIdentifier, window: window)
+        observe(pid: pid, window: window)
         let extent = CornerOutline.diameter
         for (index, panel) in corners.enumerated() {
             let position = CGRect(x: index % 2 == 1 ? frame.maxX - extent : frame.minX,
                                   y: index >= 2 ? frame.maxY - extent : frame.minY,
                                   width: extent, height: extent)
             if panel.frame != position { panel.setFrame(position, display: true) }
-            panel.orderFrontRegardless()
+            panel.order(.above, relativeTo: number)
         }
         let widths = snapshot.tabs.map { CGFloat(max(28, String($0.index + 1).count * 10 + 14)) }
         let width = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1) * 4)
@@ -250,7 +225,9 @@ final class Companion: NSObject, NSApplicationDelegate {
             var x: CGFloat = 0
             for (tab, badgeWidth) in zip(snapshot.tabs, widths) {
                 let button = Badge(label: String(tab.index + 1), active: tab.active) { [weak self] in
-                    self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id), name: "activate.json")
+                    _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                    NSRunningApplication(processIdentifier: pid)?.activate()
+                    self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id), name: "activate-\(snapshot.key).json")
                 }
                 button.frame = CGRect(x: x, y: 0, width: badgeWidth, height: 24)
                 content.addSubview(button)
@@ -263,7 +240,7 @@ final class Companion: NSObject, NSApplicationDelegate {
             }
         }
         tabsPanel.setFrame(tabFrame, display: true)
-        tabsPanel.orderFrontRegardless()
+        tabsPanel.order(.above, relativeTo: number)
         if let clockFrame {
             let time = formatter.string(from: Date())
             if time != currentTime {
@@ -272,14 +249,94 @@ final class Companion: NSObject, NSApplicationDelegate {
                 clockPanel.ignoresMouseEvents = true
             }
             clockPanel.setFrame(clockFrame, display: true)
-            clockPanel.orderFrontRegardless()
+            clockPanel.order(.above, relativeTo: number)
         } else { clockPanel.orderOut(nil) }
         let now = Date().timeIntervalSince1970
         if heartbeatTitle != snapshot.title || now - lastHeartbeat >= 0.5 {
             heartbeatTitle = snapshot.title
             lastHeartbeat = now
-            write(Reply(title: snapshot.title, updated: now, tab_id: nil), name: "ready.json")
+            write(Reply(title: snapshot.title, updated: now, tab_id: nil), name: "ready-\(key).json")
         }
+    }
+}
+
+// Separate state and panels for each window, including windows of other GUI
+// processes. Match only owner PID and geometry, without reading screen content.
+final class Companion: NSObject, NSApplicationDelegate {
+    var overlays: [String: WindowOverlay] = [:]
+    var timer: Timer?
+    var stateWatcher: DispatchSourceFileSystemObject?
+    var refreshing = false
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
+        if !AXIsProcessTrusted() {
+            let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+            _ = AXIsProcessTrustedWithOptions(options)
+        }
+        stateWatcher = watchDirectory(stateDirectory) { [weak self] in self?.refresh() }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.refresh() }
+        for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification] {
+            NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(refresh), name: name, object: nil)
+        }
+        refresh()
+    }
+
+    func applicationWillTerminate(_ notification: Notification) { overlays.removeAll() }
+
+    @objc func refresh() {
+        guard !refreshing else { return }
+        refreshing = true
+        defer { refreshing = false }
+        let identifiers = ["org.wezfurlong.wezterm", "com.github.wez.wezterm"]
+        guard AXIsProcessTrusted(), let front = NSWorkspace.shared.frontmostApplication,
+              identifiers.contains(front.bundleIdentifier ?? "") else {
+            for overlay in overlays.values { overlay.hide() }
+            return
+        }
+        let now = Date().timeIntervalSince1970
+        let files = (try? FileManager.default.contentsOfDirectory(at: stateDirectory,
+            includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        var snapshots: [String: Snapshot] = [:]
+        for file in files where file.lastPathComponent.hasPrefix("window-") && file.pathExtension == "json" {
+            guard let data = try? Data(contentsOf: file),
+                  let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
+                  file.lastPathComponent == "window-\(snapshot.key).json",
+                  snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil else { continue }
+            if now - snapshot.updated > 30 {
+                for name in ["window-", "ready-", "activate-"] {
+                    try? FileManager.default.removeItem(at: stateDirectory.appendingPathComponent("\(name)\(snapshot.key).json"))
+                }
+                continue
+            }
+            if abs(now - snapshot.updated) < 3 && !snapshot.tabs.isEmpty { snapshots[snapshot.title] = snapshot }
+        }
+        let visible = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] ?? []
+        var live = Set<String>()
+        for app in NSWorkspace.shared.runningApplications where identifiers.contains(app.bundleIdentifier ?? "") {
+            let application = AXUIElementCreateApplication(app.processIdentifier)
+            AXUIElementSetMessagingTimeout(application, 0.1)
+            guard let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement] else { continue }
+            for window in windows {
+                guard let title = attribute(window, kAXTitleAttribute) as? String,
+                      let snapshot = snapshots[title], let frame = windowFrame(window),
+                      let entry = visible.first(where: { info in
+                          guard (info[kCGWindowOwnerPID as String] as? Int) == Int(app.processIdentifier),
+                                (info[kCGWindowLayer as String] as? Int) == 0,
+                                let bounds = info[kCGWindowBounds as String] as? [String: Any],
+                                let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary) else { return false }
+                          let top = NSScreen.screens.first?.frame.maxY ?? 0
+                          return abs(rect.minX - frame.minX) < 2 && abs(top - rect.maxY - frame.minY) < 2
+                              && abs(rect.width - frame.width) < 2 && abs(rect.height - frame.height) < 2
+                      }), let number = entry[kCGWindowNumber as String] as? Int else { continue }
+                live.insert(snapshot.key)
+                let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
+                overlays[snapshot.key] = overlay
+                overlay.refresh(snapshot: snapshot, window: window, pid: app.processIdentifier, number: number)
+            }
+        }
+        for key in Array(overlays.keys) where !live.contains(key) { overlays.removeValue(forKey: key) }
     }
 }
 

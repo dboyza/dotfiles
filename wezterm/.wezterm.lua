@@ -627,6 +627,11 @@ local function overlay_title(window_id)
   return 'WezTerm [' .. wezterm.GLOBAL.floating_tabs_token .. ':' .. tostring(window_id) .. ']'
 end
 
+local function overlay_key(window_id)
+  overlay_title(window_id)
+  return wezterm.GLOBAL.floating_tabs_token .. '-' .. tostring(window_id)
+end
+
 local function overlay_read(name)
   local file = io.open(overlay_root .. name, 'r')
   if not file then return nil end
@@ -644,52 +649,50 @@ end
 local function publish_floating_tabs(window_id, tabs)
   local title = overlay_title(window_id)
   local now = os.time()
+  local key = overlay_key(window_id)
   local signature = title .. wezterm.json_encode(tabs)
   -- Title formatting also runs for unrelated terminal output. Publish only tab
   -- changes, with a one-second heartbeat so an idle window remains live.
-  if wezterm.GLOBAL.floating_tabs_signature == signature
-    and wezterm.GLOBAL.floating_tabs_published == now then return end
-  local temporary = overlay_root .. 'current.' .. wezterm.GLOBAL.floating_tabs_token .. '.tmp'
+  if wezterm.GLOBAL['floating_tabs_signature_' .. key] == signature
+    and wezterm.GLOBAL['floating_tabs_published_' .. key] == now then return end
+  local temporary = overlay_root .. 'window-' .. key .. '.tmp'
   local file = io.open(temporary, 'w')
   if not file then return end
-  file:write(wezterm.json_encode({ title = title, updated = now, tabs = tabs }))
+  file:write(wezterm.json_encode({ key = key, title = title, updated = now, tabs = tabs }))
   file:close()
-  if os.rename(temporary, overlay_root .. 'current.json') then
-    wezterm.GLOBAL.floating_tabs_signature = signature
-    wezterm.GLOBAL.floating_tabs_published = now
+  if os.rename(temporary, overlay_root .. 'window-' .. key .. '.json') then
+    wezterm.GLOBAL['floating_tabs_signature_' .. key] = signature
+    wezterm.GLOBAL['floating_tabs_published_' .. key] = now
   end
 end
 
 local function update_floating_tabs(window)
-  if not overlay_available or not window.is_focused then return end
-  local focused = window:is_focused()
+  if not overlay_available then return end
+  local key = overlay_key(window:mux_window():window_id())
   local title = overlay_title(window:mux_window():window_id())
-  if focused then
-    wezterm.GLOBAL.floating_tabs_focused_window = window:mux_window():window_id()
-    if not wezterm.GLOBAL.floating_tabs_started then
-      wezterm.GLOBAL.floating_tabs_started = true
-      wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
-    end
-    local request = overlay_read('activate.json')
-    if request and request.title == title then
-      os.remove(overlay_root .. 'activate.json')
-      if overlay_fresh(request, title) then
-        for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-          if tab.tab:tab_id() == request.tab_id then
-            window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
-            break
-          end
+  if not wezterm.GLOBAL.floating_tabs_started then
+    wezterm.GLOBAL.floating_tabs_started = true
+    wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
+  end
+  local request = overlay_read('activate-' .. key .. '.json')
+  if request and request.title == title then
+    os.remove(overlay_root .. 'activate-' .. key .. '.json')
+    if overlay_fresh(request, title) then
+      for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+        if tab.tab:tab_id() == request.tab_id then
+          window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
+          break
         end
       end
     end
-    -- Snapshot after handling a click, not before activating its destination.
-    local tabs = {}
-    for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
-    end
-    publish_floating_tabs(window:mux_window():window_id(), tabs)
   end
-  local ready = focused and overlay_fresh(overlay_read('ready.json'), title) or false
+  -- Snapshot after handling a click, not before activating its destination.
+  local tabs = {}
+  for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+    table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
+  end
+  publish_floating_tabs(window:mux_window():window_id(), tabs)
+  local ready = overlay_fresh(overlay_read('ready-' .. key .. '.json'), title)
   local overrides = window:get_config_overrides() or {}
   local show_native = not ready
   if overrides.enable_tab_bar ~= show_native then
@@ -703,13 +706,11 @@ wezterm.on('format-window-title', function(tab, _, tabs)
     local mux_tab = wezterm.mux.get_tab(tab.tab_id)
     local window = mux_tab and mux_tab:window()
     if window then
-      if wezterm.GLOBAL.floating_tabs_focused_window == window:window_id() then
-        local snapshot = {}
-        for _, item in ipairs(tabs) do
-          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active })
-        end
-        publish_floating_tabs(window:window_id(), snapshot)
+      local snapshot = {}
+      for _, item in ipairs(tabs) do
+        table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active })
       end
+      publish_floating_tabs(window:window_id(), snapshot)
       return overlay_title(window:window_id())
     end
   end
