@@ -75,6 +75,11 @@ final class Badge: NSButton {
     @objc func invoke() { actionHandler?() }
 }
 
+func needsOrdering(panel: Int, parent: Int, order: [Int]) -> Bool {
+    guard let panelIndex = order.firstIndex(of: panel), let parentIndex = order.firstIndex(of: parent) else { return true }
+    return panelIndex > parentIndex
+}
+
 final class OverlayPanel: NSPanel {
     init() {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -86,6 +91,18 @@ final class OverlayPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         isMovable = false
         isReleasedWhenClosed = false
+    }
+    // Clicks raise a native window within the normal level. Its focused overlay
+    // must live above that level, otherwise it disappears until the next tick.
+    func show(above number: Int, focused: Bool, order: [Int]) {
+        let desiredLevel: NSWindow.Level = focused ? .floating : .normal
+        let levelChanged = level != desiredLevel
+        if levelChanged { level = desiredLevel }
+        if focused {
+            if levelChanged || !isVisible { orderFrontRegardless() }
+        } else if levelChanged || !isVisible || needsOrdering(panel: windowNumber, parent: number, order: order) {
+            self.order(.above, relativeTo: number)
+        }
     }
     override var canBecomeKey: Bool { false }
     override var canBecomeMain: Bool { false }
@@ -193,10 +210,13 @@ final class WindowOverlay {
                      kAXWindowMiniaturizedNotification, kAXWindowDeminiaturizedNotification] {
             _ = AXObserverAddNotification(newObserver, window, name as CFString, Unmanaged.passUnretained(self).toOpaque())
         }
+        let application = AXUIElementCreateApplication(pid)
+        _ = AXObserverAddNotification(newObserver, application, kAXFocusedWindowChangedNotification as CFString,
+            Unmanaged.passUnretained(self).toOpaque())
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(newObserver), .commonModes)
     }
 
-    func refresh(snapshot: Snapshot, window: AXUIElement, pid: pid_t, number: Int) {
+    func refresh(snapshot: Snapshot, window: AXUIElement, pid: pid_t, number: Int, focused: Bool, order: [Int]) {
         guard attribute(window, "AXFullScreen") as? Bool != true,
               attribute(window, kAXMinimizedAttribute) as? Bool != true,
               let frame = windowFrame(window),
@@ -209,7 +229,7 @@ final class WindowOverlay {
                                   y: index >= 2 ? frame.maxY - extent : frame.minY,
                                   width: extent, height: extent)
             if panel.frame != position { panel.setFrame(position, display: true) }
-            panel.order(.above, relativeTo: number)
+            panel.show(above: number, focused: focused, order: order)
         }
         let widths = snapshot.tabs.map { CGFloat(max(28, String($0.index + 1).count * 10 + 14)) }
         let width = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1) * 4)
@@ -239,8 +259,8 @@ final class WindowOverlay {
                 content.subviews[active].scrollToVisible(content.subviews[active].bounds)
             }
         }
-        tabsPanel.setFrame(tabFrame, display: true)
-        tabsPanel.order(.above, relativeTo: number)
+        if tabsPanel.frame != tabFrame { tabsPanel.setFrame(tabFrame, display: true) }
+        tabsPanel.show(above: number, focused: focused, order: order)
         if let clockFrame {
             let time = formatter.string(from: Date())
             if time != currentTime {
@@ -248,8 +268,8 @@ final class WindowOverlay {
                 clockPanel.contentView = Badge(label: time, active: true)
                 clockPanel.ignoresMouseEvents = true
             }
-            clockPanel.setFrame(clockFrame, display: true)
-            clockPanel.order(.above, relativeTo: number)
+            if clockPanel.frame != clockFrame { clockPanel.setFrame(clockFrame, display: true) }
+            clockPanel.show(above: number, focused: focused, order: order)
         } else { clockPanel.orderOut(nil) }
         let now = Date().timeIntervalSince1970
         if heartbeatTitle != snapshot.title || now - lastHeartbeat >= 0.5 {
@@ -313,11 +333,13 @@ final class Companion: NSObject, NSApplicationDelegate {
         }
         let visible = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
+        let order = visible.compactMap { $0[kCGWindowNumber as String] as? Int }
         var live = Set<String>()
         for app in NSWorkspace.shared.runningApplications where identifiers.contains(app.bundleIdentifier ?? "") {
             let application = AXUIElementCreateApplication(app.processIdentifier)
             AXUIElementSetMessagingTimeout(application, 0.1)
             guard let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement] else { continue }
+            let focusedWindow = attribute(application, kAXFocusedWindowAttribute)
             for window in windows {
                 guard let title = attribute(window, kAXTitleAttribute) as? String,
                       let snapshot = snapshots[title], let frame = windowFrame(window),
@@ -333,7 +355,10 @@ final class Companion: NSObject, NSApplicationDelegate {
                 live.insert(snapshot.key)
                 let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
                 overlays[snapshot.key] = overlay
-                overlay.refresh(snapshot: snapshot, window: window, pid: app.processIdentifier, number: number)
+                let focused = app.processIdentifier == front.processIdentifier
+                    && focusedWindow.map { CFEqual($0, window) } == true
+                overlay.refresh(snapshot: snapshot, window: window, pid: app.processIdentifier,
+                    number: number, focused: focused, order: order)
             }
         }
         for key in Array(overlays.keys) where !live.contains(key) { overlays.removeValue(forKey: key) }
@@ -362,6 +387,9 @@ if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
     try bitmap.representation(using: .png, properties: [:])!.write(
         to: URL(fileURLWithPath: CommandLine.arguments[argument + 1]))
 } else if CommandLine.arguments.contains("--test") {
+    precondition(needsOrdering(panel: 2, parent: 1, order: [1, 2]), "Click-raised window needs its normal-level panel restored")
+    precondition(!needsOrdering(panel: 2, parent: 1, order: [3, 2, 1]), "Correctly stacked background panels must not be reordered")
+    precondition(needsOrdering(panel: 2, parent: 1, order: [1]), "Hidden panels must be restored")
     let screen = CGRect(x: 0, y: 0, width: 1512, height: 944)
     let frame = CGRect(x: 45, y: 60, width: 1421, height: 864)
     let normal = placement(frame: frame, visible: screen, tabWidth: 92)!
