@@ -4,6 +4,8 @@
 - When working in a local git repo, create local commits after changes
 - When writing commit messages, NEVER auto-add your agent name as co-author
 - Only push to remote whenever I instruct you to
+- Never create or enable GitHub CI, including GitHub Actions workflows, unless I explicitly ask you to.
+  Keep tests and local verification available.
 - Never manually modify CHANGELOG.md files or any files that are marked as auto-generated
 - Use direct image-reading tools to inspect images and terminal-based checks to validate terminal UIs.
   Reserve computer use for actual browser or desktop tasks, not browser-rendered previews of terminal output.
