@@ -75,13 +75,15 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 ## Managed command-line tools
 
-Homebrew installs the tools declared in `nix/homebrew.nix`, including Codex CLI, Claude Code, Pi, OpenCode, Herdr, Neovim, tmux, Git, Node.js, Python, and Terraform.
+Homebrew installs the tools declared in `nix/homebrew.nix`, including Neovim, tmux, Git, Node.js, Python, and Terraform.
 Terraform uses HashiCorp's official tap.
 Homebrew also owns Zsh plugins and Hack Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
 macOS uses its built-in Zsh as the login shell so first activation does not depend on a Brew executable that has not been installed yet.
 The `zsh` command in your interactive PATH comes from Homebrew.
-The custom coding-tool launchers remain enabled only on Linux and Windows.
-Existing custom tool downloads are retained, but their Home Manager launcher links are removed during migration.
+Codex CLI, Claude Code, Pi, opencode, and Herdr use managed launchers in `~/.local/bin`, which takes precedence over Homebrew in Zsh.
+Each launcher checks for updates and installs a new release before starting the tool, falling back to the installed version if an update fails.
+See [agent-tool updates and migration](operations.md#update-agent-tools-at-launch) for storage paths, bypass controls, and manual update commands.
+Existing credentials, settings, and sessions are preserved.
 
 Run `brew update` and then `brew upgrade <package>` for package updates.
 Activation installs missing packages without upgrading existing ones or removing other Homebrew packages.

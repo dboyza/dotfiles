@@ -20,7 +20,7 @@ source "$repo_dir/scripts/lib/bootstrap-common.sh"
 
 verify_tool_targets() {
   local tool
-  for tool in codex pi opencode herdr dotfiles-tool.mjs; do
+  for tool in codex claude pi opencode herdr dotfiles-tool.mjs; do
     managed_targets | grep -Fx "$HOME/.local/bin/$tool" >/dev/null
   done
 }
@@ -41,20 +41,18 @@ for profile in macos-aarch64 macos-x86_64; do
     "$flake_ref#darwinConfigurations.$profile.system.drvPath" \
     --impure >/dev/null
   load_managed_targets
-  for tool in codex pi opencode herdr dotfiles-tool.mjs; do
-    if managed_targets | grep -Fx "$HOME/.local/bin/$tool" >/dev/null; then
-      printf 'macOS must use Homebrew instead of the %s launcher\n' "$tool" >&2
-      exit 1
-    fi
-  done
+  verify_tool_targets
   brew_config=$(nix "${nix_options[@]}" eval --json \
     "$flake_ref#darwinConfigurations.$profile.config.homebrew" --impure \
     --apply 'h: { inherit (h) brews casks onActivation taps; }')
   printf '%s' "$brew_config" | python3 -c '
 import json, sys
 config = json.load(sys.stdin)
-assert {"codex", "claude-code", "font-hack-nerd-font"} <= {x["name"] for x in config["casks"]}
-assert {"pi-coding-agent", "herdr", "opencode", "mas", "neovim", "node"} <= {x["name"] for x in config["brews"]}
+casks = {x["name"] for x in config["casks"]}
+brews = {x["name"] for x in config["brews"]}
+assert "font-hack-nerd-font" in casks
+assert {"mas", "neovim", "node"} <= brews
+assert not {"codex", "claude-code", "pi-coding-agent", "herdr", "opencode"} & (brews | casks)
 assert not config["onActivation"]["upgrade"]
 assert any(t["name"] == "hashicorp/tap" and t["trusted"] for t in config["taps"])
 '

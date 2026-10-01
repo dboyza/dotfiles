@@ -9,11 +9,13 @@ import { pathToFileURL } from 'node:url';
 
 export const packages = {
   codex: '@openai/codex',
+  claude: null,
   pi: '@earendil-works/pi-coding-agent',
   opencode: 'opencode-ai',
   herdr: null,
 };
 const stableVersion = /^\d+\.\d+\.\d+$/;
+const claudeDownloads = 'https://downloads.claude.ai/claude-code-releases';
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 export function dataRoot() {
@@ -52,17 +54,35 @@ async function request(url, milliseconds = 5000) {
   return response;
 }
 
-export async function latestRelease(tool) {
+export async function latestRelease(tool, {
+  platform = process.platform, arch = process.arch,
+  musl = platform === 'linux' && !process.report.getReport().header.glibcVersionRuntime,
+} = {}) {
+  if (tool === 'claude') {
+    if (!['darwin', 'linux', 'win32'].includes(platform) || !['x64', 'arm64'].includes(arch)) {
+      throw new Error('Claude Code does not support this platform');
+    }
+    const target = `${platform}-${arch}${platform === 'linux' && musl ? '-musl' : ''}`;
+    const version = (await (await request(`${claudeDownloads}/latest`)).text()).trim();
+    if (!stableVersion.test(version)) throw new Error('Claude Code did not return a stable release');
+    const manifest = await (await request(`${claudeDownloads}/${version}/manifest.json`)).json();
+    const sha256 = manifest.platforms?.[target]?.checksum;
+    if (manifest.version !== version || !/^[a-f0-9]{64}$/i.test(sha256 || '')) {
+      throw new Error('Claude Code manifest is missing the release or platform checksum');
+    }
+    const executable = platform === 'win32' ? 'claude.exe' : 'claude';
+    return { version, url: `${claudeDownloads}/${version}/${target}/${executable}`, sha256 };
+  }
   if (tool !== 'herdr') {
     const metadata = await (await request(`https://registry.npmjs.org/${packages[tool]}/latest`)).json();
     if (!stableVersion.test(metadata.version)) throw new Error('Registry did not return a stable release');
     return { version: metadata.version };
   }
-  const platform = { darwin: 'macos', linux: 'linux', win32: 'windows' }[process.platform];
-  const architecture = process.platform === 'win32' ? 'x86_64' : { x64: 'x86_64', arm64: 'aarch64' }[process.arch];
-  if (!platform || !architecture) throw new Error('Herdr does not support this platform');
+  const osName = { darwin: 'macos', linux: 'linux', win32: 'windows' }[platform];
+  const architecture = platform === 'win32' ? 'x86_64' : { x64: 'x86_64', arm64: 'aarch64' }[arch];
+  if (!osName || !architecture) throw new Error('Herdr does not support this platform');
   const manifest = await (await request('https://herdr.dev/latest.json')).json();
-  const target = `${platform}-${architecture}`;
+  const target = `${osName}-${architecture}`;
   const url = manifest.assets?.[target];
   const sha256 = manifest.sha256?.[target];
   if (!stableVersion.test(manifest.version) || !/^[a-f0-9]{64}$/i.test(sha256 || '')) {
@@ -100,12 +120,12 @@ function npmCommand() {
 }
 
 export async function installRelease(tool, release, directory) {
-  if (tool === 'herdr') {
+  if (tool === 'herdr' || tool === 'claude') {
     const bytes = Buffer.from(await (await request(release.url, 90000)).arrayBuffer());
     if (createHash('sha256').update(bytes).digest('hex') !== release.sha256.toLowerCase()) {
-      throw new Error('Herdr download checksum mismatch');
+      throw new Error(`${tool} download checksum mismatch`);
     }
-    if (process.platform === 'win32') {
+    if (tool === 'herdr' && process.platform === 'win32') {
       const archive = path.join(directory, 'herdr.zip');
       fs.writeFileSync(archive, bytes);
       const entries = run('tar.exe', ['-tf', archive]).trim().split(/\r?\n/);
@@ -124,8 +144,9 @@ export async function installRelease(tool, release, directory) {
       }
       return { executable, node: false };
     }
-    fs.writeFileSync(path.join(directory, 'herdr'), bytes, { mode: 0o755 });
-    return { executable: 'herdr', node: false };
+    const executable = `${tool}${process.platform === 'win32' ? '.exe' : ''}`;
+    fs.writeFileSync(path.join(directory, executable), bytes, { mode: 0o755 });
+    return { executable, node: false };
   }
 
   fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ private: true }));
@@ -150,6 +171,16 @@ export async function installRelease(tool, release, directory) {
   return {
     executable: path.relative(directory, executable),
     node: /\.[cm]?js$/.test(bin) || /^#![^\r\n]*\bnode\b/.test(header.toString('utf8')),
+  };
+}
+
+function toolEnvironment(tool) {
+  return {
+    ...process.env,
+    // The launcher owns updates and version selection, including bypass mode.
+    ...(tool === 'claude' ? { DISABLE_UPDATES: '1', DISABLE_AUTOUPDATER: '1' } : {}),
+    ...(tool === 'opencode' ? { OPENCODE_DISABLE_AUTOUPDATE: 'true' } : {}),
+    ...(tool === 'pi' ? { PI_SKIP_VERSION_CHECK: '1' } : {}),
   };
 }
 
@@ -226,7 +257,7 @@ export async function ensureInstallation(tool, {
       const entry = await install(tool, release, staging);
       const installed = { version: release.version, directory: name, ...entry };
       const [executable, ...args] = command(directory, installed);
-      const version = run(executable, [...args, '--version'], { timeout: 30000 });
+      const version = run(executable, [...args, '--version'], { timeout: 30000, env: toolEnvironment(tool) });
       const escapedVersion = release.version.replaceAll('.', '\\.');
       if (!new RegExp(`(^|[^\\d.])${escapedVersion}([^\\d.]|$)`).test(version)) {
         throw new Error('New executable failed its version check');
@@ -254,11 +285,7 @@ export async function main(tool, args = []) {
     const [executable, ...prefix] = command(directory, release);
     const child = spawn(executable, [...prefix, ...args], {
       stdio: 'inherit',
-      env: {
-        ...process.env,
-        ...(tool === 'opencode' ? { OPENCODE_DISABLE_AUTOUPDATE: 'true' } : {}),
-        ...(tool === 'pi' ? { PI_SKIP_VERSION_CHECK: '1' } : {}),
-      },
+      env: toolEnvironment(tool),
     });
     const signals = ['SIGINT', 'SIGTERM', 'SIGHUP'];
     const handlers = signals.map(signal => {

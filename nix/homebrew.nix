@@ -17,7 +17,6 @@
     "git"
     "git-lfs"
     "gnupg"
-    "herdr"
     "jq"
     "kubernetes-cli"
     "lazygit"
@@ -25,8 +24,6 @@
     "mas"
     "neovim"
     "node"
-    "opencode"
-    "pi-coding-agent"
     "pre-commit"
     "python@3.14"
     "ripgrep"
@@ -46,8 +43,6 @@
     "hashicorp/tap/terraform"
   ];
   casks = [
-    "claude-code"
-    "codex"
     "font-hack-nerd-font"
   ];
 }

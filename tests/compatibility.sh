@@ -54,18 +54,17 @@ if [[ $(uname -s) == Darwin ]]; then
       HOME="$test_dir/home" PATH=/usr/bin:/bin TERM=xterm-256color \
         zsh -dfc 'source "$1"; command -v brew' zsh "$repo_dir/zsh/.zshrc"
     )
-    # A stale pre-migration launcher must not shadow an installed Brew tool.
-    brew_bin=$(dirname "$homebrew_binary")
-    if [[ -x "$brew_bin/codex" ]]; then
-      mkdir -p "$test_dir/home/.local/bin"
-      printf '#!/bin/sh\nexit 99\n' >"$test_dir/home/.local/bin/codex"
-      chmod +x "$test_dir/home/.local/bin/codex"
-      detected_codex=$(
+    # Managed launchers must win even while old Brew installations remain.
+    mkdir -p "$test_dir/home/.local/bin"
+    for tool in codex claude pi opencode herdr; do
+      printf '#!/bin/sh\nexit 99\n' >"$test_dir/home/.local/bin/$tool"
+      chmod +x "$test_dir/home/.local/bin/$tool"
+      detected_tool=$(
         HOME="$test_dir/home" PATH=/usr/bin:/bin TERM=xterm-256color \
-          zsh -dfc 'source "$1"; command -v codex' zsh "$repo_dir/zsh/.zshrc"
+          zsh -dfc 'source "$1"; command -v "$2"' zsh "$repo_dir/zsh/.zshrc" "$tool"
       )
-      [[ "$detected_codex" == "$brew_bin/codex" ]] || exit 1
-    fi
+      [[ "$detected_tool" == "$test_dir/home/.local/bin/$tool" ]] || exit 1
+    done
     if [[ "$detected_homebrew" != "$homebrew_binary" ]]; then
       printf 'compatibility test: zsh did not initialize Homebrew from %s\n' "$homebrew_binary" >&2
       exit 1

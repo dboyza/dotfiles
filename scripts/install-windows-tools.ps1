@@ -49,12 +49,28 @@ function Write-ManagedLauncher {
     [System.IO.File]::WriteAllText($Path, $Content, $encoding)
 }
 
+function Backup-ConflictingToolLaunchers {
+    param([string] $Directory, [string] $Tool)
+
+    # PowerShell scripts and native executables can take precedence over .cmd.
+    # Preserve them so an older native installer cannot bypass launch updates.
+    foreach ($extension in @(".exe", ".com", ".bat", ".ps1")) {
+        $candidate = Join-Path $Directory "$Tool$extension"
+        if (Test-Path -LiteralPath $candidate) {
+            $backup = "$candidate.backup.$([System.Guid]::NewGuid().ToString('N'))"
+            Move-Item -LiteralPath $candidate -Destination $backup
+            Write-Host "Preserved conflicting launcher at $backup."
+        }
+    }
+}
+
 # A local JS shim preserves Unicode and UNC checkout paths without cmd.exe interpolation.
 $sourceUrl = ([System.Uri]::new($source)).AbsoluteUri | ConvertTo-Json -Compress
 $shim = "// $marker`nimport { main } from $sourceUrl;`nawait main(process.argv[2], process.argv.slice(3));`n"
 Write-ManagedLauncher -Path (Join-Path $bin "dotfiles-tool.mjs") -Content $shim
 
-foreach ($tool in @("codex", "pi", "opencode", "herdr")) {
+foreach ($tool in @("codex", "claude", "pi", "opencode", "herdr")) {
+    Backup-ConflictingToolLaunchers -Directory $bin -Tool $tool
     $launcher = "@echo off`r`nrem $marker`r`nnode `"%~dp0dotfiles-tool.mjs`" $tool %*`r`nexit /b %errorlevel%`r`n"
     Write-ManagedLauncher -Path (Join-Path $bin "$tool.cmd") -Content $launcher
 }
@@ -77,5 +93,5 @@ try {
 }
 $env:Path = "$bin;$env:Path"
 
-Write-Host "Installed Codex, Pi, OpenCode, and Herdr launchers in $bin."
+Write-Host "Installed Codex, Claude Code, Pi, OpenCode, and Herdr launchers in $bin."
 Write-Host "Each tool installs or updates when launched. Reopen your terminal to use the updated PATH."

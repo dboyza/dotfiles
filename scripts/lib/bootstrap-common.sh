@@ -231,6 +231,7 @@ verify_installation() {
     brew_binary=$(find_homebrew)
     eval "$("$brew_binary" shellenv)"
   fi
+  export PATH="$HOME/.local/bin:$PATH"
 
   for command_name in "${expected_commands[@]}"; do
     if ! command -v "$command_name" >/dev/null 2>&1; then

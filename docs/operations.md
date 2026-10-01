@@ -37,7 +37,7 @@ The older `./bootstrap.sh --update` form is an alias for the same behavior.
 
 An update may change `flake.lock`.
 Review and commit that file when the refresh is intentional.
-On Linux and Windows, Codex, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
+On every supported platform, Codex, Claude Code, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
 
 After activation, bootstrap verifies managed links, Pi settings, launcher syntax, the tmux prefix, WezTerm configuration, and platform integration.
 The managed-file inventory comes from the evaluated Home Manager configuration, including its platform-specific files.
@@ -49,30 +49,36 @@ Resurrect, assistant session restoration, and continuum remain enabled; TPM and 
 
 ## Update macOS packages
 
-Homebrew owns macOS user tools, the coding agents, Zsh plugins, and Hack Nerd Font.
+Homebrew owns macOS command-line dependencies, Zsh plugins, and Hack Nerd Font.
 Their declarations live in `nix/homebrew.nix`; GUI app declarations remain in `nix/macos-apps.json` so existing installations can be preserved.
 Bootstrap installs missing packages without upgrading existing installations or removing unlisted packages.
-Update coding tools explicitly:
-
-```sh
-brew update
-brew upgrade codex claude-code pi-coding-agent opencode herdr
-```
-
-Other formulas can be upgraded by name with `brew upgrade <formula>`.
+Update a Brew package explicitly with `brew update` followed by `brew upgrade <formula>`.
 These versions are outside Nix generations and are not reverted by nix-darwin rollback.
-After migrating from the custom launchers, open a new terminal so command lookup uses Homebrew.
-Old versioned downloads under `~/.local/share/dotfiles/tools` are retained but no longer used by the macOS configuration.
+
+Codex, Claude Code, Pi, opencode, and Herdr use the managed launchers instead of Homebrew.
+After activation, open a new terminal so `~/.local/bin` takes precedence over Homebrew and older Nix packages.
+Launch each tool once and verify it works before removing any old Brew installation.
+Use `brew uninstall --formula herdr pi-coding-agent opencode` and `brew uninstall --cask codex claude-code` for the packages you still have installed.
+Do not use `--zap`, which can remove application data.
+Bootstrap intentionally does not uninstall existing Brew packages automatically.
 
 ## Update agent tools at launch
 
-This workflow applies to Linux and native Windows.
+Launching `codex`, `claude`, `pi`, `opencode`, or `herdr` checks the official release source and installs a new release before starting the application.
+This applies to macOS, Linux, WSL, and native Windows.
+Codex, Pi, and opencode follow npm's `latest` tag; Claude Code follows its native `latest` channel, and Herdr follows its stable release manifest.
+Prerelease version identifiers are rejected.
+Claude Code and Herdr downloads must match the SHA-256 checksum in their official manifest, and every new executable must pass a version check before becoming current.
+The launchers own application updates, so Claude Code's internal updater is disabled for launched processes; use the commands below instead of `claude update` or `claude install`.
+The official [Codex npm instructions](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex), [Claude Code setup guide](https://code.claude.com/docs/en/setup), and [Herdr installation guide](https://herdr.dev/docs/install/) describe the upstream distributions.
 
-Launching `codex`, `pi`, `opencode`, or `herdr` checks the official release source for a newer stable version and installs it before starting the application.
 The first launch requires an internet connection.
-A failed check or installation falls back to the installed version, and concurrent launches coordinate through a per-tool update lock.
-Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
+A failed check or installation falls back to the installed version.
+Concurrent launches coordinate through a per-tool update lock; if another launch is already updating, an existing installation starts immediately.
+Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on macOS and Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
+Previous version directories remain available so an update does not replace a running binary.
 Tool versions are outside Nix generations and are not changed by Nix rollback.
+Credentials, settings, and sessions stay in their existing application directories.
 
 Skip updates for one launch when offline or diagnosing an issue:
 
@@ -81,7 +87,7 @@ DOTFILES_TOOL_UPDATE=0 codex
 ```
 
 The bypass requires an existing managed installation.
-Replace `codex` with `pi`, `opencode`, or `herdr` as needed.
+Replace `codex` with `claude`, `pi`, `opencode`, or `herdr` as needed.
 To prepare an installation or update without opening a session:
 
 ```sh

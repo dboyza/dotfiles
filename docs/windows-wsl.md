@@ -128,7 +128,7 @@ Reopen PowerShell, enter the repository directory, and run:
 The installer requires Node.js 22.19 or newer.
 It adds launchers to `%USERPROFILE%\.local\bin`, preserves existing unmanaged launchers in backups, and adds the directory to your user PATH.
 Keep the checkout at the same location, or rerun the installer after moving it.
-Reopen your terminal, then launch `codex`, `pi`, `opencode`, or `herdr`.
+Reopen your terminal, then launch `codex`, `claude`, `pi`, `opencode`, or `herdr`.
 Each command installs or updates its native application before starting it.
 Native installations live under `%LOCALAPPDATA%\dotfiles\tools` and are independent of WSL installations.
 

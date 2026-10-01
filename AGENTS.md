@@ -75,10 +75,13 @@
   Never track Pi authentication, trust decisions, package state, or session transcripts.
 - Pi currently uses factory settings: do not redeploy archived extensions, themes, or model overrides without an explicit request.
   See `pi/DEFAULTS.md`; keep credentials, sessions, and shared instructions outside resets.
-- On Linux and native Windows, keep Codex, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
+- On macOS, Linux, WSL, and native Windows, keep Codex, Claude Code, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
   On Linux, Nix manages the launchers, Node.js, ripgrep, and bubblewrap; package updates happen at launch.
   Preserve offline fallback, serialized updates, and the `DOTFILES_TOOL_UPDATE=0` bypass.
-  Verify Herdr downloads against its official release manifest and preserve the bundled ConPTY runtime on Windows.
+  Verify Claude Code and Herdr native downloads against their official release manifests and preserve Herdr's bundled ConPTY runtime on Windows.
+  Keep Claude Code's internal updater disabled only in managed child processes so it cannot compete with launcher version selection.
+  Put `~/.local/bin` ahead of Homebrew and Nix package paths after shell initialization so old installs cannot shadow managed launchers.
+  On native Windows, back up same-name executables and PowerShell scripts before installing `.cmd` launchers so command precedence cannot bypass updates.
   Resolve npm executable entries from installed package metadata; OpenCode can publish a native binary rather than a JavaScript launcher.
 - Preserve the archived Pi Calm extension's bundled license and never manage or track its runtime preference file.
   Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
@@ -118,7 +121,7 @@
 - Run platform prerequisite preflight checks before updating inputs, installing packages, backing up files, or activating configuration.
 - Keep WezTerm executable discovery centralized in `scripts/lib/wezterm.sh` for bootstrap and compatibility tests.
 - Install Hack Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
-- On macOS, Homebrew owns user command-line packages and coding agents; do not deploy the custom agent launchers there.
+- On macOS, Homebrew owns the remaining user command-line packages and Node.js; keep Codex, Claude Code, Pi, opencode, and Herdr out of its package lists.
   Keep Homebrew activation install-only with no cleanup, resolve paths from `homebrew.prefix`, and use Brew's `mas` for App Store installation.
   Declare HashiCorp's Terraform tap as trusted for Homebrew 6 activation; do not disable tap-trust checks globally.
   Keep GNU make's `libexec/gnubin` and Brew curl/unzip paths in the macOS session PATH.

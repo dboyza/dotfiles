@@ -23,7 +23,7 @@ for hm_session_vars in \
 done
 unset hm_session_vars
 
-# Homebrew owns macOS tools; other platforms use the mutable launchers.
+# Initialize Homebrew before putting the managed agent launchers first.
 case $(uname -s 2>/dev/null) in
   Darwin*)
     for homebrew_binary in /opt/homebrew/bin/brew /usr/local/bin/brew; do
@@ -43,8 +43,8 @@ case $(uname -s 2>/dev/null) in
     done
     unset homebrew_tool_path
     ;;
-  *) path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}") ;;
 esac
+path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}")
 export PATH
 
 # History

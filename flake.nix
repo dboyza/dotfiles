@@ -56,7 +56,6 @@
       };
 
       unfreePackageNames = [
-        "claude-code"
         "terraform"
       ];
 
