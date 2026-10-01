@@ -85,7 +85,8 @@ Pi can write settings and Lazy can update `nvim/lazy-lock.json` directly in the 
 
 Codex, Claude Code, Pi, opencode, and Herdr check for the latest release whenever you launch them on macOS, Linux, WSL, and native Windows.
 The first launch installs the tool; later launches update it before starting your session.
-Codex, Pi, and opencode use their official npm packages; Claude Code and Herdr use checksum-verified native releases.
+All five use checksum-verified standalone releases from their official publishers, with complete runtime bundles preserved.
+The update launchers still require Node.js; installing or updating the applications no longer invokes npm.
 Updates use writable, versioned installations under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on macOS and Linux or `%LOCALAPPDATA%/dotfiles/tools` on Windows, separate from the Nix store.
 If a check or update fails, the launcher starts the installed version, and simultaneous launches share an update lock.
 Use `DOTFILES_TOOL_UPDATE=0 codex` to skip the update check for a launch; the same variable works with all five tools.

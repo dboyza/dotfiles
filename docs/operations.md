@@ -66,14 +66,22 @@ Bootstrap intentionally does not uninstall existing Brew packages automatically.
 
 Launching `codex`, `claude`, `pi`, `opencode`, or `herdr` checks the official release source and installs a new release before starting the application.
 This applies to macOS, Linux, WSL, and native Windows.
-Codex, Pi, and opencode follow npm's `latest` tag; Claude Code follows its native `latest` channel, and Herdr follows its stable release manifest.
+Codex, Pi, and opencode follow the latest stable GitHub release from their official repositories; Claude Code follows its native `latest` channel, and Herdr follows its stable release manifest.
 Prerelease version identifiers are rejected.
-Claude Code and Herdr downloads must match the SHA-256 checksum in their official manifest, and every new executable must pass a version check before becoming current.
+Every download must match a SHA-256 checksum from the publisher: GitHub release asset digests for Codex, Pi, and opencode, or the official release manifest for Claude Code and Herdr.
+Archive paths and file types are checked before extraction, and every new executable must pass a version check before becoming current.
+Codex keeps its complete package, including code-mode, search, and platform helpers; Pi keeps its themes, native helpers, and other bundled runtime assets.
+On x64 machines, opencode uses its baseline build for compatibility with older CPUs.
+Pi standalone Linux builds require glibc, as provided by the supported Linux and WSL configurations.
 The launchers own application updates, so Claude Code's internal updater is disabled for launched processes; use the commands below instead of `claude update` or `claude install`.
-The official [Codex npm instructions](https://developers.openai.com/cookbook/examples/codex/using_goals_in_codex), [Claude Code setup guide](https://code.claude.com/docs/en/setup), and [Herdr installation guide](https://herdr.dev/docs/install/) describe the upstream distributions.
+The official [Codex standalone instructions](https://learn.chatgpt.com/docs/codex/cli), [Pi releases](https://github.com/earendil-works/pi/releases), [opencode installation guide](https://opencode.ai/docs/), [Claude Code setup guide](https://code.claude.com/docs/en/setup), and [Herdr installation guide](https://herdr.dev/docs/install/) describe the upstream distributions.
+Node.js runs the managed launchers, but application installation no longer uses npm.
+Keep npm available for Pi extension packages or other development workflows that need it.
 
 The first launch requires an internet connection.
-A failed check or installation falls back to the installed version.
+A failed check or installation falls back to the installed version, including when GitHub rate-limits a release check.
+Existing npm installations migrate on the next successful check even if the release version is unchanged; their old directories remain available as fallback.
+`DOTFILES_TOOL_UPDATE=0` also postpones this migration.
 Concurrent launches coordinate through a per-tool update lock; if another launch is already updating, an existing installation starts immediately.
 Installs live under `${XDG_DATA_HOME:-~/.local/share}/dotfiles/tools` on macOS and Linux, or `%LOCALAPPDATA%/dotfiles/tools` on native Windows.
 Previous version directories remain available so an update does not replace a running binary.

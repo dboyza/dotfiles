@@ -17,8 +17,8 @@ $nodeVersion = & $node.Source -p 'process.versions.node'
 if ($LASTEXITCODE -ne 0 -or [version]$nodeVersion -lt [version]'22.19.0') {
     throw "These launchers require Node.js 22.19 or newer. Upgrade Node.js LTS and reopen PowerShell."
 }
-if (-not (Get-Command npm.cmd -CommandType Application -ErrorAction SilentlyContinue)) {
-    throw "npm.cmd is unavailable. Repair your Node.js LTS installation, then reopen PowerShell."
+if (-not (Get-Command tar.exe -CommandType Application -ErrorAction SilentlyContinue)) {
+    throw "tar.exe is unavailable. These launchers require the archive tool included with Windows 11."
 }
 
 $repositoryPath = (Resolve-Path -LiteralPath $Repository).ProviderPath

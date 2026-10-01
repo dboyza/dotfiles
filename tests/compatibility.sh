@@ -148,17 +148,19 @@ if command -v nvim >/dev/null 2>&1; then
   NVIM_LOG_FILE="$test_dir/wezterm-nvim.log" \
     nvim --headless -u NONE -l "$repo_dir/tests/wezterm-launch-size.lua" "$repo_dir/wezterm/.wezterm.lua"
 
-  export DOTFILES_NVIM_CORE_ONLY=1
-  export XDG_CACHE_HOME="$test_dir/cache"
-  export XDG_CONFIG_HOME="$test_dir/config"
-  export XDG_DATA_HOME="$test_dir/data"
-  export XDG_STATE_HOME="$test_dir/state"
-  nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-core.lua"
-  nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-project.lua"
+  (
+    export DOTFILES_NVIM_CORE_ONLY=1
+    export XDG_CACHE_HOME="$test_dir/cache"
+    export XDG_CONFIG_HOME="$test_dir/config"
+    export XDG_DATA_HOME="$test_dir/data"
+    export XDG_STATE_HOME="$test_dir/state"
+    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-core.lua"
+    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-project.lua"
+  )
 fi
 
 if command -v herdr >/dev/null 2>&1; then
-  HERDR_CONFIG_PATH="$repo_dir/herdr/config.toml" herdr config check
+  DOTFILES_TOOL_UPDATE=0 HERDR_CONFIG_PATH="$repo_dir/herdr/config.toml" herdr config check
 fi
 
 if command -v pwsh >/dev/null 2>&1; then

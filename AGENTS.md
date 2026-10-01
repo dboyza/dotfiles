@@ -78,11 +78,14 @@
 - On macOS, Linux, WSL, and native Windows, keep Codex, Claude Code, Pi, opencode, and Herdr on the shared `scripts/dotfiles-tool.mjs` launcher with writable, versioned installations outside the Nix store.
   On Linux, Nix manages the launchers, Node.js, ripgrep, and bubblewrap; package updates happen at launch.
   Preserve offline fallback, serialized updates, and the `DOTFILES_TOOL_UPDATE=0` bypass.
-  Verify Claude Code and Herdr native downloads against their official release manifests and preserve Herdr's bundled ConPTY runtime on Windows.
+  Install official standalone releases for all five tools, using GitHub asset SHA-256 digests for Codex, Pi, and opencode and publisher manifests for Claude Code and Herdr.
+  Preserve complete Codex and Pi runtime bundles and Herdr's ConPTY runtime on Windows; reject archive links and unsafe paths before extraction.
+  Track the selected archive in installation state so old npm installs migrate even when the version is unchanged.
+  Keep Node.js for the launchers and npm for extension or development workflows, without using npm to install the applications.
   Keep Claude Code's internal updater disabled only in managed child processes so it cannot compete with launcher version selection.
   Put `~/.local/bin` ahead of Homebrew and Nix package paths after shell initialization so old installs cannot shadow managed launchers.
   On native Windows, back up same-name executables and PowerShell scripts before installing `.cmd` launchers so command precedence cannot bypass updates.
-  Resolve npm executable entries from installed package metadata; OpenCode can publish a native binary rather than a JavaScript launcher.
+  Use opencode baseline builds on x64 for older CPUs; Pi standalone Linux builds require glibc.
 - Preserve the archived Pi Calm extension's bundled license and never manage or track its runtime preference file.
   Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 - If third-party Pi packages are reenabled, pin them to immutable npm versions or Git commits in `pi/settings.json`.

@@ -109,11 +109,11 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
 ## Optional native Windows agent tools
 
-WSL already receives the four launchers through bootstrap.
-To also run Codex, Pi, opencode, and Herdr directly in Windows, install separate native launchers.
+WSL already receives all five launchers through bootstrap.
+To also run Codex, Claude Code, Pi, opencode, and Herdr directly in Windows, install separate native launchers.
 This does not install the complete Nix-managed environment or copy WSL credentials and configuration.
 
-In a regular Windows PowerShell window, install Node.js LTS with npm:
+In a regular Windows PowerShell window, install Node.js LTS for the update launchers:
 
 ```powershell
 winget install --exact --id OpenJS.NodeJS.LTS
@@ -125,7 +125,8 @@ Reopen PowerShell, enter the repository directory, and run:
 .\scripts\install-windows-tools.ps1
 ```
 
-The installer requires Node.js 22.19 or newer.
+The installer requires Node.js 22.19 or newer and the `tar.exe` archive tool included with Windows 11.
+The applications use standalone release archives; npm is only needed for separate workflows such as installing Pi extension packages.
 It adds launchers to `%USERPROFILE%\.local\bin`, preserves existing unmanaged launchers in backups, and adds the directory to your user PATH.
 Keep the checkout at the same location, or rerun the installer after moving it.
 Reopen your terminal, then launch `codex`, `claude`, `pi`, `opencode`, or `herdr`.

@@ -7,13 +7,12 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-export const packages = {
-  codex: '@openai/codex',
-  claude: null,
-  pi: '@earendil-works/pi-coding-agent',
-  opencode: 'opencode-ai',
-  herdr: null,
+const repositories = {
+  codex: 'openai/codex',
+  pi: 'earendil-works/pi',
+  opencode: 'anomalyco/opencode',
 };
+const managedTools = new Set([...Object.keys(repositories), 'claude', 'herdr']);
 const stableVersion = /^\d+\.\d+\.\d+$/;
 const claudeDownloads = 'https://downloads.claude.ai/claude-code-releases';
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -54,10 +53,47 @@ async function request(url, milliseconds = 5000) {
   return response;
 }
 
+export function standaloneAsset(tool, { platform, arch, musl = false }) {
+  if (!['darwin', 'linux', 'win32'].includes(platform) || !['x64', 'arm64'].includes(arch)) {
+    throw new Error(`${tool} does not support this platform`);
+  }
+  if (tool === 'codex') {
+    const cpu = { x64: 'x86_64', arm64: 'aarch64' }[arch];
+    const osName = { darwin: 'apple-darwin', linux: 'unknown-linux-musl', win32: 'pc-windows-msvc' }[platform];
+    return `codex-package-${cpu}-${osName}.tar.gz`;
+  }
+  if (tool === 'pi' && platform === 'linux' && musl) {
+    throw new Error('Pi standalone releases require glibc on Linux');
+  }
+  const osName = platform === 'win32' ? 'windows' : platform;
+  // Baseline x64 builds also run on CPUs without AVX2.
+  const baseline = tool === 'opencode' && arch === 'x64' ? '-baseline' : '';
+  const libc = tool === 'opencode' && platform === 'linux' && musl ? '-musl' : '';
+  const extension = platform === 'win32' || (tool === 'opencode' && platform === 'darwin') ? 'zip' : 'tar.gz';
+  return `${tool}-${osName}-${arch}${baseline}${libc}.${extension}`;
+}
+
 export async function latestRelease(tool, {
-  platform = process.platform, arch = process.arch,
-  musl = platform === 'linux' && !process.report.getReport().header.glibcVersionRuntime,
+  platform = process.platform, arch = process.arch, musl,
 } = {}) {
+  musl ??= platform === 'linux' && !process.report.getReport().header.glibcVersionRuntime;
+  if (Object.hasOwn(repositories, tool)) {
+    const artifact = standaloneAsset(tool, { platform, arch, musl });
+    const repository = repositories[tool];
+    const metadata = await (await request(`https://api.github.com/repos/${repository}/releases/latest`)).json();
+    const prefix = tool === 'codex' ? 'rust-v' : 'v';
+    const tag = metadata.tag_name || '';
+    const version = tag.slice(prefix.length);
+    if (!tag.startsWith(prefix) || !stableVersion.test(version) || metadata.draft || metadata.prerelease) {
+      throw new Error(`${tool} did not return a stable release`);
+    }
+    const asset = metadata.assets?.find(entry => entry.name === artifact);
+    const url = `https://github.com/${repository}/releases/download/${tag}/${artifact}`;
+    if (asset?.browser_download_url !== url || !/^sha256:[a-f0-9]{64}$/i.test(asset?.digest || '')) {
+      throw new Error(`${tool} release is missing the expected archive or SHA-256 digest`);
+    }
+    return { version, artifact, url, sha256: asset.digest.slice(7), platform, arch };
+  }
   if (tool === 'claude') {
     if (!['darwin', 'linux', 'win32'].includes(platform) || !['x64', 'arm64'].includes(arch)) {
       throw new Error('Claude Code does not support this platform');
@@ -73,11 +109,7 @@ export async function latestRelease(tool, {
     const executable = platform === 'win32' ? 'claude.exe' : 'claude';
     return { version, url: `${claudeDownloads}/${version}/${target}/${executable}`, sha256 };
   }
-  if (tool !== 'herdr') {
-    const metadata = await (await request(`https://registry.npmjs.org/${packages[tool]}/latest`)).json();
-    if (!stableVersion.test(metadata.version)) throw new Error('Registry did not return a stable release');
-    return { version: metadata.version };
-  }
+  if (tool !== 'herdr') throw new Error(`Unknown managed tool: ${tool}`);
   const osName = { darwin: 'macos', linux: 'linux', win32: 'windows' }[platform];
   const architecture = platform === 'win32' ? 'x86_64' : { x64: 'x86_64', arm64: 'aarch64' }[arch];
   if (!osName || !architecture) throw new Error('Herdr does not support this platform');
@@ -106,72 +138,80 @@ function run(executable, args, options = {}) {
   return result.stdout;
 }
 
-function npmCommand() {
-  if (process.platform !== 'win32') return ['npm'];
-  // Invoke npm's JS entry point directly, avoiding cmd.exe argument interpolation.
-  const candidates = [
-    path.join(path.dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js'),
-    ...(process.env.PATH || '').split(path.delimiter)
-      .map(directory => path.join(directory, 'node_modules', 'npm', 'bin', 'npm-cli.js')),
-  ];
-  const cli = candidates.find(candidate => fs.existsSync(candidate));
-  if (!cli) throw new Error('npm is missing; install Node.js 24 LTS with npm');
-  return [process.execPath, cli];
+function extractArchive(archive, directory) {
+  // macOS and Windows provide bsdtar (including zip support); Linux releases
+  // use tar.gz archives, supported by GNU tar without another dependency.
+  const tar = process.platform === 'win32' ? 'tar.exe' : 'tar';
+  const entries = run(tar, ['-tf', archive]).trim().split(/\r?\n/);
+  if (entries.some(entry => /(^[/\\]|:|(^|[/\\])\.\.([/\\]|$)|[\x00-\x1f])/.test(entry))) {
+    throw new Error('Release archive contains an unsafe path');
+  }
+  const listing = run(tar, ['-tvf', archive]).trim().split(/\r?\n/);
+  // Reject links and special files before extraction, including links that
+  // could make a later, otherwise safe archive member escape the stage.
+  if (listing.length !== entries.length || listing.some(entry => !/^[-d]/.test(entry))) {
+    throw new Error('Release archive contains a link or special file');
+  }
+  run(tar, ['-xf', archive, '-C', directory]);
+  fs.unlinkSync(archive);
+  return entries.map(entry => entry.replace(/^\.\//, ''));
+}
+
+function requireFile(directory, relative) {
+  if (!fs.existsSync(path.join(directory, relative)) || !fs.statSync(path.join(directory, relative)).isFile()) {
+    throw new Error(`Release archive is missing ${relative}`);
+  }
 }
 
 export async function installRelease(tool, release, directory) {
-  if (tool === 'herdr' || tool === 'claude') {
-    const bytes = Buffer.from(await (await request(release.url, 90000)).arrayBuffer());
-    if (createHash('sha256').update(bytes).digest('hex') !== release.sha256.toLowerCase()) {
-      throw new Error(`${tool} download checksum mismatch`);
-    }
-    if (tool === 'herdr' && process.platform === 'win32') {
-      const archive = path.join(directory, 'herdr.zip');
-      fs.writeFileSync(archive, bytes);
-      const entries = run('tar.exe', ['-tf', archive]).trim().split(/\r?\n/);
-      if (entries.some(entry => /(^[/\\]|^[a-z]:|(^|[/\\])\.\.([/\\]|$))/i.test(entry))) {
-        throw new Error('Herdr archive contains an unsafe path');
+  const bytes = Buffer.from(await (await request(release.url, 90000)).arrayBuffer());
+  if (createHash('sha256').update(bytes).digest('hex') !== release.sha256.toLowerCase()) {
+    throw new Error(`${tool} download checksum mismatch`);
+  }
+  const platform = release.platform || process.platform;
+  const suffix = platform === 'win32' ? '.exe' : '';
+  let executable = `${tool}${suffix}`;
+  if (release.artifact || (tool === 'herdr' && platform === 'win32')) {
+    const archive = path.join(directory, 'release.archive');
+    fs.writeFileSync(archive, bytes);
+    const entries = extractArchive(archive, directory);
+    if (tool === 'codex') {
+      executable = `bin/codex${suffix}`;
+      const metadata = JSON.parse(fs.readFileSync(path.join(directory, 'codex-package.json'), 'utf8'));
+      const target = release.artifact.slice('codex-package-'.length, -'.tar.gz'.length);
+      if (metadata.layoutVersion !== 1 || metadata.version !== release.version || metadata.target !== target ||
+          metadata.variant !== 'codex' || metadata.entrypoint !== executable ||
+          metadata.pathDir !== 'codex-path' || metadata.resourcesDir !== 'codex-resources') {
+        throw new Error('Codex package manifest does not match the release');
       }
-      run('tar.exe', ['-xf', archive, '-C', directory]);
-      fs.unlinkSync(archive);
-      // Keep the entire archive, including ConPTY DLLs, alongside the binary.
-      const executable = entries.find(entry => /(^|\/)herdr\.exe$/.test(entry));
+      const companions = [`bin/codex-code-mode-host${suffix}`, `codex-path/rg${suffix}`];
+      if (platform === 'linux') companions.push('codex-resources/bwrap');
+      if (platform === 'win32') companions.push('codex-resources/codex-command-runner.exe', 'codex-resources/codex-windows-sandbox-setup.exe');
+      for (const companion of companions) requireFile(directory, companion);
+    } else if (tool === 'pi') {
+      const base = platform === 'win32' ? '' : 'pi/';
+      executable = `${base}pi${suffix}`;
+      for (const companion of ['package.json', 'photon_rs_bg.wasm', 'theme/dark.json', 'theme/light.json', 'export-html/template.html']) {
+        requireFile(directory, base + companion);
+      }
+      const metadata = JSON.parse(fs.readFileSync(path.join(directory, base, 'package.json'), 'utf8'));
+      if (metadata.version !== release.version) throw new Error('Pi package version does not match the release');
+      const nativeDirectory = `${base}native/${platform}/prebuilds/${platform}-${release.arch}/`;
+      if (!entries.some(entry => entry.startsWith(nativeDirectory) && entry.endsWith('.node'))) {
+        throw new Error('Pi archive is missing its native platform helper');
+      }
+    } else if (tool === 'herdr') {
+      executable = entries.find(entry => /(^|\/)herdr\.exe$/.test(entry));
       if (!executable) throw new Error('Herdr archive has no executable');
       for (const companion of ['conpty.dll', 'x64/OpenConsole.exe', 'arm64/OpenConsole.exe', 'herdr-conpty.json']) {
-        if (!fs.existsSync(path.join(directory, path.dirname(executable), 'conpty', companion))) {
-          throw new Error(`Herdr archive is missing its ConPTY runtime: ${companion}`);
-        }
+        requireFile(directory, path.join(path.dirname(executable), 'conpty', companion));
       }
-      return { executable, node: false };
     }
-    const executable = `${tool}${process.platform === 'win32' ? '.exe' : ''}`;
+    requireFile(directory, executable);
+  } else {
     fs.writeFileSync(path.join(directory, executable), bytes, { mode: 0o755 });
-    return { executable, node: false };
   }
-
-  fs.writeFileSync(path.join(directory, 'package.json'), JSON.stringify({ private: true }));
-  const [npm, ...prefix] = npmCommand();
-  run(npm, [...prefix, 'install', '--prefix', directory, '--save-exact', '--omit=dev',
-    '--include=optional', '--no-audit', '--no-fund', '--no-package-lock',
-    '--registry=https://registry.npmjs.org', '--fetch-retries=1', '--fetch-timeout=30000',
-    // OpenCode's official postinstall selects its platform executable.
-    ...(tool === 'opencode' ? [] : ['--ignore-scripts']),
-    `${packages[tool]}@${release.version}`], { cwd: directory });
-  const packageDirectory = path.join(directory, 'node_modules', packages[tool]);
-  const metadata = JSON.parse(fs.readFileSync(path.join(packageDirectory, 'package.json'), 'utf8'));
-  if (metadata.version !== release.version) throw new Error('Installed package version does not match release');
-  const bin = typeof metadata.bin === 'string' ? metadata.bin : metadata.bin?.[tool];
-  if (!bin) throw new Error(`Package does not export ${tool}`);
-  const executable = path.resolve(packageDirectory, bin);
-  if (!executable.startsWith(packageDirectory + path.sep)) throw new Error('Unexpected package executable path');
-  const header = Buffer.alloc(256);
-  const fd = fs.openSync(executable, 'r');
-  fs.readSync(fd, header, 0, header.length, 0);
-  fs.closeSync(fd);
-  return {
-    executable: path.relative(directory, executable),
-    node: /\.[cm]?js$/.test(bin) || /^#![^\r\n]*\bnode\b/.test(header.toString('utf8')),
-  };
+  return { executable, node: false };
 }
 
 function toolEnvironment(tool) {
@@ -228,7 +268,7 @@ export async function ensureInstallation(tool, {
   latest = latestRelease, install = installRelease,
   log = message => console.error(`[${tool}] ${message}`), waitMilliseconds = 190000,
 } = {}) {
-  if (!Object.hasOwn(packages, tool)) throw new Error(`Unknown managed tool: ${tool}`);
+  if (!managedTools.has(tool)) throw new Error(`Unknown managed tool: ${tool}`);
   const directory = path.join(root, tool);
   fs.mkdirSync(directory, { recursive: true });
   let state = readState(directory);
@@ -249,13 +289,13 @@ export async function ensureInstallation(tool, {
   try {
     state = readState(directory);
     const release = await latest(tool);
-    if (!state || state.current.version !== release.version) {
+    if (!state || state.current.version !== release.version || state.current.artifact !== release.artifact) {
       log(`Installing ${release.version}…`);
       const name = `${release.version}-${process.platform}-${process.arch}-${randomUUID()}`;
       staging = path.join(directory, name);
       fs.mkdirSync(staging);
       const entry = await install(tool, release, staging);
-      const installed = { version: release.version, directory: name, ...entry };
+      const installed = { version: release.version, artifact: release.artifact, directory: name, ...entry };
       const [executable, ...args] = command(directory, installed);
       const version = run(executable, [...args, '--version'], { timeout: 30000, env: toolEnvironment(tool) });
       const escapedVersion = release.version.replaceAll('.', '\\.');
