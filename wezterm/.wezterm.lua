@@ -694,12 +694,16 @@ local function update_floating_tabs(window)
   end
   local request = overlay_read('activate-' .. key .. '.json')
   if request and request.title == title then
-    os.remove(overlay_root .. 'activate-' .. key .. '.json')
-    if overlay_fresh(request, title) then
-      for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-        if tab.tab:tab_id() == request.tab_id then
-          window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
-          break
+    local consumed = os.remove(overlay_root .. 'activate-' .. key .. '.json')
+    if consumed and overlay_fresh(request, title) then
+      if request.action == 'new_tab' then
+        window:perform_action(wsl_tab_action(), window:active_pane())
+      elseif request.action == nil then
+        for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+          if tab.tab:tab_id() == request.tab_id then
+            window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
+            break
+          end
         end
       end
     end

@@ -16,6 +16,7 @@ struct Reply: Codable {
     let title: String
     let updated: Double
     let tab_id: Int?
+    var action: String? = nil
 }
 
 let stateDirectory = FileManager.default.homeDirectoryForCurrentUser
@@ -69,7 +70,7 @@ final class Badge: NSButton {
         actionHandler = action
         target = self
         self.action = #selector(invoke)
-        setAccessibilityLabel(action == nil ? "Current time: \(label)" : "WezTerm tab \(label)")
+        setAccessibilityLabel(action == nil ? "Current time: \(label)" : (label == "+" ? "New WezTerm tab" : "WezTerm tab \(label)"))
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
     @objc func invoke() { actionHandler?() }
@@ -232,7 +233,7 @@ final class WindowOverlay {
             panel.show(above: number, focused: focused, order: order)
         }
         let widths = snapshot.tabs.map { CGFloat(max(28, String($0.index + 1).count * 10 + 14)) }
-        let width = widths.reduce(0, +) + CGFloat(max(0, widths.count - 1) * 4)
+        let width = widths.reduce(0, +) + CGFloat(widths.count * 4) + 28
         guard let (tabFrame, clockFrame) = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width)
         else { hideBadges(); return }
         if currentTabs != snapshot.tabs || currentTitle != snapshot.title {
@@ -253,6 +254,14 @@ final class WindowOverlay {
                 content.addSubview(button)
                 x += badgeWidth + 4
             }
+            let newTab = Badge(label: "+", active: false) { [weak self] in
+                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                NSRunningApplication(processIdentifier: pid)?.activate()
+                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970,
+                                  tab_id: nil, action: "new_tab"), name: "activate-\(snapshot.key).json")
+            }
+            newTab.frame = CGRect(x: x, y: 0, width: 28, height: 24)
+            content.addSubview(newTab)
             scroll.documentView = content
             tabsPanel.contentView = scroll
             if let active = snapshot.tabs.firstIndex(where: { $0.active }) {

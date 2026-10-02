@@ -45,7 +45,7 @@ local window = {
   active_pane = function() return {} end,
   perform_action = function(_, action)
     activated = wezterm.json_encode(action)
-    selected = wezterm.json_parse(activated).ActivateTab
+    selected = wezterm.json_parse(activated).ActivateTab or selected
   end,
 }
 local update = assert(callbacks['update-status'])
@@ -114,6 +114,32 @@ window_id = 99
 update(window)
 assert(activated == '{"ActivateTab":1}' and overrides.enable_tab_bar == false, 'background click must target its own window')
 assert(read('window-' .. second_key .. '.json').tabs[2].active)
+-- The plus button shares the portable shortcut's domain and working directory.
+local new_tab_action
+for _, binding in ipairs(config.keys) do
+  if binding.key == 't' and binding.mods == 'CTRL|SHIFT' then new_tab_action = wezterm.json_encode(binding.action) end
+end
+assert(new_tab_action)
+write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), action = 'new_tab' })
+window_id = 42
+activated = nil
+update(window)
+assert(activated == nil, 'new tabs must be routed to their own window')
+window_id = 99
+update(window)
+assert(activated == new_tab_action, 'plus must create the same tab as Control+Shift+T')
+activated = nil
+update(window)
+assert(activated == nil, 'a consumed new-tab click must never replay')
+for _, request in ipairs({
+  { title = second.title, updated = os.time() - 10, action = 'new_tab' },
+  { title = 'another window', updated = os.time(), action = 'new_tab' },
+  { title = second.title, updated = os.time(), action = 'unknown', tab_id = 12 },
+}) do
+  write('activate-' .. second_key .. '.json', request)
+  update(window)
+  assert(activated == nil, 'invalid new-tab commands must not execute')
+end
 wezterm.mux.get_tab = original_get_tab
 wezterm.home_dir, wezterm.background_child_process = original_home, original_spawn
 return config

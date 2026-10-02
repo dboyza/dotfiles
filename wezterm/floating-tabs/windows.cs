@@ -99,6 +99,7 @@ internal sealed class Layout {
     internal Rectangle Bounds;
     internal readonly List<Rectangle> Tabs = new List<Rectangle>();
     internal Rectangle Clock;
+    internal Rectangle NewTab;
     internal static Layout Create(Rectangle frame, Rectangle work, Tab[] tabs, float scale) {
         int height = (int)Math.Round(24 * scale), gap = (int)Math.Round(4 * scale);
         int inset = (int)Math.Round(6 * scale), y = frame.Top - height / 2;
@@ -111,6 +112,10 @@ internal sealed class Layout {
             result.Tabs.Add(new Rectangle(x, 0, width, height));
             x += width + gap;
         }
+        int newTabWidth = (int)Math.Round(28 * scale);
+        if (x + newTabWidth > frame.Width - inset) return null;
+        result.NewTab = new Rectangle(x, 0, newTabWidth, height);
+        x += newTabWidth + gap;
         int clockWidth = (int)Math.Round(98 * scale);
         int clockX = (frame.Width - clockWidth) / 2;
         if (x + inset < clockX) result.Clock = new Rectangle(clockX, 0, clockWidth, height);
@@ -163,6 +168,7 @@ internal sealed class Overlay : Form {
             var region = new Region();
             region.MakeEmpty();
             foreach (var rect in layout.Tabs) using (var path = Capsule(rect, 6 * scale)) region.Union(path);
+            using (var path = Capsule(layout.NewTab, 6 * scale)) region.Union(path);
             if (!layout.Clock.IsEmpty) using (var path = Capsule(layout.Clock, 6 * scale)) region.Union(path);
             var previous = Region;
             Region = region;
@@ -188,6 +194,7 @@ internal sealed class Overlay : Form {
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
         using (var font = new Font("Consolas", 14 * scale, FontStyle.Bold, GraphicsUnit.Pixel)) {
             for (int i = 0; i < Snapshot.tabs.Length; i++) DrawBadge(e.Graphics, layout.Tabs[i], (Snapshot.tabs[i].index + 1).ToString(), Snapshot.tabs[i].active, font);
+            DrawBadge(e.Graphics, layout.NewTab, "+", false, font);
             if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, true, font);
         }
     }
@@ -203,6 +210,13 @@ internal sealed class Overlay : Form {
     protected override void OnMouseDown(MouseEventArgs e) {
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left || layout == null) return;
+        if (layout.NewTab.Contains(e.Location)) {
+            try {
+                Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, action = "new_tab" });
+                Native.SetForegroundWindow(parent);
+            } catch (IOException) { Suspend(); } catch (UnauthorizedAccessException) { Suspend(); }
+            return;
+        }
         for (int i = 0; i < layout.Tabs.Count; i++) if (layout.Tabs[i].Contains(e.Location)) {
             try {
                 Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, tab_id = Snapshot.tabs[i].id });
@@ -338,6 +352,7 @@ internal static class Program {
         foreach (float scale in new[] { 1f, 1.5f, 2f }) {
             var layout = Layout.Create(frame, work, tabs, scale);
             Require(layout != null && layout.Bounds.Top < frame.Top && layout.Bounds.Bottom > frame.Top, "Badges must straddle the top border");
+            Require(layout.NewTab.Left > layout.Tabs.Last().Right && layout.NewTab.Right < layout.Clock.Left, "New-tab button must follow the last tab without overlapping the clock");
             Require(Math.Abs(layout.Clock.Left + layout.Clock.Width / 2 - frame.Width / 2) <= 1, "Clock must be centered");
         }
         Require(Layout.Create(work, work, tabs, 1) == null, "Fullscreen must retain native tabs");

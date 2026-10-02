@@ -46,6 +46,7 @@ The two-key bracket shortcuts work directly from shells, tmux, Herdr, and Neovim
 Existing `Command+Shift+[` / `Command+Shift+]` and portable `Control+Tab` / `Control+Shift+Tab` shortcuts remain available.
 WezTerm launches centered on macOS at 94% of the screen width and 88% of its height, leaving desktop margins instead of maximizing.
 On macOS and Windows, the floating-tab companion places clickable numbered tabs and a centered clock across the focused window’s upper edge.
+Click the + button after the last floating tab to create a tab with the same action as `Control+Shift+T`.
 Existing tab shortcuts continue to work.
 Linux uses the built-in numbered tab bar.
 On macOS and Windows, it remains the fallback in fullscreen and whenever the companion cannot draw safely.

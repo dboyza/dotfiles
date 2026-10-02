@@ -143,7 +143,8 @@ Remove-Item Env:DOTFILES_TOOL_UPDATE
 
 ## Floating WezTerm tabs and clock
 
-The native Windows companion draws clickable numbered tabs and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
+The native Windows companion draws clickable numbered tabs, a + button after the last tab, and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
+The + button creates a new tab using the same shell and working directory as `Ctrl+Shift+T`.
 WSL bootstrap installs it on the Windows host automatically.
 It also works with native Windows PowerShell sessions and requires no WSL runtime once installed.
 
@@ -174,7 +175,7 @@ Linux GUI WezTerm retains its native tabs and clock; WSL sessions displayed by W
 
 The executable is installed under `%USERPROFILE%\.local\share\dotfiles\wezterm-floating-tabs`.
 Per-window snapshots, acknowledgments, and click requests live under `%USERPROFILE%\.local\state\dotfiles\wezterm-floating-tabs`, restricted to the current user and SYSTEM.
-Only window identities, tab IDs, and timestamps cross the bridge; the companion does not read terminal contents or capture the screen.
+Only window identities, tab IDs, timestamps, and the explicit new-tab action cross the bridge; the companion does not read terminal contents or capture the screen.
 To stop it for the current session, end `wezterm-floating-tabs.exe` in Task Manager; native tabs recover automatically.
 
 Run the native layout and real WezTerm Lua bridge checks from the checkout root in **Windows PowerShell**:

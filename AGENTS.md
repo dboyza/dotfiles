@@ -44,7 +44,9 @@
 - On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across each visible window's upper edge.
   Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
   An enabled Accessibility entry can retain an old ad-hoc code signature after rebuilding; recover with a helper-only `tccutil reset Accessibility com.dboyza.wezterm-floating-tabs`, then a fresh manual grant.
-  Exchange only window identities, tab IDs, and freshness timestamps through the private state directory.
+  Exchange only window identities, tab IDs, freshness timestamps, and the explicit `new_tab` action through the private state directory.
+  Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
+  Consume click requests before acting so new-tab requests cannot replay.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, another application gains focus, or there is no room above the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
