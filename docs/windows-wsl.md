@@ -165,7 +165,9 @@ Windows' included .NET Framework compiler builds the companion, so neither a .NE
 PowerShell 5.1 and 7 are supported.
 
 The companion follows window movement and per-monitor scaling without taking keyboard focus.
-It hides when another application gains focus, and native tabs return within a few seconds.
+It also applies Windows 11's native rounded lavender window outline, with no competing rectangular border inside it.
+The outline remains when another application has focus; Windows controls the square edges of maximized and fullscreen windows.
+The floating badges hide when another application gains focus, and native tabs return within a few seconds.
 Maximized or fullscreen windows, windows without room above their top edge, and windows with more badges than can fit retain the native tab bar.
 The clock is omitted when tabs would overlap it.
 Linux GUI WezTerm retains its native tabs and clock; WSL sessions displayed by Windows WezTerm use the Windows companion.

@@ -43,7 +43,16 @@ internal static class Native {
     [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] internal static extern IntPtr SetOwner64(IntPtr window, int index, IntPtr owner);
     [DllImport("user32.dll", EntryPoint = "SetWindowLongW")] internal static extern IntPtr SetOwner32(IntPtr window, int index, IntPtr owner);
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int Frame(IntPtr window, int attribute, out Rect rect, int size);
-    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int Cloaked(IntPtr window, int attribute, out int value, int size);
+    [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int GetAttribute(IntPtr window, int attribute, out int value, int size);
+    [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    internal static bool StyleFrame(IntPtr window) {
+        // DWM draws a continuous outline around its own rounded window mask.
+        // Client-side rectangular borders remain square inside that mask.
+        int round = 2; // DWMWCP_ROUND; Windows keeps maximized/fullscreen edges square.
+        int lavender = 0xE7A7C4; // COLORREF is 0x00BBGGRR, not RGB.
+        return DwmSetWindowAttribute(window, 33, ref round, 4) == 0
+            && DwmSetWindowAttribute(window, 34, ref lavender, 4) == 0;
+    }
     internal static void Own(IntPtr panel, IntPtr owner) {
         if (IntPtr.Size == 8) SetOwner64(panel, -8, owner); else SetOwner32(panel, -8, owner);
     }
@@ -215,6 +224,7 @@ internal sealed class Companion : ApplicationContext {
     private readonly FileSystemWatcher watcher;
     private bool refreshing;
     private int queued;
+    private double lastFrameRefresh;
     internal Companion() {
         var handle = dispatcher.Handle;
         watcher = new FileSystemWatcher(Bridge.Root, "window-*.json") { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite };
@@ -235,9 +245,13 @@ internal sealed class Companion : ApplicationContext {
         if (refreshing) return;
         refreshing = true;
         try {
-            if (!Native.IsWezTerm(Native.GetForegroundWindow())) {
+            bool showBadges = Native.IsWezTerm(Native.GetForegroundWindow());
+            bool refreshFrames = Bridge.Now - lastFrameRefresh >= 1;
+            if (refreshFrames) lastFrameRefresh = Bridge.Now;
+            if (!showBadges) {
                 foreach (var overlay in overlays.Values) overlay.Suspend();
-                return;
+                // Window styling remains active while another app has focus.
+                if (!refreshFrames) return;
             }
             // Windows Lua publication briefly removes the old destination before
             // renaming. Keep its last valid snapshot until the freshness deadline.
@@ -254,13 +268,15 @@ internal sealed class Companion : ApplicationContext {
             }
             var live = new HashSet<IntPtr>();
             Native.EnumWindows(delegate(IntPtr window, IntPtr unused) {
-                if (!Native.IsWindowVisible(window) || Native.IsIconic(window) || Native.IsZoomed(window) || !Native.IsWezTerm(window)) return true;
+                if (!Native.IsWindowVisible(window) || Native.IsIconic(window) || !Native.IsWezTerm(window)) return true;
                 int cloaked;
-                if (Native.Cloaked(window, 14, out cloaked, 4) == 0 && cloaked != 0) return true;
+                if (Native.GetAttribute(window, 14, out cloaked, 4) == 0 && cloaked != 0) return true;
                 var title = new StringBuilder(512);
                 Native.GetWindowText(window, title, title.Capacity);
                 Snapshot snapshot;
                 if (!snapshots.TryGetValue(title.ToString(), out snapshot)) return true;
+                if (refreshFrames) Native.StyleFrame(window);
+                if (!showBadges || Native.IsZoomed(window)) return true;
                 Native.Rect rect;
                 if (Native.Frame(window, 9, out rect, Marshal.SizeOf(typeof(Native.Rect))) != 0 && !Native.GetWindowRect(window, out rect)) return true;
                 var frame = Rectangle.FromLTRB(rect.left, rect.top, rect.right, rect.bottom);
@@ -309,6 +325,13 @@ internal static class Program {
     }
     private static void Require(bool value, string message) { if (!value) throw new Exception(message); }
     private static void Test() {
+        using (var window = new Form()) {
+            Require(Native.StyleFrame(window.Handle), "Windows must accept the rounded lavender frame");
+            int preference;
+            Require(Native.GetAttribute(window.Handle, 33, out preference, 4) == 0 && preference == 2,
+                "Native corner preference must opt into rounded corners");
+            Require(Native.StyleFrame(window.Handle), "Frame styling must remain safe on refresh");
+        }
         var tabs = new[] { new Tab { id = 1, index = 0, active = true }, new Tab { id = 2, index = 1 } };
         var frame = new Rectangle(50, 80, 1400, 850);
         var work = new Rectangle(0, 0, 1920, 1040);

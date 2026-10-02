@@ -59,6 +59,8 @@
   Install it on the Windows host, including for WSL sessions; keep its bridge under the Windows user profile with a user/SYSTEM-only ACL.
   Persist only the state directory DACL through .NET access-control APIs so repeat installs do not request audit privileges.
   Use nonactivating owned windows, per-monitor DPI, and native fallback when maximized, fullscreen, or badges cannot fit.
+  Let Windows DWM draw the rounded lavender window outline; keep Windows Lua frame border widths at zero so an inner rectangle cannot square off the corners.
+  Apply DWM frame styling independently of badge visibility so it persists when another application has focus.
   Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
   Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.

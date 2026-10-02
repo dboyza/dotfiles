@@ -8,6 +8,10 @@ wezterm.on = function(name, callback) callbacks[name] = callback end
 wezterm.background_child_process = function() spawned = spawned + 1 end
 local config = dofile(wezterm.config_dir .. '/../wezterm/.wezterm.lua')
 wezterm.on = original_on
+local expected_border = wezterm.target_triple:lower():find('windows') and '0px' or '2px'
+for _, field in ipairs({ 'border_left_width', 'border_right_width', 'border_top_height', 'border_bottom_height' }) do
+  assert(config.window_frame[field] == expected_border, 'Windows must not draw a square border inside its native rounded frame')
+end
 local root = home .. '/.local/state/dotfiles/wezterm-floating-tabs/'
 local function read(name)
   local file = assert(io.open(root .. name, 'r'))

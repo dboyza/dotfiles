@@ -102,11 +102,14 @@ config.tab_max_width = 8
 config.status_update_interval = is_macos and 250 or 1000
 config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
 config.window_decorations = 'RESIZE'
+-- Windows' DWM border follows its rounded corners. A client-side rectangle
+-- would sit inside that frame with square corners, even when DWM rounds it.
+local frame_border = is_windows and '0px' or '2px'
 config.window_frame = {
-  border_left_width = '2px',
-  border_right_width = '2px',
-  border_top_height = '2px',
-  border_bottom_height = '2px',
+  border_left_width = frame_border,
+  border_right_width = frame_border,
+  border_top_height = frame_border,
+  border_bottom_height = frame_border,
   border_left_color = '#c4a7e7',
   border_right_color = '#c4a7e7',
   border_top_color = '#c4a7e7',
