@@ -101,10 +101,15 @@ python3 scripts/adrafinil-agent-poll.py --dry-run
 The LaunchAgent checks immediately at login and every 60 seconds while the Mac is awake, including when Adrafinil currently has no holds.
 It recognizes Codex's `Codex is running an active turn` macOS power assertion and Claude Code's `busy` records in `~/.claude/sessions/<pid>.json`, checking that each PID still belongs to the current user's agent process.
 Idle sessions, Claude approval prompts, helper processes, and stale session files do not acquire a polling hold.
-Native hooks remain the immediate path, and the poller releases only its own `dotfiles-poll` holds when work ends.
+Native hooks remain the immediate path, and the poller releases its own `dotfiles-poll` holds when work ends.
+The same minute check also removes native Codex and Claude hook or sniffed holds whose owning process has exited.
+For Codex's shared background service, it reads the local thread index and recent rollout lifecycle records to distinguish completed, interrupted, or removed sessions from an active turn.
+A missing session is eligible after one minute, while an unreadable index or incomplete transcript is treated as unknown.
+For Claude, a matching session's idle status must be newer than the hook before that native hold is removed.
+Native holds are rechecked before release so a newly refreshed turn or restarted daemon cancels a stale cleanup decision.
 Each polling hold expires after three minutes unless renewed, and Adrafinil still controls pause, process-exit cleanup, and configured safety cutouts.
 If Claude's status file is temporarily unreadable, an existing polling hold keeps its current expiry without renewal so one partial write cannot immediately drop it.
-Existing hook or manual holds retain their own release policies.
+Manual holds, unrelated tools, and Claude's native waiting grace retain their own release policies.
 
 This fallback depends on those activity signals: Codex sessions without an active-turn power assertion and Claude sessions using a custom configuration directory still rely on their hooks.
 It does not wake an already sleeping Mac, and a missed start hook can leave a delay of up to one minute before detection.

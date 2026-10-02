@@ -9,6 +9,7 @@ from pathlib import Path
 import plistlib
 import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,8 @@ import tempfile
 LABEL = "com.dboyza.adrafinil-agent-poll"
 INTERVAL = 60
 TTL = 180
+APPLE_EPOCH = 978307200
+SESSION_KEY = re.compile(r"^codex:([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$")
 KEY_PATTERN = re.compile(r"^(codex|claude-code):dotfiles-poll:[1-9][0-9]*$")
 CODEX_ASSERTION = re.compile(
     r'^\s*pid (\d+)\(codex\):.*\bPreventUserIdleSystemSleep\b'
@@ -82,7 +85,128 @@ def active_agents(process_map, assertions, sessions):
     return active, uncertain
 
 
-def reconcile(cli, active, status, dry_run=False, uncertain=()):
+def codex_session_state(home, session_id):
+    """Read lifecycle metadata only; an unavailable index is not a dead session."""
+    databases = sorted(
+        (p for p in home.glob("state_*.sqlite") if p.stem[6:].isdigit()),
+        key=lambda p: int(p.stem[6:]), reverse=True,
+    )
+    if not databases:
+        return None
+    try:
+        connection = sqlite3.connect(databases[0].as_uri() + "?mode=ro", uri=True, timeout=1)
+        try:
+            row = connection.execute("SELECT rollout_path FROM threads WHERE id = ?", (session_id,)).fetchone()
+        finally:
+            connection.close()
+        if row is None:
+            # A migrated or archived session can have a rollout but no index row.
+            paths = list(home.glob(f"sessions/*/*/*/*-{session_id}.jsonl"))
+            paths += list(home.glob(f"archived_sessions/*-{session_id}.jsonl"))
+            if not paths:
+                return ("missing", None)
+            path = max(paths, key=lambda p: p.stat().st_mtime)
+        else:
+            path = Path(row[0])
+        # Bound reads of large transcripts. No recent lifecycle marker means unknown.
+        with path.open("rb") as stream:
+            size = stream.seek(0, os.SEEK_END)
+            start = max(0, size - 1024 * 1024)
+            stream.seek(start)
+            if start:
+                stream.readline()
+            tail = stream.read()
+        if not tail.endswith(b"\n"):
+            return None  # The writer has not finished its current record.
+        for line in reversed(tail.splitlines()):
+            record = json.loads(line)
+            if not isinstance(record, dict) or record.get("type") != "event_msg":
+                continue
+            event = record.get("payload")
+            if not isinstance(event, dict):
+                continue
+            kind = event.get("type")
+            if kind not in ("task_started", "task_complete", "turn_aborted"):
+                continue
+            timestamp = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00")).timestamp()
+            return ("active" if kind == "task_started" else "idle", timestamp)
+    except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
+        pass
+    return None
+
+
+def stale_agent_holds(status, process_text, sessions, codex_home, now):
+    """Identify abandoned native holds without treating a shared server as work."""
+    if not isinstance(status, dict) or not isinstance(status.get("assertions"), list):
+        return {}
+    live_pids = {
+        int(fields[0]) for line in process_text.splitlines()
+        if len(fields := line.split(None, 2)) == 3 and fields[0].isdigit()
+    }
+    stale = {}
+    for entry in status.get("assertions", []):
+        if not isinstance(entry, dict):
+            continue
+        key, tool, pid = entry.get("key"), entry.get("tool"), entry.get("pid")
+        if (
+            tool not in ("codex", "claude-code")
+            or entry.get("origin") not in ("hook", "sniffed")
+            or not isinstance(key, str) or KEY_PATTERN.fullmatch(key)
+            or key.startswith("hold:")
+        ):
+            continue
+        if type(pid) is int and pid > 0 and pid not in live_pids:
+            stale[key] = "owning process exited"
+            continue
+        if tool == "codex" and (match := SESSION_KEY.fullmatch(key)):
+            activity = codex_session_state(codex_home, match[1])
+            touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
+            if activity is None or type(touched) not in (int, float):
+                continue
+            touched += APPLE_EPOCH
+            state, timestamp = activity
+            if state == "missing" and now - touched >= INTERVAL:
+                stale[key] = "session no longer exists in Codex's readable thread index"
+            elif state == "idle" and timestamp >= touched:
+                stale[key] = "Codex turn completed or was interrupted"
+        elif tool == "claude-code" and type(pid) is int and pid > 0:
+            try:
+                session = json.loads((sessions / f"{pid}.json").read_text())
+            except (OSError, ValueError):
+                continue
+            if (
+                isinstance(session, dict) and session.get("pid") == pid
+                and isinstance(session.get("sessionId"), str)
+                and key == f"claude-code:{session['sessionId']}"
+                and session.get("status") == "idle"
+            ):
+                # A start hook can precede Claude's busy-status write.
+                updated = session.get("statusUpdatedAt")
+                touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
+                if type(updated) in (int, float) and type(touched) in (int, float) and updated / 1000 >= touched + APPLE_EPOCH:
+                    stale[key] = "Claude session is idle"
+    return stale
+
+
+def hold_identity(entry):
+    return tuple(entry.get(field) for field in ("pid", "origin", "acquiredAt", "lastActivityAt", "expiresAt"))
+
+
+def release_hold(cli, key):
+    try:
+        run([cli, "release", key])
+    except RuntimeError:
+        # Stop hooks and the daemon's exit watcher may win the release race.
+        latest = json.loads(run([cli, "status", "--json"]))
+        if (
+            isinstance(latest, dict) and isinstance(latest.get("assertions"), list)
+            and not any(isinstance(entry, dict) and entry.get("key") == key for entry in latest["assertions"])
+        ):
+            return
+        raise
+
+
+def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
     if not isinstance(status, dict):
         raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
     if status.get("daemonRunning") is False:
@@ -108,10 +232,25 @@ def reconcile(cli, active, status, dry_run=False, uncertain=()):
         key for key in owned - desired.keys()
         if int(key.rsplit(":", 1)[1]) not in uncertain
     )
+    stale = dict(stale or {})
+    if stale and not dry_run:
+        # A new turn may have refreshed a hold since detection. Do not release it
+        # using the previous turn's evidence, or race a daemon restart.
+        latest = json.loads(run([cli, "status", "--json"]))
+        if not isinstance(latest, dict) or not isinstance(latest.get("assertions"), list):
+            raise RuntimeError("Unrecognized Adrafinil status during stale-hold recheck.")
+        before = {entry["key"]: entry for entry in status["assertions"] if isinstance(entry, dict) and "key" in entry}
+        after = {entry["key"]: entry for entry in latest.get("assertions", []) if isinstance(entry, dict) and "key" in entry}
+        stale = {
+            key: reason for key, reason in stale.items()
+            if not latest.get("paused") and latest.get("daemonBootID") == status.get("daemonBootID")
+            and key in before and key in after and hold_identity(before[key]) == hold_identity(after[key])
+        }
+    released = sorted(set(released) | stale.keys())
     for key in released:
         if not dry_run:
-            run([cli, "release", key])
-    return {"paused": False, "active": active, "acquired": sorted(desired), "released": released}
+            release_hold(cli, key)
+    return {"paused": False, "active": active, "acquired": sorted(desired), "released": released, "staleReasons": stale}
 
 
 def cli_path():
@@ -195,9 +334,11 @@ def main():
             install(cli)
             return 0
         status = json.loads(run([cli, "status", "--json"]))
-        snapshot = processes(run(["/bin/ps", "-axo", "pid=,uid=,comm="]), os.getuid())
+        process_text = run(["/bin/ps", "-axo", "pid=,uid=,comm="])
+        snapshot = processes(process_text, os.getuid())
         active, uncertain = active_agents(snapshot, run(["/usr/bin/pmset", "-g", "assertions"]), Path.home() / ".claude/sessions")
-        result = reconcile(cli, active, status, args.dry_run, uncertain)
+        stale = stale_agent_holds(status, process_text, Path.home() / ".claude/sessions", Path.home() / ".codex", datetime.now(timezone.utc).timestamp())
+        result = reconcile(cli, active, status, args.dry_run, uncertain, stale)
         result["uncertainPids"] = sorted(uncertain)
         result["checkedAt"] = datetime.now(timezone.utc).isoformat()
         if args.dry_run:

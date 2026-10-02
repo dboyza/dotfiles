@@ -1,7 +1,9 @@
 # Repository instructions
 
 - Keep the optional macOS Adrafinil fallback in `scripts/adrafinil-agent-poll.py` activity-scoped, with a 60-second LaunchAgent interval and expiring, separately named holds.
-  Use Codex's active-turn power assertion and Claude's live busy status, never process presence alone; leave native hooks and unrelated holds untouched.
+  Use Codex's active-turn power assertion and Claude's live busy status, never process presence alone.
+  Clean up dead native agent holds too; a shared Codex app-server PID is not proof that its individual sessions are active.
+  Check session lifecycle metadata and recheck hold identity before releasing stale hooks; preserve manual holds and unknown activity.
 
 - Keep the default Zsh `ls` alias in its normal listing layout without `-m`, preserving platform-specific color flags.
 

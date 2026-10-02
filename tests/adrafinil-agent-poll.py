@@ -2,10 +2,12 @@
 """Regression checks for missed active agents and accidental idle holds."""
 
 import importlib.util
+from contextlib import closing
 import json
 from pathlib import Path
 import plistlib
 import subprocess
+import sqlite3
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -133,6 +135,130 @@ class PollTests(unittest.TestCase):
         with patch.object(poller.sys, "platform", "win32"), patch.object(poller.sys, "argv", [str(SCRIPT)]), patch.object(poller, "run") as command:
             self.assertEqual(poller.main(), 0)
             command.assert_not_called()
+
+
+class StaleHoldTests(unittest.TestCase):
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.home = Path(self.temporary.name)
+        self.thread = "01a0fe08-edc8-7c70-813f-6f134930653f"
+        self.key = "codex:" + self.thread
+        self.hold = {"key": self.key, "tool": "codex", "origin": "hook", "pid": 5010,
+                     "acquiredAt": 100, "lastActivityAt": 100, "expiresAt": 86500}
+        self.status = {"paused": False, "daemonBootID": "boot-1", "assertions": [self.hold]}
+        self.processes = "5010 501 /a/codex\n"
+        self.now = poller.APPLE_EPOCH + 300
+        with closing(sqlite3.connect(self.home / "state_5.sqlite")) as connection, connection:
+            connection.execute("CREATE TABLE threads (id TEXT, rollout_path TEXT)")
+
+    def lifecycle(self, *events):
+        path = self.home / "session.jsonl"
+        lines = []
+        for kind, seconds in events:
+            timestamp = poller.datetime.fromtimestamp(poller.APPLE_EPOCH + seconds, poller.timezone.utc).isoformat()
+            lines.append(json.dumps({"type": "event_msg", "timestamp": timestamp, "payload": {"type": kind}}))
+        path.write_text("\n".join(lines) + "\n")
+        with closing(sqlite3.connect(self.home / "state_5.sqlite")) as connection, connection:
+            connection.execute("DELETE FROM threads")
+            connection.execute("INSERT INTO threads VALUES (?, ?)", (self.thread, str(path)))
+        return path
+
+    def detect(self):
+        return poller.stale_agent_holds(self.status, self.processes, self.home, self.home, self.now)
+
+    def test_removed_session_is_stale_even_though_shared_server_is_alive(self):
+        self.assertIn(self.key, self.detect())
+        with patch.object(poller, "run", side_effect=[json.dumps(self.status), ""]) as command:
+            result = poller.reconcile("adrafinil", {}, self.status, stale=self.detect())
+            self.assertEqual(result["released"], [self.key])
+            self.assertEqual(command.call_args_list[-1].args[0], ["adrafinil", "release", self.key])
+
+    def test_new_unindexed_session_gets_time_to_initialize(self):
+        self.now = poller.APPLE_EPOCH + 120
+        self.assertEqual(self.detect(), {})
+
+    def test_completed_and_interrupted_turns_release_without_process_exit(self):
+        for event in ["task_complete", "turn_aborted"]:
+            self.lifecycle(("task_started", 100), (event, 150))
+            self.assertIn(self.key, self.detect())
+
+    def test_new_turn_and_new_hook_are_not_released_using_old_completion(self):
+        self.lifecycle(("task_complete", 150), ("task_started", 160))
+        self.assertEqual(self.detect(), {})
+        self.lifecycle(("task_complete", 150))
+        self.hold["lastActivityAt"] = 160
+        self.assertEqual(self.detect(), {})
+
+    def test_unreadable_index_transcript_and_partial_records_are_unknown(self):
+        path = self.lifecycle(("task_complete", 150))
+        with path.open("a") as stream:
+            stream.write('{"type":"event_msg"')
+        self.assertEqual(self.detect(), {})
+        path.unlink()
+        self.assertEqual(self.detect(), {})
+        (self.home / "state_5.sqlite").write_text("not a database")
+        self.assertEqual(self.detect(), {})
+        (self.home / "state_5.sqlite").unlink()
+        self.assertEqual(self.detect(), {})
+
+    def test_unindexed_rollout_is_checked_before_declaring_session_removed(self):
+        path = self.lifecycle(("task_started", 100))
+        archived = self.home / "archived_sessions" / f"rollout-2001-01-01-{self.thread}.jsonl"
+        archived.parent.mkdir()
+        path.rename(archived)
+        with closing(sqlite3.connect(self.home / "state_5.sqlite")) as connection, connection:
+            connection.execute("DELETE FROM threads")
+        self.assertEqual(self.detect(), {})
+
+    def test_dead_native_agent_is_cleaned_but_manual_and_other_tools_survive(self):
+        self.processes = "999 501 /a/other\n"
+        self.status["assertions"] += [
+            dict(self.hold, key="hold:manual", origin="manual"),
+            dict(self.hold, key="pi:session", tool="pi"),
+            dict(self.hold, key="codex:explicit", origin="manual"),
+            dict(self.hold, key="codex:dotfiles-poll:5010"),
+        ]
+        self.assertEqual(list(self.detect()), [self.key])
+
+    def test_claude_idle_needs_matching_session_and_status_newer_than_hook(self):
+        self.hold.update(key="claude-code:session", tool="claude-code")
+        path = self.home / "5010.json"
+        status = {"pid": 5010, "sessionId": "session", "status": "idle",
+                  "statusUpdatedAt": (poller.APPLE_EPOCH + 150) * 1000}
+        path.write_text(json.dumps(status))
+        self.assertIn(self.hold["key"], self.detect())
+        for changes in [{"status": "busy"}, {"status": "waiting"}, {"sessionId": "other"},
+                        {"statusUpdatedAt": (poller.APPLE_EPOCH + 90) * 1000}]:
+            path.write_text(json.dumps({**status, **changes}))
+            self.assertEqual(self.detect(), {})
+
+    def test_refreshed_hold_paused_daemon_and_restarted_daemon_cancel_release(self):
+        stale = self.detect()
+        for latest in [
+            {**self.status, "assertions": [dict(self.hold, lastActivityAt=200)]},
+            {**self.status, "paused": True},
+            {**self.status, "daemonBootID": "boot-2"},
+            {**self.status, "assertions": []},
+        ]:
+            with patch.object(poller, "run", return_value=json.dumps(latest)) as command:
+                self.assertEqual(poller.reconcile("adrafinil", {}, self.status, stale=stale)["released"], [])
+                command.assert_called_once_with(["adrafinil", "status", "--json"])
+
+    def test_dry_run_reports_native_cleanup_without_writes(self):
+        with patch.object(poller, "run") as command:
+            result = poller.reconcile("adrafinil", {}, self.status, dry_run=True, stale=self.detect())
+            self.assertEqual(result["released"], [self.key])
+            command.assert_not_called()
+
+    def test_native_stop_hook_winning_release_race_is_success(self):
+        with patch.object(poller, "run", side_effect=[RuntimeError("unknown key"), json.dumps({"assertions": []})]):
+            poller.release_hold("adrafinil", self.key)
+
+    def test_real_release_failure_is_still_reported(self):
+        with patch.object(poller, "run", side_effect=[RuntimeError("release refused"), json.dumps(self.status)]):
+            with self.assertRaisesRegex(RuntimeError, "release refused"):
+                poller.release_hold("adrafinil", self.key)
 
 
 if __name__ == "__main__":
