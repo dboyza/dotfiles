@@ -89,6 +89,37 @@ Run `brew update` and then `brew upgrade <package>` for package updates.
 Activation installs missing packages without upgrading existing ones or removing other Homebrew packages.
 The Mac App Store still handles Amphetamine through Homebrew's `mas`; Wallper retains its verified direct-download installer.
 
+## Adrafinil activity polling
+
+If Adrafinil misses agent hooks, install the optional per-user fallback after setting up the Adrafinil app:
+
+```sh
+python3 scripts/adrafinil-agent-poll.py --install
+python3 scripts/adrafinil-agent-poll.py --dry-run
+```
+
+The LaunchAgent checks immediately at login and every 60 seconds while the Mac is awake, including when Adrafinil currently has no holds.
+It recognizes Codex's `Codex is running an active turn` macOS power assertion and Claude Code's `busy` records in `~/.claude/sessions/<pid>.json`, checking that each PID still belongs to the current user's agent process.
+Idle sessions, Claude approval prompts, helper processes, and stale session files do not acquire a polling hold.
+Native hooks remain the immediate path, and the poller releases only its own `dotfiles-poll` holds when work ends.
+Each polling hold expires after three minutes unless renewed, and Adrafinil still controls pause, process-exit cleanup, and configured safety cutouts.
+If Claude's status file is temporarily unreadable, an existing polling hold keeps its current expiry without renewal so one partial write cannot immediately drop it.
+Existing hook or manual holds retain their own release policies.
+
+This fallback depends on those activity signals: Codex sessions without an active-turn power assertion and Claude sessions using a custom configuration directory still rely on their hooks.
+It does not wake an already sleeping Mac, and a missed start hook can leave a delay of up to one minute before detection.
+The installed job points at this checkout and Homebrew's stable Python executable when available, falling back to Python on `PATH`; rerun the installer after moving the checkout or replacing that Python installation.
+Inspect the last successful check in `~/.local/state/dotfiles/adrafinil-poll/status.json` and failures in the adjacent `error.log`.
+
+To disable the fallback, unload and remove only its LaunchAgent:
+
+```sh
+launchctl bootout "gui/$(id -u)/com.dboyza.adrafinil-agent-poll"
+rm "$HOME/Library/LaunchAgents/com.dboyza.adrafinil-agent-poll.plist"
+```
+
+Its remaining holds expire within three minutes; other Adrafinil holds are unaffected.
+
 ## Managed desktop applications
 
 Activation installs missing copies of Google Chrome, Visual Studio Code, BoringNotch, WezTerm, Wallper, and Amphetamine.

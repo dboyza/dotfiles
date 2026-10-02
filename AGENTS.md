@@ -1,5 +1,8 @@
 # Repository instructions
 
+- Keep the optional macOS Adrafinil fallback in `scripts/adrafinil-agent-poll.py` activity-scoped, with a 60-second LaunchAgent interval and expiring, separately named holds.
+  Use Codex's active-turn power assertion and Claude's live busy status, never process presence alone; leave native hooks and unrelated holds untouched.
+
 - Keep the default Zsh `ls` alias in its normal listing layout without `-m`, preserving platform-specific color flags.
 
 - When making a change, keep it compatible with native Windows 11, Windows 11 with WSL, and macOS.
