@@ -116,7 +116,7 @@ internal sealed class Layout {
         if (x + newTabWidth > frame.Width - inset) return null;
         result.NewTab = new Rectangle(x, 0, newTabWidth, height);
         x += newTabWidth + gap;
-        int clockWidth = (int)Math.Round(66 * scale);
+        int clockWidth = (int)Math.Round(88 * scale);
         int clockX = (frame.Width - clockWidth) / 2;
         if (x + inset < clockX) result.Clock = new Rectangle(clockX, 0, clockWidth, height);
         return result;
@@ -162,7 +162,7 @@ internal sealed class Overlay : Form {
             || signature != Bridge.Json.Serialize(snapshot.tabs);
         layout = placement;
         scale = dpi;
-        string nextClock = DateTime.Now.ToString("HH:mm");
+        string nextClock = DateTime.Now.ToString("h:mm tt", System.Globalization.CultureInfo.InvariantCulture);
         if (geometryChanged) {
             signature = Bridge.Json.Serialize(snapshot.tabs);
             Bounds = layout.Bounds;

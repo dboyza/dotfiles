@@ -252,7 +252,7 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
 The native `WezTerm Floating Tabs` companion places clickable tab numbers above each visible WezTerm window, straddling its lavender border, with the clock centered above the same window.
 The + button after the last tab creates a new tab using the same action as `Control+Shift+T`.
-The one-pixel border dims on inactive windows, while the active tab keeps its lavender fill beside subdued inactive badges and a smaller translucent `HH:mm` clock.
+The one-pixel border dims on inactive windows, while the active tab keeps its lavender fill beside subdued inactive badges and a smaller translucent 12-hour clock with AM/PM.
 The badges follow window moves and resizes without taking keyboard focus.
 Focused-window overlays stay above terminal clicks; background overlays retain their window stacking order.
 Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.

@@ -144,7 +144,7 @@ Remove-Item Env:DOTFILES_TOOL_UPDATE
 ## Floating WezTerm tabs and clock
 
 The native Windows companion draws clickable numbered tabs, a + button after the last tab, and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
-The active tab keeps its lavender fill beside subdued inactive badges and a smaller dark `HH:mm` clock.
+The active tab keeps its lavender fill beside subdued inactive badges and a smaller dark 12-hour clock with AM/PM.
 The + button creates a new tab using the same shell and working directory as `Ctrl+Shift+T`.
 WSL bootstrap installs it on the Windows host automatically.
 It also works with native Windows PowerShell sessions and requires no WSL runtime once installed.

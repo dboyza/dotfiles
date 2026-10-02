@@ -54,7 +54,7 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat) -> (CGRect, CG
     let y = frame.maxY - height / 2
     guard y + height <= visible.maxY, frame.width >= 48 else { return nil }
     let tabs = CGRect(x: frame.minX + 6, y: y, width: min(tabWidth, frame.width - 12), height: height)
-    let clock = CGRect(x: frame.midX - 33, y: y, width: 66, height: height)
+    let clock = CGRect(x: frame.midX - 44, y: y, width: 88, height: height)
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
@@ -183,7 +183,8 @@ final class WindowOverlay {
     var heartbeatTitle = ""
     let formatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "h:mm a"
         return formatter
     }()
 

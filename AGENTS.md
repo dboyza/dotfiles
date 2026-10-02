@@ -57,7 +57,7 @@
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
-  Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral `HH:mm` clock in both the companion and native fallback.
+  Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
   Complete macOS border corners with small click-through arcs that match focus and screen pixel density; native rectangular borders are clipped at the window radius.
   Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.

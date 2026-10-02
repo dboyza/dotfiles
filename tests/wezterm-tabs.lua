@@ -30,8 +30,8 @@ for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) d
 end
 local original_strftime = wezterm.strftime
 wezterm.strftime = function(format)
-  assert(format == '%H:%M', 'the clock should display hours and minutes')
-  return '17:07'
+  assert(format == '%I:%M %p', 'the clock should display 12-hour time with AM/PM')
+  return '05:07 PM'
 end
 local focused, overrides, writes = true, { font_size = 17, window_frame = { font_size = 14 } }, 0
 local border_window = {
@@ -77,11 +77,11 @@ for _, cols in ipairs({ 12, 20, 40, 79, 80, 100, 139, 160 }) do
       set_right_status = function(_, text) right = plain(text) end,
     })
     assert(left == '', 'tabs must start at the left edge')
-    local clock_start = math.floor((cols - 9) / 2)
+    local clock_start = math.floor((cols - 11) / 2)
     if clock_start < tabs_width + 1 then
       assert(right == '', 'crowded tabs must hide the clock')
     else
-      assert(right:find(' 17:07 ', 1, true) == 1)
+      assert(right:find(' 5:07 PM ', 1, true) == 1)
       assert(cols - wezterm.column_width(right) == clock_start, 'clock must be centered')
     end
   end

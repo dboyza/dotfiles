@@ -802,7 +802,7 @@ wezterm.on('update-status', function(window)
   for _, tab in ipairs(window:mux_window():tabs_with_info()) do
     tabs_width = tabs_width + #tostring(tab.index + 1) + 2
   end
-  local clock = ' ' .. wezterm.strftime('%H:%M') .. ' '
+  local clock = ' ' .. wezterm.strftime('%I:%M %p'):gsub('^0', '') .. ' '
   local clock_width = wezterm.column_width(clock) + 2
   local clock_start = math.floor((cols - clock_width) / 2)
   -- Hide the clock when tabs reach the center, rather than clipping its digits.
