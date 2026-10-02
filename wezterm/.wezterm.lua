@@ -104,16 +104,16 @@ config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
 config.window_decorations = 'RESIZE'
 -- Windows' DWM border follows its rounded corners. A client-side rectangle
 -- would sit inside that frame with square corners, even when DWM rounds it.
-local frame_border = is_windows and '0px' or '2px'
+local frame_border = is_windows and '0px' or '1px'
 config.window_frame = {
   border_left_width = frame_border,
   border_right_width = frame_border,
   border_top_height = frame_border,
   border_bottom_height = frame_border,
-  border_left_color = '#c4a7e7',
-  border_right_color = '#c4a7e7',
-  border_top_color = '#c4a7e7',
-  border_bottom_color = '#c4a7e7',
+  border_left_color = '#908caa',
+  border_right_color = '#908caa',
+  border_top_color = '#908caa',
+  border_bottom_color = '#908caa',
   font = platform_font('Bold'),
   active_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
   inactive_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
@@ -741,9 +741,9 @@ end)
 
 -- Native numbered tabs keep the top-left corner compact without a plugin.
 local bar_background = config.colors.tab_bar.background
-local function capsule(text, foreground, background)
+local function capsule(text, foreground, background, active)
   return {
-    { Attribute = { Intensity = 'Bold' } },
+    { Attribute = { Intensity = active and 'Bold' or 'Normal' } },
     { Background = { Color = bar_background } },
     { Foreground = { Color = background } },
     { Text = '' },
@@ -762,11 +762,36 @@ wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
   if max_width < #label + 2 then
     return wezterm.truncate_right(label, math.max(0, max_width))
   end
-  return capsule(label, tab.is_active and '#191724' or '#e0def4',
-    tab.is_active and '#c4a7e7' or (hover and '#6e6a86' or '#393552'))
+  return capsule(label, tab.is_active and '#191724' or (hover and '#e0def4' or '#908caa'),
+    tab.is_active and '#c4a7e7' or (hover and '#393552' or '#232136'), tab.is_active)
 end)
 
+local function update_window_border(window)
+  -- The Windows companion styles the actual rounded DWM frame.
+  if is_windows then return end
+  local color = window:is_focused() and '#908caa' or '#393552'
+  local overrides = window:get_config_overrides() or {}
+  local frame = overrides.window_frame or {}
+  local sides = { 'border_left_color', 'border_right_color', 'border_top_color', 'border_bottom_color' }
+  local changed = false
+  for _, side in ipairs(sides) do
+    if frame[side] ~= color then changed = true end
+  end
+  if not changed then return end
+  -- Nested overrides replace the whole frame; retain platform fonts and any
+  -- unrelated per-window customization when changing the outline.
+  local merged = {}
+  for key, value in pairs(config.window_frame) do merged[key] = value end
+  for key, value in pairs(frame) do merged[key] = value end
+  for _, side in ipairs(sides) do merged[side] = color end
+  overrides.window_frame = merged
+  window:set_config_overrides(overrides)
+end
+
+wezterm.on('window-focus-changed', update_window_border)
+
 wezterm.on('update-status', function(window)
+  update_window_border(window)
   update_floating_tabs(window)
   window:set_left_status('')
   local size = window:active_tab():get_size()
@@ -777,7 +802,7 @@ wezterm.on('update-status', function(window)
   for _, tab in ipairs(window:mux_window():tabs_with_info()) do
     tabs_width = tabs_width + #tostring(tab.index + 1) + 2
   end
-  local clock = ' ' .. wezterm.strftime('%H:%M:%S') .. ' '
+  local clock = ' ' .. wezterm.strftime('%H:%M') .. ' '
   local clock_width = wezterm.column_width(clock) + 2
   local clock_start = math.floor((cols - clock_width) / 2)
   -- Hide the clock when tabs reach the center, rather than clipping its digits.
@@ -785,7 +810,7 @@ wezterm.on('update-status', function(window)
     window:set_right_status('')
     return
   end
-  local items = capsule(clock, '#191724', '#c4a7e7')
+  local items = capsule(clock, '#908caa', '#232136')
   table.insert(items, { Text = string.rep(' ', cols - clock_start - clock_width) })
   window:set_right_status(wezterm.format(items))
 end)

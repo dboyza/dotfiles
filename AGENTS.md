@@ -53,15 +53,16 @@
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
-  Keep the thin lavender window border and native tab backing colors matched to the dark bar.
-  Complete macOS border corners with small click-through arcs in the companion; native rectangular borders are clipped at the window radius.
+  Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
+  Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral `HH:mm` clock in both the companion and native fallback.
+  Complete macOS border corners with small click-through arcs that match focus and screen pixel density; native rectangular borders are clipped at the window radius.
   Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 - On Windows, build the native floating-tab companion from `wezterm/floating-tabs/windows.cs` with the inbox .NET Framework compiler through `scripts/install-wezterm-floating-tabs.ps1`.
   Install it on the Windows host, including for WSL sessions; keep its bridge under the Windows user profile with a user/SYSTEM-only ACL.
   Persist only the state directory DACL through .NET access-control APIs so repeat installs do not request audit privileges.
   Use nonactivating owned windows, per-monitor DPI, and native fallback when maximized, fullscreen, or badges cannot fit.
-  Let Windows DWM draw the rounded lavender window outline; keep Windows Lua frame border widths at zero so an inner rectangle cannot square off the corners.
+  Let Windows DWM draw the rounded, muted lavender window outline and dim it on focus loss; keep Windows Lua frame border widths at zero so an inner rectangle cannot square off the corners.
   Apply DWM frame styling independently of badge visibility so it persists when another application has focus.
   Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
   Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.

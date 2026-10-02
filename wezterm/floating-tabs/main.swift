@@ -24,6 +24,8 @@ let stateDirectory = FileManager.default.homeDirectoryForCurrentUser
 let lavender = NSColor(srgbRed: 196/255, green: 167/255, blue: 231/255, alpha: 1)
 let dark = NSColor(srgbRed: 25/255, green: 23/255, blue: 36/255, alpha: 1)
 let muted = NSColor(srgbRed: 57/255, green: 53/255, blue: 82/255, alpha: 1)
+let subtle = NSColor(srgbRed: 144/255, green: 140/255, blue: 170/255, alpha: 1)
+let surface = NSColor(srgbRed: 35/255, green: 33/255, blue: 54/255, alpha: 0.9)
 
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
     var value: CFTypeRef?
@@ -52,21 +54,23 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat) -> (CGRect, CG
     let y = frame.maxY - height / 2
     guard y + height <= visible.maxY, frame.width >= 48 else { return nil }
     let tabs = CGRect(x: frame.minX + 6, y: y, width: min(tabWidth, frame.width - 12), height: height)
-    let clock = CGRect(x: frame.midX - 49, y: y, width: 98, height: height)
+    let clock = CGRect(x: frame.midX - 33, y: y, width: 66, height: height)
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
 final class Badge: NSButton {
     var actionHandler: (() -> Void)?
-    init(label: String, active: Bool, action: (() -> Void)? = nil) {
+    init(label: String, active: Bool = false, clock: Bool = false, action: (() -> Void)? = nil) {
         super.init(frame: .zero)
         title = label
         isBordered = false
         wantsLayer = true
-        layer?.cornerRadius = 6
-        layer?.backgroundColor = (active ? lavender : muted).cgColor
-        font = .monospacedSystemFont(ofSize: 14, weight: .semibold)
-        contentTintColor = active ? dark : NSColor(srgbRed: 224/255, green: 222/255, blue: 244/255, alpha: 1)
+        layer?.cornerRadius = 8
+        layer?.backgroundColor = (clock ? dark.withAlphaComponent(0.88) : (active ? lavender : surface)).cgColor
+        layer?.borderColor = muted.withAlphaComponent(0.7).cgColor
+        layer?.borderWidth = active ? 0 : 0.5
+        font = .monospacedSystemFont(ofSize: clock ? 12 : 13, weight: active ? .semibold : .medium)
+        contentTintColor = active ? dark : subtle
         actionHandler = action
         target = self
         self.action = #selector(invoke)
@@ -114,6 +118,12 @@ final class OverlayPanel: NSPanel {
 final class CornerOutline: NSView {
     static let diameter: CGFloat = 12
     let corner: Int
+    var focused = true {
+        didSet { if focused != oldValue { needsDisplay = true } }
+    }
+    var strokeWidth: CGFloat = 1 {
+        didSet { if strokeWidth != oldValue { needsDisplay = true } }
+    }
     init(corner: Int) {
         self.corner = corner
         super.init(frame: CGRect(x: 0, y: 0, width: Self.diameter, height: Self.diameter))
@@ -123,13 +133,14 @@ final class CornerOutline: NSView {
         let right = corner % 2 == 1
         let top = corner >= 2
         let radius: CGFloat = 10
-        let center = CGPoint(x: right ? bounds.width - radius - 0.5 : radius + 0.5,
-                             y: top ? bounds.height - radius - 0.5 : radius + 0.5)
+        let inset = strokeWidth / 2
+        let center = CGPoint(x: right ? bounds.width - radius - inset : radius + inset,
+                             y: top ? bounds.height - radius - inset : radius + inset)
         let start: CGFloat = top ? (right ? 0 : 90) : (right ? 270 : 180)
         let path = NSBezierPath()
         path.appendArc(withCenter: center, radius: radius, startAngle: start, endAngle: start + 90)
-        path.lineWidth = 1
-        lavender.setStroke()
+        path.lineWidth = strokeWidth
+        (focused ? subtle : muted).setStroke()
         path.stroke()
     }
 }
@@ -172,7 +183,7 @@ final class WindowOverlay {
     var heartbeatTitle = ""
     let formatter: DateFormatter = {
         let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss"
+        formatter.dateFormat = "HH:mm"
         return formatter
     }()
 
@@ -226,6 +237,10 @@ final class WindowOverlay {
         observe(pid: pid, window: window)
         let extent = CornerOutline.diameter
         for (index, panel) in corners.enumerated() {
+            if let outline = panel.contentView as? CornerOutline {
+                outline.focused = focused
+                outline.strokeWidth = 1 / screen.backingScaleFactor
+            }
             let position = CGRect(x: index % 2 == 1 ? frame.maxX - extent : frame.minX,
                                   y: index >= 2 ? frame.maxY - extent : frame.minY,
                                   width: extent, height: extent)
@@ -274,7 +289,7 @@ final class WindowOverlay {
             let time = formatter.string(from: Date())
             if time != currentTime {
                 currentTime = time
-                clockPanel.contentView = Badge(label: time, active: true)
+                clockPanel.contentView = Badge(label: time, clock: true)
                 clockPanel.ignoresMouseEvents = true
             }
             if clockPanel.frame != clockFrame { clockPanel.setFrame(clockFrame, display: true) }

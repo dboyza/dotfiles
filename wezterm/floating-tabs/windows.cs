@@ -45,13 +45,13 @@ internal static class Native {
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int Frame(IntPtr window, int attribute, out Rect rect, int size);
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int GetAttribute(IntPtr window, int attribute, out int value, int size);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
-    internal static bool StyleFrame(IntPtr window) {
+    internal static bool StyleFrame(IntPtr window, bool focused) {
         // DWM draws a continuous outline around its own rounded window mask.
         // Client-side rectangular borders remain square inside that mask.
         int round = 2; // DWMWCP_ROUND; Windows keeps maximized/fullscreen edges square.
-        int lavender = 0xE7A7C4; // COLORREF is 0x00BBGGRR, not RGB.
+        int border = focused ? 0xAA8C90 : 0x523539; // COLORREF is 0x00BBGGRR, not RGB.
         return DwmSetWindowAttribute(window, 33, ref round, 4) == 0
-            && DwmSetWindowAttribute(window, 34, ref lavender, 4) == 0;
+            && DwmSetWindowAttribute(window, 34, ref border, 4) == 0;
     }
     internal static void Own(IntPtr panel, IntPtr owner) {
         if (IntPtr.Size == 8) SetOwner64(panel, -8, owner); else SetOwner32(panel, -8, owner);
@@ -116,7 +116,7 @@ internal sealed class Layout {
         if (x + newTabWidth > frame.Width - inset) return null;
         result.NewTab = new Rectangle(x, 0, newTabWidth, height);
         x += newTabWidth + gap;
-        int clockWidth = (int)Math.Round(98 * scale);
+        int clockWidth = (int)Math.Round(66 * scale);
         int clockX = (frame.Width - clockWidth) / 2;
         if (x + inset < clockX) result.Clock = new Rectangle(clockX, 0, clockWidth, height);
         return result;
@@ -124,6 +124,7 @@ internal sealed class Layout {
 }
 internal sealed class Overlay : Form {
     private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36), Muted = Color.FromArgb(57, 53, 82);
+    private static readonly Color Subtle = Color.FromArgb(144, 140, 170), Surface = Color.FromArgb(35, 33, 54);
     internal Snapshot Snapshot;
     private readonly IntPtr parent;
     private Layout layout;
@@ -161,15 +162,15 @@ internal sealed class Overlay : Form {
             || signature != Bridge.Json.Serialize(snapshot.tabs);
         layout = placement;
         scale = dpi;
-        string nextClock = DateTime.Now.ToString("HH:mm:ss");
+        string nextClock = DateTime.Now.ToString("HH:mm");
         if (geometryChanged) {
             signature = Bridge.Json.Serialize(snapshot.tabs);
             Bounds = layout.Bounds;
             var region = new Region();
             region.MakeEmpty();
-            foreach (var rect in layout.Tabs) using (var path = Capsule(rect, 6 * scale)) region.Union(path);
-            using (var path = Capsule(layout.NewTab, 6 * scale)) region.Union(path);
-            if (!layout.Clock.IsEmpty) using (var path = Capsule(layout.Clock, 6 * scale)) region.Union(path);
+            foreach (var rect in layout.Tabs) using (var path = Capsule(rect, 8 * scale)) region.Union(path);
+            using (var path = Capsule(layout.NewTab, 8 * scale)) region.Union(path);
+            if (!layout.Clock.IsEmpty) using (var path = Capsule(layout.Clock, 8 * scale)) region.Union(path);
             var previous = Region;
             Region = region;
             if (previous != null) previous.Dispose();
@@ -192,16 +193,20 @@ internal sealed class Overlay : Form {
     protected override void OnPaint(PaintEventArgs e) {
         if (layout == null) return;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var font = new Font("Consolas", 14 * scale, FontStyle.Bold, GraphicsUnit.Pixel)) {
-            for (int i = 0; i < Snapshot.tabs.Length; i++) DrawBadge(e.Graphics, layout.Tabs[i], (Snapshot.tabs[i].index + 1).ToString(), Snapshot.tabs[i].active, font);
+        using (var activeFont = new Font("Consolas", 13 * scale, FontStyle.Bold, GraphicsUnit.Pixel))
+        using (var font = new Font("Consolas", 13 * scale, FontStyle.Regular, GraphicsUnit.Pixel))
+        using (var clockFont = new Font("Consolas", 12 * scale, FontStyle.Regular, GraphicsUnit.Pixel)) {
+            for (int i = 0; i < Snapshot.tabs.Length; i++) DrawBadge(e.Graphics, layout.Tabs[i], (Snapshot.tabs[i].index + 1).ToString(), Snapshot.tabs[i].active, Snapshot.tabs[i].active ? activeFont : font);
             DrawBadge(e.Graphics, layout.NewTab, "+", false, font);
-            if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, true, font);
+            if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, false, clockFont, true);
         }
     }
-    private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font) {
-        using (var path = Capsule(rect, 6 * scale))
-        using (var brush = new SolidBrush(active ? Lavender : Muted)) graphics.FillPath(brush, path);
-        TextRenderer.DrawText(graphics, text, font, rect, active ? Dark : Color.FromArgb(238, 236, 255), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+    private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font, bool isClock = false) {
+        using (var path = Capsule(rect, 8 * scale)) {
+            using (var brush = new SolidBrush(active ? Lavender : (isClock ? Dark : Surface))) graphics.FillPath(brush, path);
+            if (!active) using (var pen = new Pen(Muted, 1)) { pen.Alignment = PenAlignment.Inset; graphics.DrawPath(pen, path); }
+        }
+        TextRenderer.DrawText(graphics, text, font, rect, active ? Dark : Subtle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
     protected override void WndProc(ref Message message) {
         if (message.Msg == 0x21) { message.Result = new IntPtr(3); return; } // MA_NOACTIVATE, retain click
@@ -239,6 +244,7 @@ internal sealed class Companion : ApplicationContext {
     private bool refreshing;
     private int queued;
     private double lastFrameRefresh;
+    private IntPtr lastForeground;
     internal Companion() {
         var handle = dispatcher.Handle;
         watcher = new FileSystemWatcher(Bridge.Root, "window-*.json") { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite };
@@ -259,8 +265,10 @@ internal sealed class Companion : ApplicationContext {
         if (refreshing) return;
         refreshing = true;
         try {
-            bool showBadges = Native.IsWezTerm(Native.GetForegroundWindow());
-            bool refreshFrames = Bridge.Now - lastFrameRefresh >= 1;
+            IntPtr foreground = Native.GetForegroundWindow();
+            bool showBadges = Native.IsWezTerm(foreground);
+            bool refreshFrames = foreground != lastForeground || Bridge.Now - lastFrameRefresh >= 1;
+            lastForeground = foreground;
             if (refreshFrames) lastFrameRefresh = Bridge.Now;
             if (!showBadges) {
                 foreach (var overlay in overlays.Values) overlay.Suspend();
@@ -289,7 +297,7 @@ internal sealed class Companion : ApplicationContext {
                 Native.GetWindowText(window, title, title.Capacity);
                 Snapshot snapshot;
                 if (!snapshots.TryGetValue(title.ToString(), out snapshot)) return true;
-                if (refreshFrames) Native.StyleFrame(window);
+                if (refreshFrames) Native.StyleFrame(window, window == foreground);
                 if (!showBadges || Native.IsZoomed(window)) return true;
                 Native.Rect rect;
                 if (Native.Frame(window, 9, out rect, Marshal.SizeOf(typeof(Native.Rect))) != 0 && !Native.GetWindowRect(window, out rect)) return true;
@@ -340,11 +348,15 @@ internal static class Program {
     private static void Require(bool value, string message) { if (!value) throw new Exception(message); }
     private static void Test() {
         using (var window = new Form()) {
-            Require(Native.StyleFrame(window.Handle), "Windows must accept the rounded lavender frame");
             int preference;
+            Require(Native.StyleFrame(window.Handle, true), "Windows must accept the rounded muted lavender frame");
             Require(Native.GetAttribute(window.Handle, 33, out preference, 4) == 0 && preference == 2,
                 "Native corner preference must opt into rounded corners");
-            Require(Native.StyleFrame(window.Handle), "Frame styling must remain safe on refresh");
+            Require(Native.GetAttribute(window.Handle, 34, out preference, 4) == 0 && preference == 0xAA8C90,
+                "Focused frame color must use muted lavender");
+            Require(Native.StyleFrame(window.Handle, false), "Frame styling must remain safe on refresh");
+            Require(Native.GetAttribute(window.Handle, 34, out preference, 4) == 0 && preference == 0x523539,
+                "Unfocused frame color must dim without changing the rounded corners");
         }
         var tabs = new[] { new Tab { id = 1, index = 0, active = true }, new Tab { id = 2, index = 1 } };
         var frame = new Rectangle(50, 80, 1400, 850);

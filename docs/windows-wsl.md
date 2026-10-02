@@ -144,6 +144,7 @@ Remove-Item Env:DOTFILES_TOOL_UPDATE
 ## Floating WezTerm tabs and clock
 
 The native Windows companion draws clickable numbered tabs, a + button after the last tab, and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
+The active tab keeps its lavender fill beside subdued inactive badges and a smaller dark `HH:mm` clock.
 The + button creates a new tab using the same shell and working directory as `Ctrl+Shift+T`.
 WSL bootstrap installs it on the Windows host automatically.
 It also works with native Windows PowerShell sessions and requires no WSL runtime once installed.
@@ -166,8 +167,8 @@ Windows' included .NET Framework compiler builds the companion, so neither a .NE
 PowerShell 5.1 and 7 are supported.
 
 The companion follows window movement and per-monitor scaling without taking keyboard focus.
-It also applies Windows 11's native rounded lavender window outline, with no competing rectangular border inside it.
-The outline remains when another application has focus; Windows controls the square edges of maximized and fullscreen windows.
+It also applies Windows 11's native rounded, muted lavender window outline, with no competing rectangular border inside it.
+The outline dims when its window loses focus; Windows controls the square edges of maximized and fullscreen windows.
 The floating badges hide when another application gains focus, and native tabs return within a few seconds.
 Maximized or fullscreen windows, windows without room above their top edge, and windows with more badges than can fit retain the native tab bar.
 The clock is omitted when tabs would overlap it.
