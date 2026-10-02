@@ -45,10 +45,11 @@ On macOS, use `Command+[` / `Command+]` for the previous / next WezTerm tab, `Co
 The two-key bracket shortcuts work directly from shells, tmux, Herdr, and Neovim because WezTerm handles them first.
 Existing `Command+Shift+[` / `Command+Shift+]` and portable `Control+Tab` / `Control+Shift+Tab` shortcuts remain available.
 WezTerm launches centered on macOS at 94% of the screen width and 88% of its height, leaving desktop margins instead of maximizing.
-On macOS, the floating-tab companion places clickable numbered tabs and a centered clock across the focused window’s upper edge.
+On macOS and Windows, the floating-tab companion places clickable numbered tabs and a centered clock across the focused window’s upper edge.
 Existing tab shortcuts continue to work.
-The built-in numbered tab bar remains the fallback on Windows/Linux, in fullscreen, and whenever the companion cannot draw safely.
-See [macOS floating tabs](macos.md#floating-wezterm-tabs) for the one-time Accessibility setup.
+Linux uses the built-in numbered tab bar.
+On macOS and Windows, it remains the fallback in fullscreen and whenever the companion cannot draw safely.
+See [macOS floating tabs](macos.md#floating-wezterm-tabs) for the one-time Accessibility setup and [Windows floating tabs](windows-wsl.md#floating-wezterm-tabs-and-clock) for Windows installation.
 Herdr prefix `v` toggles Reviewr, `d` detaches, and `?` shows its full shortcut list.
 Herdr also has a native Windows launcher; its Reviewr plugin is supported here only on macOS and Linux/WSL.
 

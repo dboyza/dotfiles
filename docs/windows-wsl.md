@@ -140,3 +140,45 @@ $env:DOTFILES_TOOL_UPDATE = "0"
 codex
 Remove-Item Env:DOTFILES_TOOL_UPDATE
 ```
+
+## Floating WezTerm tabs and clock
+
+The native Windows companion draws clickable numbered tabs and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
+WSL bootstrap installs it on the Windows host automatically.
+It also works with native Windows PowerShell sessions and requires no WSL runtime once installed.
+
+To install or update only the companion from this checkout in **WSL**, run:
+
+```sh
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(wslpath -w "$PWD/scripts/install-wezterm-floating-tabs.ps1")"
+```
+
+For a checkout on the Windows filesystem, run from its root in **Windows PowerShell** instead:
+
+```powershell
+.\scripts\install-wezterm-floating-tabs.ps1
+```
+
+Reload WezTerm with `Ctrl+Shift+R` after the first installation.
+The helper starts automatically with WezTerm after that; no scheduled task or startup entry is needed.
+Windows' included .NET Framework compiler builds the companion, so neither a .NET SDK nor administrator access is required.
+PowerShell 5.1 and 7 are supported.
+
+The companion follows window movement and per-monitor scaling without taking keyboard focus.
+It hides when another application gains focus, and native tabs return within a few seconds.
+Maximized or fullscreen windows, windows without room above their top edge, and windows with more badges than can fit retain the native tab bar.
+The clock is omitted when tabs would overlap it.
+Linux GUI WezTerm retains its native tabs and clock; WSL sessions displayed by Windows WezTerm use the Windows companion.
+
+The executable is installed under `%USERPROFILE%\.local\share\dotfiles\wezterm-floating-tabs`.
+Per-window snapshots, acknowledgments, and click requests live under `%USERPROFILE%\.local\state\dotfiles\wezterm-floating-tabs`, restricted to the current user and SYSTEM.
+Only window identities, tab IDs, and timestamps cross the bridge; the companion does not read terminal contents or capture the screen.
+To stop it for the current session, end `wezterm-floating-tabs.exe` in Task Manager; native tabs recover automatically.
+
+Run the native layout and real WezTerm Lua bridge checks from the checkout root in **Windows PowerShell**:
+
+```powershell
+.\tests\wezterm-floating-tabs.ps1
+```
+
+The checks use temporary fixtures and do not install or restart the companion.

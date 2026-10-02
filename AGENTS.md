@@ -49,12 +49,18 @@
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, another application gains focus, or there is no room above the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
-  Keep the native numbered tab bar and centered clock as the Windows/Linux and macOS fallback.
+  Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep the thin lavender window border and native tab backing colors matched to the dark bar.
   Complete macOS border corners with small click-through arcs in the companion; native rectangular borders are clipped at the window radius.
   Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
   Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
+- On Windows, build the native floating-tab companion from `wezterm/floating-tabs/windows.cs` with the inbox .NET Framework compiler through `scripts/install-wezterm-floating-tabs.ps1`.
+  Install it on the Windows host, including for WSL sessions; keep its bridge under the Windows user profile with a user/SYSTEM-only ACL.
+  Persist only the state directory DACL through .NET access-control APIs so repeat installs do not request audit privileges.
+  Use nonactivating owned windows, per-monitor DPI, and native fallback when maximized, fullscreen, or badges cannot fit.
+  Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
+  Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 - On native Windows, support PowerShell 7 when installed and fall back to built-in Windows PowerShell 5.1.
 - Never pipe WSL clipboard text directly to `clip.exe`.

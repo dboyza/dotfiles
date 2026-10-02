@@ -609,14 +609,17 @@ config.mouse_bindings = {
   },
 }
 
--- The macOS companion exchanges tab IDs only, never terminal text or commands.
-local overlay_root = is_macos and wezterm.home_dir
+-- Native companions exchange tab IDs only, never terminal text or commands.
+local overlay_root = (is_macos or is_windows) and wezterm.home_dir
   and (wezterm.home_dir .. '/.local/state/dotfiles/wezterm-floating-tabs/') or nil
 local overlay_app = is_macos and wezterm.home_dir
   and (wezterm.home_dir .. '/Applications/WezTerm Floating Tabs.app') or nil
+local overlay_executable = is_windows and wezterm.home_dir
+  and (wezterm.home_dir .. '/.local/share/dotfiles/wezterm-floating-tabs/wezterm-floating-tabs.exe')
+  or (overlay_app and (overlay_app .. '/Contents/MacOS/wezterm-floating-tabs'))
 local overlay_available = false
-if overlay_app then
-  local file = io.open(overlay_app .. '/Contents/MacOS/wezterm-floating-tabs', 'rb')
+if overlay_executable then
+  local file = io.open(overlay_executable, 'rb')
   if file then file:close(); overlay_available = true end
 end
 
@@ -660,7 +663,15 @@ local function publish_floating_tabs(window_id, tabs)
   if not file then return end
   file:write(wezterm.json_encode({ key = key, title = title, updated = now, tabs = tabs }))
   file:close()
-  if os.rename(temporary, overlay_root .. 'window-' .. key .. '.json') then
+  local destination = overlay_root .. 'window-' .. key .. '.json'
+  local renamed = os.rename(temporary, destination)
+  -- Windows CRT rename cannot replace an existing file. Readers tolerate the
+  -- short missing-file interval; publish the complete temporary file afterwards.
+  if not renamed and is_windows then
+    os.remove(destination)
+    renamed = os.rename(temporary, destination)
+  end
+  if renamed then
     wezterm.GLOBAL['floating_tabs_signature_' .. key] = signature
     wezterm.GLOBAL['floating_tabs_published_' .. key] = now
   end
@@ -672,7 +683,11 @@ local function update_floating_tabs(window)
   local title = overlay_title(window:mux_window():window_id())
   if not wezterm.GLOBAL.floating_tabs_started then
     wezterm.GLOBAL.floating_tabs_started = true
-    wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
+    if is_windows then
+      wezterm.background_child_process({ overlay_executable })
+    else
+      wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
+    end
   end
   local request = overlay_read('activate-' .. key .. '.json')
   if request and request.title == title then

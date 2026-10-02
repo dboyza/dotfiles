@@ -256,7 +256,8 @@ The clock hides when tabs need its space; crowded tab strips can scroll horizont
 The helper uses the native tab bar when another application is focused, a window enters fullscreen, or it sits too close to the menu bar for external badges.
 If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
 To stop the helper for the current WezTerm session, quit `wezterm-floating-tabs` in Activity Monitor.
-Windows and Linux/WSL retain their native numbered tabs and clock; the floating companion is macOS-only.
+Windows has a [native companion](windows-wsl.md#floating-wezterm-tabs-and-clock), including when displaying WSL sessions.
+Linux GUI WezTerm retains its native numbered tabs and clock.
 
 The private `~/.local/state/dotfiles/wezterm-floating-tabs` directory contains separate snapshots, acknowledgments, and click requests for each window, identified by GUI process and window ID.
 Closed-window snapshots expire and are cleaned up after 30 seconds.

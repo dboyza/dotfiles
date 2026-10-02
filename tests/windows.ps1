@@ -5,7 +5,8 @@ $repository = Split-Path -Parent $PSScriptRoot
 $scripts = @(
     (Join-Path $repository "scripts/install-windows-fonts.ps1"),
     (Join-Path $repository "scripts/install-windows-wezterm.ps1"),
-    (Join-Path $repository "scripts/install-windows-tools.ps1")
+    (Join-Path $repository "scripts/install-windows-tools.ps1"),
+    (Join-Path $repository "scripts/install-wezterm-floating-tabs.ps1")
 )
 
 foreach ($script in $scripts) {
@@ -70,3 +71,7 @@ try {
 }
 
 Write-Host "Native Windows PowerShell compatibility passed"
+
+if ($env:OS -eq "Windows_NT") {
+    & (Join-Path $repository "tests/wezterm-floating-tabs.ps1")
+}

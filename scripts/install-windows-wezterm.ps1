@@ -30,6 +30,9 @@ if ($wingetExitCode -eq $noApplicableUpdate) {
     Write-Host "Windows WezTerm is already at the newest applicable version."
 }
 
+# Install before the loader's idempotent early return so helper updates are applied.
+& (Join-Path $PSScriptRoot "install-wezterm-floating-tabs.ps1")
+
 # A loader works with local paths and WSL UNC paths without Developer Mode or elevation.
 $sourcePath = (Resolve-Path -LiteralPath $Source).ProviderPath
 $luaPath = $sourcePath.Replace('\', '\\').Replace('"', '\"')

@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
-[[ $(uname -s) == Darwin ]] || exit 0
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+if [[ $(uname -s) != Darwin ]]; then
+  if command -v powershell.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
+    powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
+      -File "$(wslpath -w "$repo_dir/tests/wezterm-floating-tabs.ps1")"
+  fi
+  exit 0
+fi
 # shellcheck source=scripts/lib/wezterm.sh
 source "$repo_dir/scripts/lib/wezterm.sh"
 wezterm_command=$(find_wezterm || true)
