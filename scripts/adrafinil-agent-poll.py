@@ -206,6 +206,27 @@ def release_hold(cli, key):
         raise
 
 
+def native_coverage(status, stale):
+    """A valid native hold already protects this tool and process."""
+    covered = set()
+    now = datetime.now(timezone.utc).timestamp() - APPLE_EPOCH
+    for entry in status["assertions"]:
+        if not isinstance(entry, dict):
+            continue
+        key, pid, tool = entry.get("key"), entry.get("pid"), entry.get("tool")
+        if (
+            not isinstance(key, str) or KEY_PATTERN.fullmatch(key) or key in stale
+            or key.startswith("hold:") or entry.get("origin") not in ("hook", "sniffed")
+            or type(pid) is not int or pid <= 0 or tool not in ("codex", "claude-code")
+        ):
+            continue
+        expires = entry.get("expiresAt")
+        if expires is not None and (type(expires) not in (int, float) or expires <= now):
+            continue
+        covered.add((tool, pid))
+    return covered
+
+
 def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
     if not isinstance(status, dict):
         raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
@@ -215,11 +236,25 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
         raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
     if status["paused"]:
         return {"paused": True, "active": active, "acquired": [], "released": []}
-    desired = {f"{tool}:dotfiles-poll:{pid}": (pid, tool) for pid, tool in active.items()}
+    stale = dict(stale or {})
+    covered = native_coverage(status, stale)
     owned = {
         entry["key"] for entry in status["assertions"]
         if isinstance(entry, dict) and isinstance(entry.get("key"), str)
         and KEY_PATTERN.fullmatch(entry["key"])
+    }
+    if not dry_run and any(f"{tool}:dotfiles-poll:{pid}" in owned for tool, pid in covered):
+        # Before handing an existing fallback over to a native hook, confirm the
+        # hook is still present. If it vanished, renew the fallback instead.
+        latest = json.loads(run([cli, "status", "--json"]))
+        if not isinstance(latest, dict) or not isinstance(latest.get("assertions"), list) or "paused" not in latest:
+            raise RuntimeError("Unrecognized Adrafinil status during native-hold recheck.")
+        if latest["paused"]:
+            return {"paused": True, "active": active, "acquired": [], "released": []}
+        covered = native_coverage(latest, stale)
+    desired = {
+        f"{tool}:dotfiles-poll:{pid}": (pid, tool)
+        for pid, tool in active.items() if (tool, pid) not in covered
     }
     # Acquire first so a handoff between agents never briefly drops our last hold.
     for key, (pid, tool) in sorted(desired.items()):
@@ -232,7 +267,6 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
         key for key in owned - desired.keys()
         if int(key.rsplit(":", 1)[1]) not in uncertain
     )
-    stale = dict(stale or {})
     if stale and not dry_run:
         # A new turn may have refreshed a hold since detection. Do not release it
         # using the previous turn's evidence, or race a daemon restart.
@@ -250,7 +284,11 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
     for key in released:
         if not dry_run:
             release_hold(cli, key)
-    return {"paused": False, "active": active, "acquired": sorted(desired), "released": released, "staleReasons": stale}
+    return {
+        "paused": False, "active": active, "acquired": sorted(desired), "released": released,
+        "staleReasons": stale,
+        "coveredByNative": {pid: tool for pid, tool in active.items() if (tool, pid) in covered},
+    }
 
 
 def cli_path():

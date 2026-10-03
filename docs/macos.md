@@ -102,6 +102,8 @@ The LaunchAgent checks immediately at login and every 60 seconds while the Mac i
 It recognizes Codex's `Codex is running an active turn` macOS power assertion and Claude Code's `busy` records in `~/.claude/sessions/<pid>.json`, checking that each PID still belongs to the current user's agent process.
 Idle sessions, Claude approval prompts, helper processes, and stale session files do not acquire a polling hold.
 Native hooks remain the immediate path, and the poller releases its own `dotfiles-poll` holds when work ends.
+An existing native hold for the same tool and PID covers the work without a second polling hold, so the fallback does not count that process twice.
+If a native hook takes over after the fallback acquired, the next check confirms that native hold is still present before removing the redundant polling hold.
 The same minute check also removes native Codex and Claude hook or sniffed holds whose owning process has exited.
 For Codex's shared background service, it reads the local thread index and recent rollout lifecycle records to distinguish completed, interrupted, or removed sessions from an active turn.
 A missing session is eligible after one minute, while an unreadable index or incomplete transcript is treated as unknown.

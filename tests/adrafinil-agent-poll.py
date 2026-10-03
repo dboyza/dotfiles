@@ -122,6 +122,65 @@ class PollTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "acquire refused"):
                 poller.run(["adrafinil", "acquire"])
 
+    def test_native_hook_already_covers_busy_agent_without_a_second_hold(self):
+        status = {"paused": False, "assertions": [
+            {"key": "claude-code:session-201", "pid": 201, "tool": "claude-code", "origin": "hook"},
+        ]}
+        with patch.object(poller, "run") as command:
+            result = poller.reconcile("adrafinil", {201: "claude-code"}, status)
+            self.assertEqual(result["acquired"], [])
+            command.assert_not_called()
+
+    def test_native_hook_takes_over_existing_fallback_without_releasing_native(self):
+        for tool in ["claude-code", "codex"]:
+            key = f"{tool}:dotfiles-poll:201"
+            native = {"key": f"{tool}:session-201", "pid": 201, "tool": tool, "origin": "hook"}
+            status = {"paused": False, "assertions": [native, {"key": key}]}
+            with patch.object(poller, "run", side_effect=[json.dumps(status), ""]) as command:
+                result = poller.reconcile("adrafinil", {201: tool}, status)
+                self.assertEqual(result["acquired"], [])
+                self.assertEqual(result["released"], [key])
+                self.assertEqual(command.call_args_list[-1].args[0], ["adrafinil", "release", key])
+
+    def test_disappearing_native_hook_retains_and_renews_fallback(self):
+        key = "claude-code:dotfiles-poll:201"
+        native = {"key": "claude-code:session", "pid": 201, "tool": "claude-code", "origin": "hook"}
+        status = {"paused": False, "assertions": [native, {"key": key}]}
+        latest = {"paused": False, "assertions": [{"key": key}]}
+        with patch.object(poller, "run", side_effect=[json.dumps(latest), ""]) as command:
+            result = poller.reconcile("adrafinil", {201: "claude-code"}, status)
+            self.assertEqual(result["acquired"], [key])
+            self.assertEqual(result["released"], [])
+            self.assertEqual(command.call_count, 2)
+            self.assertEqual(command.call_args_list[0].args[0], ["adrafinil", "status", "--json"])
+            self.assertEqual(command.call_args_list[-1].args[0][1], "acquire")
+
+    def test_other_sessions_manual_holds_and_stale_hooks_do_not_cover_agent(self):
+        for native in [
+            {"key": "claude-code:other", "pid": 202, "tool": "claude-code", "origin": "hook"},
+            {"key": "hold:manual", "pid": 201, "tool": "claude-code", "origin": "manual"},
+            {"key": "codex:other", "pid": 201, "tool": "codex", "origin": "hook"},
+            {"key": "claude-code:expired", "pid": 201, "tool": "claude-code", "origin": "hook", "expiresAt": 0},
+        ]:
+            status = {"paused": False, "assertions": [native]}
+            with patch.object(poller, "run", return_value="") as command:
+                result = poller.reconcile("adrafinil", {201: "claude-code"}, status)
+                self.assertEqual(result["acquired"], ["claude-code:dotfiles-poll:201"])
+                self.assertEqual(command.call_args.args[0][1], "acquire")
+        native = {"key": "claude-code:stale", "pid": 201, "tool": "claude-code", "origin": "hook"}
+        status = {"paused": False, "assertions": [native]}
+        result = poller.reconcile("adrafinil", {201: "claude-code"}, status, dry_run=True, stale={native["key"]: "stale"})
+        self.assertEqual(result["acquired"], ["claude-code:dotfiles-poll:201"])
+
+    def test_only_uncovered_session_gets_fallback(self):
+        status = {"paused": False, "assertions": [
+            {"key": "claude-code:session-201", "pid": 201, "tool": "claude-code", "origin": "hook"},
+        ]}
+        with patch.object(poller, "run", return_value="") as command:
+            result = poller.reconcile("adrafinil", {201: "claude-code", 202: "claude-code"}, status)
+            self.assertEqual(result["acquired"], ["claude-code:dotfiles-poll:202"])
+            self.assertEqual(command.call_count, 1)
+
     def test_launchagent_runs_every_minute_without_waking_a_sleeping_mac(self):
         definition = poller.launch_agent(Path("/Users/With Spaces"), "/opt/homebrew/bin/python3", SCRIPT, "/a/Adrafinil.app/cli")
         loaded = plistlib.loads(plistlib.dumps(definition))
