@@ -99,24 +99,33 @@ python3 scripts/adrafinil-agent-poll.py --dry-run
 ```
 
 The LaunchAgent checks immediately at login and every 60 seconds while the Mac is awake, including when Adrafinil currently has no holds.
-It recognizes Codex's `Codex is running an active turn` macOS power assertion and Claude Code's `busy` records in `~/.claude/sessions/<pid>.json`, checking that each PID still belongs to the current user's agent process.
+It recognizes Codex's `Codex is running an active turn` macOS power assertion and Claude Code's `busy` records in `~/.claude/sessions/<pid>.json`, checking process ownership and birth times to reject reused PIDs.
 Idle sessions, Claude approval prompts, helper processes, and stale session files do not acquire a polling hold.
 Native hooks remain the immediate path, and the poller releases its own `dotfiles-poll` holds when work ends.
 An existing native hold for the same tool and PID covers the work without a second polling hold, so the fallback does not count that process twice.
+If that native hold expires before the next minute check, active work gets a fallback lease to bridge the gap.
+For Codex clients connected to a shared Codex service, local Unix socket endpoint metadata identifies coverage by that service's native holds, without reading socket traffic.
+This prevents extra process-based wake holds; it does not assign individual conversation IDs to clients sharing the service.
+If socket metadata is unavailable, the fallback favors keeping active work protected, which can temporarily show a duplicate.
 If a native hook takes over after the fallback acquired, the next check confirms that native hold is still present before removing the redundant polling hold.
-The same minute check also removes native Codex and Claude hook or sniffed holds whose owning process has exited.
-For Codex's shared background service, it reads the local thread index and recent rollout lifecycle records to distinguish completed, interrupted, or removed sessions from an active turn.
-A missing session is eligible after one minute, while an unreadable index or incomplete transcript is treated as unknown.
+The same minute check also removes native Codex and Claude hook or sniffed holds whose owning process has exited or whose PID has been reused.
+For Codex's shared background service, it reads the local thread index and recent rollout lifecycle records to distinguish completed or interrupted turns from active work.
+A missing session, unreadable index, or incomplete transcript is treated as unknown because ephemeral sessions and other configuration directories may not appear in the selected index.
 For Claude, a matching session's idle status must be newer than the hook before that native hold is removed.
-Native holds are rechecked before release so a newly refreshed turn or restarted daemon cancels a stale cleanup decision.
+Each native hold is rechecked immediately before release so an observed new turn or restarted daemon cancels that stale cleanup decision.
+Adrafinil's CLI does not offer an atomic conditional release, so a hook changing between that final check and the release remains a narrow race.
 Each polling hold expires after three minutes unless renewed, and Adrafinil still controls pause, process-exit cleanup, and configured safety cutouts.
 If Claude's status file is temporarily unreadable, an existing polling hold keeps its current expiry without renewal so one partial write cannot immediately drop it.
 Manual holds, unrelated tools, and Claude's native waiting grace retain their own release policies.
 
-This fallback depends on those activity signals: Codex sessions without an active-turn power assertion and Claude sessions using a custom configuration directory still rely on their hooks.
+The installer preserves `CODEX_HOME` and `CLAUDE_CONFIG_DIR` when set, resolving relative paths at installation time.
+Sessions outside those selected directories and Codex clients without an active-turn power assertion still rely on their hooks.
 It does not wake an already sleeping Mac, and a missed start hook can leave a delay of up to one minute before detection.
 The installed job points at this checkout and Homebrew's stable Python executable when available, falling back to Python on `PATH`; rerun the installer after moving the checkout or replacing that Python installation.
-Inspect the last successful check in `~/.local/state/dotfiles/adrafinil-poll/status.json` and failures in the adjacent `error.log`.
+Inspect the last completed check in `~/.local/state/dotfiles/adrafinil-poll/status.json`, including its `errors` and `warnings`, and failures in the adjacent `error.log`.
+Overlapping polls are skipped, invalid snapshots stop reconciliation, and a failed acquisition does not prevent attempts to protect other active agents.
+If installing an update fails, the previous saved LaunchAgent is restored and reloaded when it was previously running.
+Run `python3 -B tests/adrafinil-agent-poll.py` and `python3 -B tests/adrafinil-agent-poll-e2e.py` for local regression checks; the integration tests use an isolated home and simulated macOS and daemon boundaries.
 
 To disable the fallback, unload and remove only its LaunchAgent:
 

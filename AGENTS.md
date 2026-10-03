@@ -2,9 +2,13 @@
 
 - Keep the optional macOS Adrafinil fallback in `scripts/adrafinil-agent-poll.py` activity-scoped, with a 60-second LaunchAgent interval and expiring, separately named holds.
   Use Codex's active-turn power assertion and Claude's live busy status, never process presence alone.
-  Add fallback holds only for tool/PID pairs without native coverage; remove redundant fallback holds after rechecking that the native hold remains present.
+  Add fallback holds only for tool/PID pairs without native coverage, including Codex clients connected to a held service through verified Unix socket endpoints.
+  Remove redundant fallback holds after rechecking that native coverage remains present.
   Clean up dead native agent holds too; a shared Codex app-server PID is not proof that its individual sessions are active.
-  Check session lifecycle metadata and recheck hold identity before releasing stale hooks; preserve manual holds and unknown activity.
+  Check process birth times and session lifecycle metadata, then recheck each hold immediately before releasing stale hooks; preserve manual holds and unknown activity.
+  Absence from one Codex index is not proof of a dead session.
+  Serialize polls and keep failed or incomplete observations from removing native protection.
+  Exercise the command-line workflow with `tests/adrafinil-agent-poll-e2e.py` in its isolated home before installing changes.
 
 - Keep the default Zsh `ls` alias in its normal listing layout without `-m`, preserving platform-specific color flags.
 

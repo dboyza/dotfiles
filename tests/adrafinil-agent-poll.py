@@ -2,16 +2,16 @@
 """Regression checks for missed active agents and accidental idle holds."""
 
 import importlib.util
-from contextlib import closing
 import json
-from pathlib import Path
+import os
 import plistlib
-import subprocess
 import sqlite3
+import subprocess
 import tempfile
 import unittest
+from contextlib import closing
+from pathlib import Path
 from unittest.mock import patch
-
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts/adrafinil-agent-poll.py"
 SPEC = importlib.util.spec_from_file_location("poller", SCRIPT)
@@ -118,9 +118,8 @@ class PollTests(unittest.TestCase):
             command.assert_not_called()
 
     def test_soft_cli_errors_are_not_reported_as_success(self):
-        with patch.object(poller.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "acquire refused: paused")):
-            with self.assertRaisesRegex(RuntimeError, "acquire refused"):
-                poller.run(["adrafinil", "acquire"])
+        with patch.object(poller.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "acquire refused: paused")), self.assertRaisesRegex(RuntimeError, "acquire refused"):
+            poller.run(["adrafinil", "acquire"])
 
     def test_native_hook_already_covers_busy_agent_without_a_second_hold(self):
         status = {"paused": False, "assertions": [
@@ -195,6 +194,66 @@ class PollTests(unittest.TestCase):
             self.assertEqual(poller.main(), 0)
             command.assert_not_called()
 
+    def test_socket_coverage_requires_exact_endpoint_and_known_codex_process(self):
+        sockets = """p101
+f35
+d0xa
+n->0xb
+p102
+f35
+d0xc
+n->0xd
+p301
+f62
+d0xb
+n/private/tmp/codex-daemon-501/abcd
+p302
+f62
+d0xd
+n/tmp/codex-daemon-501/efab
+p999
+f70
+d0xe
+n->0xb
+"""
+        peers = poller.codex_socket_peers(sockets, {101, 102, 301, 302})
+        self.assertEqual(peers, {101: {301}, 102: {302}})
+        status = {"paused": False, "assertions": [{"key": "codex:session", "pid": 301, "tool": "codex", "origin": "hook"}]}
+        self.assertEqual(poller.native_coverage(status, {}, peers), {("codex", 101), ("codex", 301)})
+        self.assertEqual(poller.native_coverage(status, {"codex:session": "ended"}, peers), set())
+        self.assertEqual(poller.codex_socket_peers(sockets.replace("codex-daemon", "other-daemon"), {101, 102, 301, 302}), {})
+
+    def test_malformed_socket_metadata_has_no_coverage(self):
+        for value in ["", "n->0xa\nd0xb", "pnope\nf1\nd0xa\nn/private/tmp/codex-daemon-501/abcd", "p101\nf1\nn->0xb"]:
+            self.assertEqual(poller.codex_socket_peers(value, {101, 301}), {})
+
+    def test_invalid_and_duplicate_status_entries_reject_entire_snapshot(self):
+        for entries in [[None], [{"key": 1}], [{"key": "x", "pid": True}], [{"key": "x", "origin": []}],
+                        [{"key": "x", "expiresAt": float("nan")}], [{"key": "x", "lastActivityAt": float("inf")}],
+                        [{"key": "x"}, {"key": "x"}]]:
+            with self.subTest(entries=entries), patch.object(poller, "run") as command:
+                with self.assertRaises(RuntimeError):
+                    poller.reconcile("adrafinil", {101: "codex"}, {"paused": False, "assertions": entries})
+                command.assert_not_called()
+
+    def test_process_snapshot_requires_self_and_unique_pids(self):
+        row = f"{os.getpid()} {os.getuid()} Fri Oct  2 15:30:50 2026 /a/path with spaces/python"
+        text, starts = poller.process_snapshot(row)
+        self.assertIn("/a/path with spaces/python", text)
+        self.assertGreater(starts[os.getpid()], 0)
+        for snapshot in ["", row + "\n" + row, "1 0 Fri Oct  2 15:30:50 2026 /sbin/launchd"]:
+            with self.assertRaises(RuntimeError):
+                poller.process_snapshot(snapshot)
+
+    def test_new_agent_type_with_reused_pid_never_refreshes_old_tool_key(self):
+        native = {"key": "codex:session", "pid": 201, "tool": "codex", "origin": "hook"}
+        key = "claude-code:dotfiles-poll:201"
+        status = {"paused": False, "assertions": [native, {"key": key}]}
+        with patch.object(poller, "run", return_value="") as command:
+            result = poller.reconcile("adrafinil", {201: "codex"}, status)
+            self.assertEqual(result["released"], [key])
+            command.assert_called_once_with(["adrafinil", "release", key])
+
 
 class StaleHoldTests(unittest.TestCase):
     def setUp(self):
@@ -207,7 +266,6 @@ class StaleHoldTests(unittest.TestCase):
                      "acquiredAt": 100, "lastActivityAt": 100, "expiresAt": 86500}
         self.status = {"paused": False, "daemonBootID": "boot-1", "assertions": [self.hold]}
         self.processes = "5010 501 /a/codex\n"
-        self.now = poller.APPLE_EPOCH + 300
         with closing(sqlite3.connect(self.home / "state_5.sqlite")) as connection, connection:
             connection.execute("CREATE TABLE threads (id TEXT, rollout_path TEXT)")
 
@@ -224,17 +282,17 @@ class StaleHoldTests(unittest.TestCase):
         return path
 
     def detect(self):
-        return poller.stale_agent_holds(self.status, self.processes, self.home, self.home, self.now)
+        return poller.stale_agent_holds(self.status, self.processes, self.home, self.home)
 
-    def test_removed_session_is_stale_even_though_shared_server_is_alive(self):
+    def test_completed_session_is_stale_even_though_shared_server_is_alive(self):
+        self.lifecycle(("task_complete", 150))
         self.assertIn(self.key, self.detect())
         with patch.object(poller, "run", side_effect=[json.dumps(self.status), ""]) as command:
             result = poller.reconcile("adrafinil", {}, self.status, stale=self.detect())
             self.assertEqual(result["released"], [self.key])
             self.assertEqual(command.call_args_list[-1].args[0], ["adrafinil", "release", self.key])
 
-    def test_new_unindexed_session_gets_time_to_initialize(self):
-        self.now = poller.APPLE_EPOCH + 120
+    def test_missing_session_is_unknown_even_when_the_hook_is_old(self):
         self.assertEqual(self.detect(), {})
 
     def test_completed_and_interrupted_turns_release_without_process_exit(self):
@@ -293,6 +351,7 @@ class StaleHoldTests(unittest.TestCase):
             self.assertEqual(self.detect(), {})
 
     def test_refreshed_hold_paused_daemon_and_restarted_daemon_cancel_release(self):
+        self.lifecycle(("task_complete", 150))
         stale = self.detect()
         for latest in [
             {**self.status, "assertions": [dict(self.hold, lastActivityAt=200)]},
@@ -305,19 +364,19 @@ class StaleHoldTests(unittest.TestCase):
                 command.assert_called_once_with(["adrafinil", "status", "--json"])
 
     def test_dry_run_reports_native_cleanup_without_writes(self):
+        self.lifecycle(("task_complete", 150))
         with patch.object(poller, "run") as command:
             result = poller.reconcile("adrafinil", {}, self.status, dry_run=True, stale=self.detect())
             self.assertEqual(result["released"], [self.key])
             command.assert_not_called()
 
     def test_native_stop_hook_winning_release_race_is_success(self):
-        with patch.object(poller, "run", side_effect=[RuntimeError("unknown key"), json.dumps({"assertions": []})]):
+        with patch.object(poller, "run", side_effect=[RuntimeError("unknown key"), json.dumps({"paused": False, "assertions": []})]):
             poller.release_hold("adrafinil", self.key)
 
     def test_real_release_failure_is_still_reported(self):
-        with patch.object(poller, "run", side_effect=[RuntimeError("release refused"), json.dumps(self.status)]):
-            with self.assertRaisesRegex(RuntimeError, "release refused"):
-                poller.release_hold("adrafinil", self.key)
+        with patch.object(poller, "run", side_effect=[RuntimeError("release refused"), json.dumps(self.status)]), self.assertRaisesRegex(RuntimeError, "release refused"):
+            poller.release_hold("adrafinil", self.key)
 
 
 if __name__ == "__main__":

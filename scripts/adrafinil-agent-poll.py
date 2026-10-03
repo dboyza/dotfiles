@@ -2,10 +2,9 @@
 """Reconcile activity-only Adrafinil holds from a macOS LaunchAgent every minute."""
 
 import argparse
-from datetime import datetime, timezone
 import json
+import math
 import os
-from pathlib import Path
 import plistlib
 import re
 import shutil
@@ -13,7 +12,9 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
-
+from contextlib import contextmanager
+from datetime import datetime, timezone
+from pathlib import Path
 
 LABEL = "com.dboyza.adrafinil-agent-poll"
 INTERVAL = 60
@@ -30,12 +31,96 @@ CODEX_ASSERTION = re.compile(
 def run(args):
     result = subprocess.run(
         [str(arg) for arg in args], input="", text=True, capture_output=True,
-        timeout=10, check=True,
+        timeout=10, check=True, env={**os.environ, "LC_ALL": "C"},
     )
     # Adrafinil deliberately exits zero for failed hooks; stderr is significant.
     if result.stderr.strip():
         raise RuntimeError(result.stderr.strip())
     return result.stdout
+
+
+def number(value):
+    return type(value) in (int, float) and math.isfinite(value)
+
+
+def validate_status(status):
+    if isinstance(status, dict) and status.get("daemonRunning") is False:
+        raise RuntimeError("Adrafinil is not running; open the Adrafinil app.")
+    if not isinstance(status, dict) or type(status.get("paused")) is not bool or not isinstance(status.get("assertions"), list):
+        raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
+    keys = []
+    for entry in status["assertions"]:
+        if not isinstance(entry, dict) or not isinstance(entry.get("key"), str) or not entry["key"]:
+            raise RuntimeError("Unrecognized Adrafinil assertion; no holds changed.")
+        if "pid" in entry and type(entry["pid"]) is not int:
+            raise RuntimeError("Invalid PID in Adrafinil status; no holds changed.")
+        if any(name in entry and not isinstance(entry[name], str) for name in ("tool", "origin")):
+            raise RuntimeError("Invalid tool or origin in Adrafinil status; no holds changed.")
+        if any(entry.get(name) is not None and not number(entry[name]) for name in ("acquiredAt", "lastActivityAt", "expiresAt")):
+            raise RuntimeError("Invalid timestamp in Adrafinil status; no holds changed.")
+        keys.append(entry["key"])
+    if len(set(keys)) != len(keys):
+        raise RuntimeError("Duplicate keys in Adrafinil status; no holds changed.")
+    return status
+
+
+def process_snapshot(text):
+    """Validate a complete ps read and retain birth times to detect reused PIDs."""
+    rows, starts = [], {}
+    for line in text.splitlines():
+        match = re.fullmatch(r"\s*(\d+)\s+(\d+)\s+(\w{3} \w{3}\s+\d+ \d{2}:\d{2}:\d{2} \d{4})\s+(.+)", line)
+        if not match:
+            raise RuntimeError("Unrecognized process snapshot; no holds changed.")
+        pid, uid, born, executable = match.groups()
+        if int(pid) in starts:
+            raise RuntimeError("Duplicate PID in process snapshot; no holds changed.")
+        # ps emits local wall time; astimezone applies the local zone at birth.
+        starts[int(pid)] = datetime.strptime(born, "%a %b %d %H:%M:%S %Y").astimezone().timestamp()
+        rows.append(f"{pid} {uid} {executable}")
+    if os.getpid() not in starts:
+        raise RuntimeError("Incomplete process snapshot; no holds changed.")
+    return "\n".join(rows), starts
+
+
+def codex_socket_peers(text, candidates):
+    """Match client socket peers to Codex daemon endpoints, without reading traffic."""
+    records, record, pid = [], {}, None
+    for line in text.splitlines() + ["f"]:
+        field, value = line[:1], line[1:]
+        if field in ("p", "f"):
+            if record:
+                records.append(record)
+            if field == "p":
+                pid = int(value) if value.isdigit() else None
+            record = {"pid": pid}
+        elif field in ("d", "n"):
+            record[field] = value
+    servers = {}
+    for record in records:
+        name, device = record.get("n", ""), record.get("d", "")
+        if record.get("pid") in candidates and re.fullmatch(r"0x[0-9a-f]+", device) and re.fullmatch(r"/(?:private/)?tmp/codex-daemon-\d+/[0-9a-f]+", name):
+            servers.setdefault(device, set()).add(record["pid"])
+    peers = {}
+    for record in records:
+        target = record.get("n", "").removeprefix("->")
+        if record.get("pid") in candidates and record.get("n", "").startswith("->"):
+            for server in servers.get(target, ()):
+                if server != record["pid"]:
+                    peers.setdefault(record["pid"], set()).add(server)
+    return peers
+
+
+def read_codex_peers(process_map, status, active):
+    candidates = {pid for pid, tool in process_map.items() if tool == "codex"}
+    owners = {a.get("pid") for a in status["assertions"] if a.get("tool") == "codex" and a.get("origin") in ("hook", "sniffed") and not KEY_PATTERN.fullmatch(a["key"])}
+    if not owners & candidates or not any(tool == "codex" and pid not in owners for pid, tool in active.items()):
+        return {}, []
+    try:
+        text = run(["/usr/sbin/lsof", "-nP", "-a", "-p", ",".join(map(str, sorted(candidates))), "-U", "-F", "pfdn"])
+        return codex_socket_peers(text, candidates), []
+    except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+        # Lack of socket visibility must not suppress a needed fallback hold.
+        return {}, [f"Codex socket coverage unavailable: {error}"]
 
 
 def processes(text, uid):
@@ -57,7 +142,7 @@ def processes(text, uid):
     return found
 
 
-def active_agents(process_map, assertions, sessions):
+def active_agents(process_map, assertions, sessions, starts=None):
     active = {
         int(pid): "codex" for pid in CODEX_ASSERTION.findall(assertions)
         if process_map.get(int(pid)) == "codex"
@@ -73,6 +158,10 @@ def active_agents(process_map, assertions, sessions):
         if not isinstance(status, dict):
             continue
         pid = status.get("pid")
+        if starts and type(pid) is int:
+            born, started = starts.get(pid), status.get("startedAt")
+            if born is None or not number(started) or started / 1000 < born - 1:
+                continue  # Stale status from a previous process with this PID.
         if (
             type(pid) is int and str(pid) == path.stem
             and process_map.get(pid) == "claude-code"
@@ -104,7 +193,7 @@ def codex_session_state(home, session_id):
             paths = list(home.glob(f"sessions/*/*/*/*-{session_id}.jsonl"))
             paths += list(home.glob(f"archived_sessions/*-{session_id}.jsonl"))
             if not paths:
-                return ("missing", None)
+                return None  # Ephemeral/custom-home sessions may not be indexed here.
             path = max(paths, key=lambda p: p.stat().st_mtime)
         else:
             path = Path(row[0])
@@ -128,14 +217,20 @@ def codex_session_state(home, session_id):
             kind = event.get("type")
             if kind not in ("task_started", "task_complete", "turn_aborted"):
                 continue
-            timestamp = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00")).timestamp()
+            stamp = record.get("timestamp")
+            if not isinstance(stamp, str):
+                return None
+            parsed = datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                return None
+            timestamp = parsed.timestamp()
             return ("active" if kind == "task_started" else "idle", timestamp)
     except (OSError, ValueError, TypeError, KeyError, sqlite3.Error):
         pass
     return None
 
 
-def stale_agent_holds(status, process_text, sessions, codex_home, now):
+def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
     """Identify abandoned native holds without treating a shared server as work."""
     if not isinstance(status, dict) or not isinstance(status.get("assertions"), list):
         return {}
@@ -158,16 +253,18 @@ def stale_agent_holds(status, process_text, sessions, codex_home, now):
         if type(pid) is int and pid > 0 and pid not in live_pids:
             stale[key] = "owning process exited"
             continue
+        touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
+        if starts and pid in starts and number(touched) and touched + APPLE_EPOCH < starts[pid] - 1:
+            stale[key] = "owning PID was reused by a newer process"
+            continue
         if tool == "codex" and (match := SESSION_KEY.fullmatch(key)):
             activity = codex_session_state(codex_home, match[1])
             touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
-            if activity is None or type(touched) not in (int, float):
+            if activity is None or not number(touched):
                 continue
             touched += APPLE_EPOCH
             state, timestamp = activity
-            if state == "missing" and now - touched >= INTERVAL:
-                stale[key] = "session no longer exists in Codex's readable thread index"
-            elif state == "idle" and timestamp >= touched:
+            if state == "idle" and timestamp >= touched:
                 stale[key] = "Codex turn completed or was interrupted"
         elif tool == "claude-code" and type(pid) is int and pid > 0:
             try:
@@ -183,13 +280,13 @@ def stale_agent_holds(status, process_text, sessions, codex_home, now):
                 # A start hook can precede Claude's busy-status write.
                 updated = session.get("statusUpdatedAt")
                 touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
-                if type(updated) in (int, float) and type(touched) in (int, float) and updated / 1000 >= touched + APPLE_EPOCH:
+                if number(updated) and number(touched) and updated / 1000 >= touched + APPLE_EPOCH:
                     stale[key] = "Claude session is idle"
     return stale
 
 
 def hold_identity(entry):
-    return tuple(entry.get(field) for field in ("pid", "origin", "acquiredAt", "lastActivityAt", "expiresAt"))
+    return tuple(entry.get(field) for field in ("tool", "pid", "origin", "acquiredAt", "lastActivityAt", "expiresAt"))
 
 
 def release_hold(cli, key):
@@ -197,16 +294,13 @@ def release_hold(cli, key):
         run([cli, "release", key])
     except RuntimeError:
         # Stop hooks and the daemon's exit watcher may win the release race.
-        latest = json.loads(run([cli, "status", "--json"]))
-        if (
-            isinstance(latest, dict) and isinstance(latest.get("assertions"), list)
-            and not any(isinstance(entry, dict) and entry.get("key") == key for entry in latest["assertions"])
-        ):
+        latest = validate_status(json.loads(run([cli, "status", "--json"])))
+        if not any(entry["key"] == key for entry in latest["assertions"]):
             return
         raise
 
 
-def native_coverage(status, stale):
+def native_coverage(status, stale, peers=None):
     """A valid native hold already protects this tool and process."""
     covered = set()
     now = datetime.now(timezone.utc).timestamp() - APPLE_EPOCH
@@ -221,72 +315,98 @@ def native_coverage(status, stale):
         ):
             continue
         expires = entry.get("expiresAt")
-        if expires is not None and (type(expires) not in (int, float) or expires <= now):
+        # A nearly expired hold cannot cover active work until our next tick.
+        if expires is not None and (not number(expires) or expires <= now + INTERVAL):
             continue
         covered.add((tool, pid))
+    servers = {pid for tool, pid in covered if tool == "codex"}
+    covered.update(("codex", pid) for pid, owners in (peers or {}).items() if servers & owners)
     return covered
 
 
-def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None):
-    if not isinstance(status, dict):
-        raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
-    if status.get("daemonRunning") is False:
-        raise RuntimeError("Adrafinil is not running; open the Adrafinil app.")
-    if not isinstance(status.get("assertions"), list) or "paused" not in status:
-        raise RuntimeError("Unrecognized Adrafinil status; no holds changed.")
+def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peers=None):
+    validate_status(status)
     if status["paused"]:
         return {"paused": True, "active": active, "acquired": [], "released": []}
     stale = dict(stale or {})
-    covered = native_coverage(status, stale)
+    covered = native_coverage(status, stale, peers)
     owned = {
         entry["key"] for entry in status["assertions"]
         if isinstance(entry, dict) and isinstance(entry.get("key"), str)
         and KEY_PATTERN.fullmatch(entry["key"])
     }
-    if not dry_run and any(f"{tool}:dotfiles-poll:{pid}" in owned for tool, pid in covered):
-        # Before handing an existing fallback over to a native hook, confirm the
-        # hook is still present. If it vanished, renew the fallback instead.
-        latest = json.loads(run([cli, "status", "--json"]))
-        if not isinstance(latest, dict) or not isinstance(latest.get("assertions"), list) or "paused" not in latest:
-            raise RuntimeError("Unrecognized Adrafinil status during native-hold recheck.")
-        if latest["paused"]:
-            return {"paused": True, "active": active, "acquired": [], "released": []}
-        covered = native_coverage(latest, stale)
     desired = {
         f"{tool}:dotfiles-poll:{pid}": (pid, tool)
         for pid, tool in active.items() if (tool, pid) not in covered
     }
+    errors, acquired, paused = [], [], False
+
+    def acquire(key, pid, tool):
+        try:
+            if not dry_run:
+                run([cli, "acquire", key, "--tool", tool, "--pid", pid,
+                     "--ttl", TTL, "--reason", "Active work detected by the one-minute check"])
+            acquired.append(key)
+        except (OSError, RuntimeError, subprocess.SubprocessError) as error:
+            errors.append(f"{key}: {error}")
+            # The CLI can warn that --pid died yet acquire under an ancestor PID.
+            # Remove that unintended fallback instead of treating exit 0 as success.
+            try:
+                latest = validate_status(json.loads(run([cli, "status", "--json"])))
+                wrong = next((a for a in latest["assertions"] if a["key"] == key and a.get("pid") != pid), None)
+                if wrong:
+                    release_hold(cli, key)
+            except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as followup:
+                errors.append(f"{key}: acquire verification failed: {followup}")
+
     # Acquire first so a handoff between agents never briefly drops our last hold.
     for key, (pid, tool) in sorted(desired.items()):
-        if not dry_run:
-            run([cli, "acquire", key, "--tool", tool, "--pid", pid,
-                 "--ttl", TTL, "--reason", "Active work detected by the one-minute check"])
+        acquire(key, pid, tool)
     # An unreadable Claude status is not proof of idle. Leave its existing lease
     # to expire without renewal, allowing the next tick to recover a partial read.
     released = sorted(
         key for key in owned - desired.keys()
         if int(key.rsplit(":", 1)[1]) not in uncertain
     )
-    if stale and not dry_run:
-        # A new turn may have refreshed a hold since detection. Do not release it
-        # using the previous turn's evidence, or race a daemon restart.
-        latest = json.loads(run([cli, "status", "--json"]))
-        if not isinstance(latest, dict) or not isinstance(latest.get("assertions"), list):
-            raise RuntimeError("Unrecognized Adrafinil status during stale-hold recheck.")
-        before = {entry["key"]: entry for entry in status["assertions"] if isinstance(entry, dict) and "key" in entry}
-        after = {entry["key"]: entry for entry in latest.get("assertions", []) if isinstance(entry, dict) and "key" in entry}
-        stale = {
-            key: reason for key, reason in stale.items()
-            if not latest.get("paused") and latest.get("daemonBootID") == status.get("daemonBootID")
-            and key in before and key in after and hold_identity(before[key]) == hold_identity(after[key])
-        }
-    released = sorted(set(released) | stale.keys())
-    for key in released:
-        if not dry_run:
-            release_hold(cli, key)
+    # Do not remove native protection if obtaining its replacement just failed.
+    pending = sorted(set(released) | (stale.keys() if not errors else set()))
+    released = []
+    before = {entry["key"]: entry for entry in status["assertions"]}
+    for key in pending:
+        try:
+            if not dry_run:
+                if key in stale:
+                    if errors:
+                        continue
+                    # Recheck each hold immediately before releasing it, not once
+                    # for the whole batch: another turn can start between keys.
+                    latest = validate_status(json.loads(run([cli, "status", "--json"])))
+                    after = {entry["key"]: entry for entry in latest["assertions"]}
+                    if latest["paused"]:
+                        paused = True
+                        break
+                    if latest.get("daemonBootID") != status.get("daemonBootID") or key not in before or key not in after or hold_identity(before[key]) != hold_identity(after[key]):
+                        continue
+                else:
+                    pid = int(key.rsplit(":", 1)[1])
+                    tool = key.split(":", 1)[0]
+                    if active.get(pid) == tool and (tool, pid) in covered:
+                        # Check at the actual handoff, after any other CLI calls.
+                        latest = validate_status(json.loads(run([cli, "status", "--json"])))
+                        if latest["paused"]:
+                            paused = True
+                            break
+                        if (tool, pid) not in native_coverage(latest, stale, peers):
+                            covered.discard((tool, pid))
+                            acquire(key, pid, tool)
+                            continue
+                release_hold(cli, key)
+            released.append(key)
+        except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
+            errors.append(f"{key}: {error}")
     return {
-        "paused": False, "active": active, "acquired": sorted(desired), "released": released,
-        "staleReasons": stale,
+        "paused": paused, "active": active, "acquired": acquired, "released": released,
+        "staleReasons": {key: stale[key] for key in released if key in stale}, "errors": errors,
         "coveredByNative": {pid: tool for pid, tool in active.items() if (tool, pid) in covered},
     }
 
@@ -324,7 +444,10 @@ def launch_agent(home, python, script, cli):
         "RunAtLoad": True,
         "StartInterval": INTERVAL,
         "ProcessType": "Background",
-        "EnvironmentVariables": {"HOME": str(home)},
+        "EnvironmentVariables": {"HOME": str(home), **{
+            name: str(Path(os.environ[name]).expanduser().absolute())
+            for name in ("CODEX_HOME", "CLAUDE_CONFIG_DIR") if os.environ.get(name)
+        }},
         "StandardErrorPath": str(home / ".local/state/dotfiles/adrafinil-poll/error.log"),
     }
 
@@ -341,26 +464,76 @@ def install(cli):
         shutil.which("python3") or sys.executable,
     )
     definition = launch_agent(home, python, Path(__file__).resolve(), cli)
-    if plist.exists():
-        previous = plistlib.loads(plist.read_bytes())
-        if previous.get("Label") != LABEL:
+    old_data = plist.read_bytes() if plist.exists() else None
+    if old_data is not None:
+        previous = plistlib.loads(old_data)
+        if not isinstance(previous, dict) or previous.get("Label") != LABEL:
             raise RuntimeError(f"Refusing to replace unrelated LaunchAgent: {plist}")
     domain = f"gui/{os.getuid()}"
     loaded = subprocess.run(
         ["/bin/launchctl", "print", f"{domain}/{LABEL}"], capture_output=True,
-        timeout=10,
+        timeout=10, check=False,
     ).returncode == 0
+    if loaded and old_data is None:
+        raise RuntimeError("The poller is loaded without a saved LaunchAgent; refusing an unrecoverable replacement.")
     if loaded:
         run(["/bin/launchctl", "bootout", f"{domain}/{LABEL}"])
-    atomic_write(plist, plistlib.dumps(definition))
-    run(["/bin/launchctl", "bootstrap", domain, plist])
+    try:
+        atomic_write(plist, plistlib.dumps(definition))
+        run(["/bin/launchctl", "bootstrap", domain, plist])
+    except (OSError, RuntimeError, subprocess.SubprocessError):
+        if old_data is None:
+            plist.unlink(missing_ok=True)
+        else:
+            atomic_write(plist, old_data)
+            if loaded:
+                run(["/bin/launchctl", "bootstrap", domain, plist])
+        raise
     print(f"Installed {plist}; checks every {INTERVAL} seconds while the Mac is awake.")
+
+
+@contextmanager
+def poll_lock(path):
+    import fcntl
+
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    with path.open("a") as stream:
+        try:
+            fcntl.flock(stream, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(stream, fcntl.LOCK_UN)
+
+
+def poll_once(cli, dry_run):
+    status = validate_status(json.loads(run([cli, "status", "--json"])))
+    if status["paused"]:
+        return {"paused": True, "active": {}, "acquired": [], "released": []}
+    process_text, starts = process_snapshot(run(["/bin/ps", "-axo", "pid=,uid=,lstart=,comm="]))
+    snapshot = processes(process_text, os.getuid())
+    power = run(["/usr/bin/pmset", "-g", "assertions"])
+    if "Assertion status system-wide:" not in power or not any(marker in power for marker in ("Listed by owning process:", "No assertions.")):
+        raise RuntimeError("Unrecognized power assertion snapshot; no holds changed.")
+    sessions = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))).expanduser().absolute() / "sessions"
+    codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser().absolute()
+    active, uncertain = active_agents(snapshot, power, sessions, starts)
+    stale = stale_agent_holds(status, process_text, sessions, codex_home, starts)
+    peers, warnings = read_codex_peers(snapshot, status, active)
+    result = reconcile(cli, active, status, dry_run, uncertain, stale, peers)
+    result["uncertainPids"] = sorted(uncertain)
+    result["warnings"] = warnings
+    return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--install", action="store_true", help="Install and load the per-user LaunchAgent")
-    parser.add_argument("--dry-run", action="store_true", help="Show detected activity and planned holds without changes")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--install", action="store_true", help="Install and load the per-user LaunchAgent")
+    mode.add_argument("--dry-run", action="store_true", help="Show detected activity and planned holds without changes")
     parser.add_argument("--cli", type=Path, help="Path to the Adrafinil CLI")
     args = parser.parse_args()
     if sys.platform != "darwin":
@@ -371,19 +544,22 @@ def main():
         if args.install:
             install(cli)
             return 0
-        status = json.loads(run([cli, "status", "--json"]))
-        process_text = run(["/bin/ps", "-axo", "pid=,uid=,comm="])
-        snapshot = processes(process_text, os.getuid())
-        active, uncertain = active_agents(snapshot, run(["/usr/bin/pmset", "-g", "assertions"]), Path.home() / ".claude/sessions")
-        stale = stale_agent_holds(status, process_text, Path.home() / ".claude/sessions", Path.home() / ".codex", datetime.now(timezone.utc).timestamp())
-        result = reconcile(cli, active, status, args.dry_run, uncertain, stale)
-        result["uncertainPids"] = sorted(uncertain)
+        state = Path.home() / ".local/state/dotfiles/adrafinil-poll"
+        if args.dry_run:
+            result = poll_once(cli, True)
+        else:
+            with poll_lock(state / "poll.lock") as locked:
+                if not locked:
+                    return 0
+                result = poll_once(cli, False)
+                result["checkedAt"] = datetime.now(timezone.utc).isoformat()
+                atomic_write(state / "status.json", json.dumps(result, indent=2).encode())
         result["checkedAt"] = datetime.now(timezone.utc).isoformat()
         if args.dry_run:
             print(json.dumps(result, indent=2))
-        else:
-            atomic_write(Path.home() / ".local/state/dotfiles/adrafinil-poll/status.json", json.dumps(result, indent=2).encode())
-        return 0
+        for error in result.get("errors", []):
+            print(f"adrafinil-agent-poll: {error}", file=sys.stderr)
+        return 1 if result.get("errors") else 0
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
         print(f"adrafinil-agent-poll: {error}", file=sys.stderr)
         return 1
