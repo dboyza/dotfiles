@@ -1,5 +1,23 @@
 return {
   {
+    "NeogitOrg/neogit",
+    cmd = "Neogit",
+    dependencies = { "nvim-telescope/telescope.nvim" },
+    keys = {
+      {
+        "<leader>gg",
+        function()
+          require("neogit").open({ cwd = require("config.project").root() })
+        end,
+        desc = "Open project Git status",
+      },
+    },
+    opts = {
+      kind = "tab",
+      integrations = { telescope = true },
+    },
+  },
+  {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },
     opts = {

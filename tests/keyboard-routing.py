@@ -51,10 +51,20 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as tempora
                                        env=env, text=True, timeout=5).strip()
 
     init = root / "init.lua"
+    project = root / "project with spaces"
+    (project / ".git").mkdir(parents=True)
+    source = project / "src" / "example.txt"
+    source.parent.mkdir()
     init.write_text("dofile(" + json.dumps(str(REPO / "nvim/init.lua")) + "); "
                     "vim.opt.clipboard = ''; local lines = {}; "
                     "for i=1,300 do lines[i]='line '..i end; "
+                    "vim.api.nvim_buf_set_name(0," + json.dumps(str(source)) + "); "
                     "vim.api.nvim_buf_set_lines(0,0,-1,false,lines); "
+                    # Exercise the tracked Git mapping while mocking only the plugin boundary.
+                    "package.loaded.neogit = { open = function(opts) vim.g.neogit_cwd = opts.cwd end }; "
+                    "for _, spec in ipairs(dofile(" + json.dumps(str(REPO / "nvim/lua/plugins/git.lua")) + ")) do "
+                    "if spec[1] == 'NeogitOrg/neogit' then for _, key in ipairs(spec.keys) do "
+                    "vim.keymap.set('n', key[1], key[2]) end end end; "
                     "vim.keymap.set('n','<C-PageDown>',function() vim.g.page='down' end); "
                     "vim.keymap.set('n','<C-PageUp>',function() vim.g.page='up' end)")
     tmux("-f", str(REPO / "tmux/.tmux.conf"), "new-session", "-d", "-s", "keys",
@@ -80,6 +90,9 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as tempora
     try:
         until(lambda: Path(rpc).exists() and tmux("list-clients") != "", "client did not attach")
         until(lambda: tmux("display-message", "-p", "#{alternate_on}") == "1", "Neovim did not start")
+        send(b" gg")
+        until(lambda: Path(evaluate("get(g:, 'neogit_cwd', '')")).resolve() == project.resolve(),
+              "Space gg must reach the file's project through tmux, preserving spaces")
         send(b"\x1b[6~")
         until(lambda: int(evaluate("line('.')")) > 1, "PageDown did not reach Neovim")
         assert tmux("display-message", "-p", "#{pane_in_mode}") == "0"
@@ -111,7 +124,8 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as tempora
         tmux("switch-client", "-T", "root")
         send(b"\x1b[5~")
         until(lambda: tmux("display-message", "-p", "#{pane_in_mode}") == "1", "shell PageUp must enter scrollback")
-        print("Keyboard PTY integration passed: application pages, word motion, pane focus/resize, shell scrollback")
+        print("Keyboard PTY integration passed: project Git shortcut, application pages, word motion, "
+              "pane focus/resize, shell scrollback")
     finally:
         subprocess.run(base + ["kill-server"], env=env, capture_output=True, timeout=5)
         os.close(master)

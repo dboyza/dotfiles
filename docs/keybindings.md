@@ -96,6 +96,7 @@ International layouts and custom OS shortcuts may require local adjustments; the
 
 Neovim retains its modal editing vocabulary and the [IDE workflow shortcuts](neovim.md).
 `Space` opens the shortcut menu; `Space fk` searches mappings.
+`Space gg` opens Neogit for the current file's project in a new tab; `Space h` retains the Git hunk actions.
 `Control+H/L` aliases word navigation and `Control+J/K` aliases five-line scrolling in Normal and Visual modes.
 Insert-mode completion keeps its own `Control+K` signature-help binding.
 `j/k` and Up/Down accelerate only after 40 rapid repeats; counted motions remain native.

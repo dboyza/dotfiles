@@ -47,6 +47,23 @@ The outline requires a language server with document-symbol support.
 Enter search and replacement text, inspect the results, then use its displayed replace or sync actions.
 Ripgrep is required and is already part of the dotfiles toolchain.
 
+## Git
+
+`Space gg` opens Neogit in a new tab for the current file's project.
+Use `:Neogit` to open Git status for Neovim's working directory instead.
+Neogit uses the existing theme and Telescope picker.
+
+| Shortcut in Neogit | Action |
+| --- | --- |
+| `Tab` | Expand or collapse a file or diff hunk |
+| `s` / `u` | Stage / unstage the selected file or hunk |
+| `c` | Open the commit menu |
+| `b` | Open the branch menu |
+| `?` | Show available actions |
+| `q` | Close Neogit and return to editing |
+
+The existing `Space h` Git hunk actions remain available in source buffers.
+
 ## Tests
 
 Neotest supports pytest, Vitest, and Jest.

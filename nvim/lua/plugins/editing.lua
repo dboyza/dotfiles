@@ -13,6 +13,7 @@ return {
         { "<leader>c", group = "code" },
         { "<leader>d", group = "diagnostic" },
         { "<leader>f", group = "find" },
+        { "<leader>g", group = "git" },
         { "<leader>h", group = "git hunk" },
         { "<leader>r", group = "run and debug" },
         { "<leader>s", group = "search" },

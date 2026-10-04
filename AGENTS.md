@@ -170,6 +170,8 @@
 - Isolate tmux integration tests from the real home directory because restoration plugins install assistant hooks and write runtime state.
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
+- Keep Neogit on `Space gg`, scoped through `config.project.root()`, with the existing Telescope picker and theme integration.
+  Preserve `Space h` for Gitsigns hunk actions.
 - Keep Neovim's IDE shortcuts under `Space T` for tests and `Space r` for debugging, preserving `Space d` for diagnostics and `Space t` for toggles.
   Document changes in `docs/neovim.md`.
   Scope format-on-save toggles and terminal working directories through `config.project`; toggles last for the current Neovim session.

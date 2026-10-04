@@ -63,6 +63,7 @@ return {
           grug_far = true,
           lsp_trouble = true,
           neotest = true,
+          neogit = true,
           snacks = { enabled = true },
         },
       })
