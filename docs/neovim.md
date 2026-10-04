@@ -112,10 +112,10 @@ herdr-workspace ~/code/my-project pi
 The left pane asks you to choose Codex, Claude Code, Pi, or opencode each time.
 Enter a number or agent name; `q` or `Control+C` leaves that pane at a shell.
 An explicit agent argument skips the picker for that invocation.
-Each invocation creates a fresh workspace in the current Herdr session, with a 40% agent pane and a 60% editor pane.
+Each invocation creates a fresh workspace in the current Herdr session, with a 3:4 agent/editor split (about 42.86% and 57.14%).
 Herdr's normal New Space action creates the same layout and picker through the local `dotfiles.workspace` plugin.
 Existing spaces and restored sessions are not rearranged; new worktree spaces use the layout too.
-The project sidebar belongs to Herdr; Neovim contains the file editor and a persistent, 34-column Neo-tree on its right.
+Herdr keeps the project sidebar at 18 columns; Neovim contains the file editor and a persistent, 20-column Neo-tree on its right.
 `Space e` switches between the tree and editor, and opening a file keeps this tree visible.
 Normal Neovim launches retain the left-hand explorer that closes after file selection.
 Quitting the last editor window still closes Neo-tree.

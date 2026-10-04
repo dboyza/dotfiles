@@ -262,6 +262,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Use the local `herdr/workspace` plugin as the single layout owner for `workspace.created` events, including spaces created through Herdr's UI.
   Target only the event's new workspace, skip occupied or already split panes, and leave existing or restored workspaces intact.
   Keep the agent picker beside a larger Neovim pane; do not reuse a previous space's agent choice implicitly.
+  Use a 3:4 agent/editor split, an 18-column Herdr sidebar, and a 20-column workspace Neo-tree.
 
 ## Neovim
 

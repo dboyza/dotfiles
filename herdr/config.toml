@@ -33,6 +33,10 @@ command = "persiyanov.reviewr.toggle"
 
 [ui]
 status_indicators = "symbols"
+# Keep project names from expanding the sidebar and shifting the workspace layout.
+sidebar_width = 18
+sidebar_min_width = 18
+sidebar_max_width = 18
 
 [ui.toast]
 delivery = "herdr"

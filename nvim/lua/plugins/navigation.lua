@@ -92,7 +92,7 @@ return {
       },
       window = {
         position = require("config.workspace").position(),
-        width = 34,
+        width = require("config.workspace").enabled() and 20 or 34,
       },
     },
   },

@@ -12,6 +12,7 @@ const source = fileURLToPath(import.meta.url);
 const pluginRoot = resolve(dirname(source), '../herdr/workspace');
 const reviewrRef = 'c9a187ff2e701d1619be2ed22d101a6225916cd6'; // Reviewr 0.44.0.
 const agents = ['codex', 'claude', 'pi', 'opencode'];
+const agentPaneRatio = 3 / 7;
 function herdr(args) {
   const output = execFileSync(process.env.HERDR_BIN_PATH || 'herdr', args, {
     encoding: 'utf8', env: { ...process.env, DOTFILES_TOOL_UPDATE: '0' },
@@ -67,7 +68,7 @@ export async function applyLayout(workspace, invoke = herdr) {
   }
   if (!left) throw new Error(`Workspace ${workspace}: root shell did not become available.`);
   try {
-    const right = invoke(['pane', 'split', left.pane_id, '--direction', 'right', '--ratio', '0.4',
+    const right = invoke(['pane', 'split', left.pane_id, '--direction', 'right', '--ratio', String(agentPaneRatio),
       '--cwd', left.cwd, '--no-focus']).pane.pane_id;
     invoke(['pane', 'rename', left.pane_id, 'Choose agent']);
     invoke(['pane', 'rename', right, 'Editor']);
