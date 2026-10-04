@@ -1,4 +1,4 @@
--- Close file tabs in display order while preserving editor windows and unsaved edits.
+-- Close file tabs into the rightmost remaining tab while preserving windows and unsaved edits.
 local M = {}
 
 function M.close(buf)
@@ -25,9 +25,9 @@ function M.close(buf)
   -- Bufferline's public API retains the displayed order, including manual moves.
   local elements = require("bufferline").get_elements().elements
   local next_buf
-  for index, element in ipairs(elements) do
-    if element.id == buf and #elements > 1 then
-      next_buf = elements[index % #elements + 1].id
+  for index = #elements, 1, -1 do
+    if elements[index].id ~= buf then
+      next_buf = elements[index].id
       break
     end
   end
@@ -35,7 +35,6 @@ function M.close(buf)
     for _, info in ipairs(listed) do
       if info.bufnr ~= buf then
         next_buf = info.bufnr
-        break
       end
     end
   end

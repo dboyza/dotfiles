@@ -268,7 +268,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep Neovim's Neo-tree sidebar, Bufferline tab row, and Lualine status line visually coordinated with the transparent Rosé Pine terminal theme.
 
-- Keep Bufferline's close icon selecting the next buffer in displayed order without closing editor windows.
+- Keep Bufferline's close icon selecting the rightmost remaining buffer in displayed order without closing editor windows.
   Closing the final listed buffer quits Neovim with confirmation for unsaved edits.
 
 - Keep Lazy's lockfile in the live Neovim configuration directory so plugin updates and Git restores affect the same file.

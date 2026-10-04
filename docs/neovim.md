@@ -11,7 +11,7 @@ See the [shared keyboard guide](keybindings.md) for word movement, Command alias
 
 ## Closing file tabs
 
-Click a file tab's x to close it and continue in the next tab, wrapping to the first tab at the end of the row.
+Click the focused file tab's x to close it and continue in the rightmost remaining tab.
 Closing the final file tab exits Neovim, including when Neo-tree is open.
 Unsaved changes prompt you to save, discard, or cancel.
 Closing an inactive tab leaves the focused file unchanged.
