@@ -1,0 +1,11 @@
+# Apply the shared editor layout and agent picker only to newly created spaces.
+id = "dotfiles.workspace"
+name = "Dotfiles workspace"
+version = "0.1.0"
+min_herdr_version = "0.9.3"
+platforms = ["linux", "macos"]
+description = "Open an agent picker beside Neovim with a persistent right-hand file tree."
+
+[[events]]
+on = "workspace.created"
+command = ["node", "../../scripts/herdr-workspace.mjs", "--workspace-created"]

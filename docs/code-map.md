@@ -20,7 +20,7 @@ Tiny files and configuration tables use their existing structure instead of arti
 | Editor settings, mappings, plugins | `nvim/init.lua`, `nvim/lua/config/`, `nvim/lua/plugins/` | `tests/compatibility.sh`, `tests/keyboard-routing.py` |
 | Clipboard selection and UTF-8 transport | `scripts/dotfiles-clipboard`, `scripts/win-{copy,paste}` | `tests/clipboard.sh`, `tests/wsl-clipboard.sh` |
 | Shell, prompt, multiplexers | `zsh/`, `starship/starship.toml`, `tmux/.tmux.conf`, `herdr/*.toml` | `tests/compatibility.sh`, `tests/tmux-plugins.sh`, `tests/keyboard-routing.py` |
-| Agent workspace and Reviewr installation | `scripts/herdr-workspace.mjs`, `nvim/lua/config/workspace.lua`, `herdr/reviewr.toml` | `tests/herdr-workspace.test.mjs`, `tests/nvim-workspace.lua`, `tests/bootstrap-latest.sh` |
+| Agent workspace and Reviewr installation | `scripts/herdr-workspace.mjs`, `herdr/workspace/`, `nvim/lua/config/workspace.lua`, `herdr/reviewr.toml` | `tests/herdr-workspace.test.mjs`, `tests/nvim-workspace.lua`, `tests/bootstrap-latest.sh` |
 | Active Pi settings and archived customization | `pi/settings.json`, `pi/DEFAULTS.md`, `pi/archive/README.md` | `./tests/run.sh --archive` for archived unit checks |
 | Agent instructions and authored skills | Root `AGENTS.md` for this repo; `agents/global/AGENTS.md` for shared policy; `agents/skills/` for skills | Review deployed links and the skill's own instructions |
 | Test selection and pass/fail reporting | `tests/run.py`, `tests/run-lua.lua`, `scripts/lib/check-wezterm.lua` | `tests/check-runner.py`, `tests/check-verdicts.sh` |

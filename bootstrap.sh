@@ -111,5 +111,5 @@ load_managed_targets
 backup_managed_files
 activate_platform
 verify_installation
-node "$repo_dir/scripts/herdr-workspace.mjs" --install-reviewr
+node "$repo_dir/scripts/herdr-workspace.mjs" --install-plugins
 printf 'Bootstrap complete. Open a new terminal to use the configured environment.\n'

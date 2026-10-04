@@ -258,8 +258,10 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep Reviewr opt-in rather than automatically opening it for worktrees.
   Verify upstream support and native behavior before extending this repository's plugin deployment to Windows.
 
-- Keep `herdr-workspace` as the opt-in project layout launcher for macOS and Linux/WSL, with Codex by default and an explicit agent override.
-  Create fresh panes with explicit project paths, leaving existing workspaces intact; keep the agent beside a larger Neovim pane.
+- Keep `herdr-workspace` as the project layout launcher for macOS and Linux/WSL, with an interactive agent picker and an explicit agent override.
+  Use the local `herdr/workspace` plugin as the single layout owner for `workspace.created` events, including spaces created through Herdr's UI.
+  Target only the event's new workspace, skip occupied or already split panes, and leave existing or restored workspaces intact.
+  Keep the agent picker beside a larger Neovim pane; do not reuse a previous space's agent choice implicitly.
 
 ## Neovim
 
