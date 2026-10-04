@@ -9,6 +9,13 @@ Use `:Lazy` and `:Mason` to inspect installation progress or errors.
 Press it and pause to see available shortcuts.
 See the [shared keyboard guide](keybindings.md) for word movement, Command aliases, window controls, and terminal/multiplexer routing.
 
+## Closing file tabs
+
+Click a file tab's x to close it and continue in the next tab, wrapping to the first tab at the end of the row.
+Closing the final file tab exits Neovim, including when Neo-tree is open.
+Unsaved changes prompt you to save, discard, or cancel.
+Closing an inactive tab leaves the focused file unchanged.
+
 ## Completion and formatting
 
 Completion documentation opens automatically after 300 ms; signature help remains enabled.

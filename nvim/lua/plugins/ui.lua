@@ -116,6 +116,7 @@ return {
       },
       options = {
         always_show_bufferline = true,
+        close_command = function(buf) require("config.buffers").close(buf) end,
         diagnostics = "nvim_lsp",
         indicator = { icon = "▎", style = "icon" },
         offsets = {
