@@ -1,3 +1,6 @@
 # Ignore local Nix build and development-shell state.
 result
 .direnv/
+
+# Keep local Neovim runtime diagnostics out of version control.
+nvim.log
