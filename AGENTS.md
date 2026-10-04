@@ -3,6 +3,14 @@
 Keep policy shared, platform integration explicit, and functions readable.
 Prefer a few named responsibilities over broad frameworks or duplicated platform implementations.
 
+Keep every handwritten code and configuration file easy for a human to navigate and edit.
+Start with a concise purpose comment, group distinct responsibilities under descriptive `Section:` comments, and explain non-obvious decisions, invariants, platform differences, and side effects beside the relevant code.
+Keep each explanatory comment or docstring to at most two lines, moving longer design notes into the nearest guide.
+Keep comments accurate when changing behavior; avoid comments that merely restate syntax or artificial sections in tiny files.
+For formats that cannot contain comments, document their fields and editing workflow in the nearest README or guide.
+Preserve generated files and upstream-managed code; document their source and regeneration path instead.
+Use [the code map](docs/code-map.md) to find the relevant entry points and verification commands.
+
 Before changing a component or its tests/installers, read its scoped instructions:
 
 | Area | Instructions |

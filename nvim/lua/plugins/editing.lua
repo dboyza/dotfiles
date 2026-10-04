@@ -1,8 +1,11 @@
+-- Declare indentation, shortcut discovery, text objects, and editing helpers.
 return {
+  -- Section: Indent detection
   {
     "NMAC427/guess-indent.nvim",
     opts = {},
   },
+  -- Section: Shortcut discovery
   {
     "folke/which-key.nvim",
     event = "VeryLazy",
@@ -21,6 +24,7 @@ return {
       },
     },
   },
+  -- Section: Annotations and text-object helpers
   {
     "folke/todo-comments.nvim",
     event = { "BufReadPost", "BufNewFile" },

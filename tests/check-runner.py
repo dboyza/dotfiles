@@ -10,6 +10,7 @@ import unittest
 RUNNER = Path(__file__).with_name('run.py')
 
 
+# Section: Isolated command outcomes
 @unittest.skipIf(os.name == 'nt', 'The shell runner is for macOS/Linux/WSL; Windows uses windows.ps1')
 class RunnerTests(unittest.TestCase):
     def run_checks(self, mode, *options):
@@ -32,6 +33,7 @@ exit 0
             return subprocess.run([sys.executable, str(RUNNER), *options], text=True, capture_output=True,
                                   env={**os.environ, 'PATH': directory, 'RUNNER_FIXTURE_MODE': mode})
 
+    # Section: Reporting contracts
     def test_failure_is_reported_and_other_suites_still_run(self):
         result = self.run_checks('failure')
         self.assertEqual(result.returncode, 1)

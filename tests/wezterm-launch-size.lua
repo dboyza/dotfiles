@@ -1,5 +1,7 @@
+-- Check startup centering and size toggling across platforms and screen geometries.
 local config_path = assert(arg[1], 'expected the WezTerm config path')
 
+-- Section: Window and screen fixture
 local function verify_launch_geometry(
   target_triple,
   screen,
@@ -133,6 +135,7 @@ local function verify_launch_geometry(
 
 end
 
+-- Section: Platform and monitor scenarios
 local large_screen = { x = 0, y = 0, width = 4000, height = 2500 }
 verify_launch_geometry('aarch64-apple-darwin', large_screen, 3760, 2200, 120, 150)
 verify_launch_geometry('x86_64-apple-darwin', { x = -1512, y = 0, width = 1512, height = 982 }, 1421, 864, -1467, 59)

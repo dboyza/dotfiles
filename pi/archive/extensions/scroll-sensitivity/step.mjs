@@ -1,5 +1,5 @@
-// Pi 0.85.1 exposes this constructor option, but not a settings entry or setter.
-// Keep the sole internal-field integration guarded and reversible.
+// Adjust and restore a renderer's wheel step without overwriting another owner's changes.
+// Pi 0.85.1 has no public setter, so the internal-field change stays guarded and reversible.
 export function createScrollStep(tui) {
   let original;
   let applied;

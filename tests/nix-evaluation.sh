@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Evaluate every supported architecture and verify the canonical managed-file inventory.
 
 set -Eeuo pipefail
 
@@ -18,6 +19,7 @@ flake_ref="path:$repo_dir"
 # shellcheck source=scripts/lib/bootstrap-common.sh
 source "$repo_dir/scripts/lib/bootstrap-common.sh"
 
+# Section: Shared launcher inventory
 verify_tool_targets() {
   local tool
   managed_targets | grep -Fx "$HOME/.local/bin/dotfiles-tool.mjs" >/dev/null
@@ -26,6 +28,7 @@ verify_tool_targets() {
   done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))))' "$repo_dir/scripts/managed-tools.json")
 }
 
+# Section: Linux architectures
 os=Linux
 for profile in linux-aarch64 linux-x86_64; do
   nix "${nix_options[@]}" eval --raw \
@@ -36,6 +39,7 @@ for profile in linux-aarch64 linux-x86_64; do
   managed_targets | grep -Fx "$HOME/.local/bin/dotfiles-clipboard" >/dev/null
 done
 
+# Section: macOS architectures and package ownership
 os=Darwin
 for profile in macos-aarch64 macos-x86_64; do
   nix "${nix_options[@]}" eval --raw \
@@ -60,6 +64,7 @@ assert any(t["name"] == "hashicorp/tap" and t["trusted"] for t in config["taps"]
   managed_targets | grep -Fx "$HOME/.config/nvim" >/dev/null
 done
 
+# Section: WSL host helpers
 export DOTFILES_WSL=1
 os=Linux
 profile=linux-x86_64

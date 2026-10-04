@@ -1,10 +1,13 @@
+-- Install syntax parsers and enable syntax-aware highlighting and Markdown rendering.
 return {
+  -- Section: Markdown presentation
   {
     "MeanderingProgrammer/render-markdown.nvim",
     dependencies = { "nvim-treesitter/nvim-treesitter" },
     ft = { "markdown" },
     opts = {},
   },
+  -- Section: Parser installation and highlighting
   {
     "nvim-treesitter/nvim-treesitter",
     build = ":TSUpdate",

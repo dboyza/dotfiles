@@ -9,6 +9,7 @@ local source = (os.getenv('DOTFILES_TEST_REPO') or (wezterm.config_dir .. '/..')
 local config = assert(loadfile(source))(source)
 wezterm.on, wezterm.home_dir = original_on, original_home
 
+-- Section: Display-cell normalization and tab labels
 local function plain(text)
   -- format() emits both SGR styling and an ASCII charset selector.
   return text:gsub('\27%[[%d;:]*m', ''):gsub('\27%(B', '')
@@ -32,6 +33,7 @@ assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
 for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) do
   assert(config.colors.tab_bar[style].bg_color == config.colors.tab_bar.background)
 end
+-- Section: Focus borders and clock placement
 local original_strftime = wezterm.strftime
 wezterm.strftime = function(format)
   assert(format == '%I:%M %p', 'the clock should display 12-hour time with AM/PM')

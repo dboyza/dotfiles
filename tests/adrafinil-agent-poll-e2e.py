@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
-"""Run the production entrypoint and CLI subprocesses with an isolated home.
-
-Only macOS process/power/socket/launchctl snapshots and the Adrafinil daemon are
-substituted. Parsing, SQLite, lifecycle files, locking, CLI error handling,
-installation, state persistence, and command-line arguments run unchanged.
-"""
+"""Exercise the production CLI and installer in an isolated home.
+Substitute only OS observations and the daemon; keep parsing and state handling real."""
 
 import json
 import os
@@ -36,6 +32,7 @@ def hold(key, pid, tool="codex", **extra):
 
 
 @unittest.skipUnless(os.name == "posix", "macOS-only poller requires POSIX locks")
+# Section: Isolated command environment
 class PollIntegrationTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory(prefix="adrafinil-test-")
@@ -88,6 +85,7 @@ class PollIntegrationTests(unittest.TestCase):
             connection.execute("DELETE FROM threads")
             connection.execute("INSERT INTO threads VALUES (?, ?)", (THREAD, str(path)))
 
+    # Section: Activity transitions and handoffs
     def test_busy_then_idle_and_exit_preserve_manual_holds(self):
         self.state["status"]["assertions"] = [hold("hold:manual", 900, origin="manual")]
         self.claude()
@@ -143,6 +141,7 @@ class PollIntegrationTests(unittest.TestCase):
         self.assertEqual(self.keys(), {CLAUDE, codex_fallback})
         self.assertEqual([c[0] for c in self.mutations()], ["release", "acquire"])
 
+    # Section: Session lifecycle and PID reuse
     def test_custom_homes_completed_codex_and_idle_claude_are_cleaned(self):
         self.env.update(CODEX_HOME=str(self.home / "custom codex"), CLAUDE_CONFIG_DIR=str(self.home / "custom claude"))
         self.rollout()
@@ -165,6 +164,7 @@ class PollIntegrationTests(unittest.TestCase):
         self.assertEqual(self.keys(), {"codex:dotfiles-poll:101"})
         self.assertIn(201, json.loads(self.result_path.read_text())["uncertainPids"])
 
+    # Section: Failure preservation and observation uncertainty
     def test_one_failed_acquire_does_not_block_other_active_agents_or_remove_native(self):
         self.rollout()
         self.claude()
@@ -199,6 +199,7 @@ class PollIntegrationTests(unittest.TestCase):
                 self.invoke()
                 self.assertIn(NATIVE, self.keys())
 
+    # Section: Pause, dry-run, and serialization
     def test_pause_and_dry_run_leave_daemon_unchanged(self):
         self.claude()
         self.invoke("--dry-run")
@@ -217,6 +218,7 @@ class PollIntegrationTests(unittest.TestCase):
             self.assertEqual(self.state.get("calls", []), [])
             self.assertFalse(self.result_path.exists())
 
+    # Section: LaunchAgent installation and rollback
     def test_install_preserves_custom_homes_and_failed_upgrade_restores_old_job(self):
         self.env.update(CODEX_HOME=str(self.home / "custom codex"))
         self.invoke("--install")

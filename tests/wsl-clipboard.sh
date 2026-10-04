@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Check UTF-8 clipboard transport through a fake Windows host boundary.
 
 set -Eeuo pipefail
 

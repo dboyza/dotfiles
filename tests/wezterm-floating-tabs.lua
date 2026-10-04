@@ -7,6 +7,7 @@ wezterm.home_dir = home
 wezterm.on = function(name, callback) callbacks[name] = callback end
 wezterm.background_child_process = function() spawned = spawned + 1 end
 local source = (os.getenv('DOTFILES_TEST_REPO') or (wezterm.config_dir .. '/..')) .. '/wezterm/.wezterm.lua'
+-- Section: Shared protocol fixtures
 local protocol = dofile(source:match('^(.*)/') .. '/config/protocol.lua')
 local fixture_file = assert(io.open(source:match('^(.*)/') .. '/../tests/fixtures/floating-tabs.json'))
 local fixtures = wezterm.json_parse(fixture_file:read('*a'))
@@ -25,6 +26,7 @@ local expected_border = wezterm.target_triple:lower():find('windows') and '0px' 
 for _, field in ipairs({ 'border_left_width', 'border_right_width', 'border_top_height', 'border_bottom_height' }) do
   assert(config.window_frame[field] == expected_border, 'Windows must not draw a square border inside its native rounded frame')
 end
+-- Section: Per-window bridge and GUI stand-ins
 local root = home .. '/.local/state/dotfiles/wezterm-floating-tabs/'
 local function read(name)
   local file = assert(io.open(root .. name, 'r'))
@@ -37,6 +39,7 @@ local function write(name, data)
   file:write(type(data) == 'string' and data or wezterm.json_encode(data))
   file:close()
 end
+-- Section: Input and maintenance cadence
 assert(config.status_update_interval <= 20, 'helper input must be checked within a display frame')
 local original_now = wezterm.time.now
 local now = 100
@@ -106,6 +109,7 @@ assert(activated == nil and status_writes == previous_writes, 'idle input ticks 
 now = now - 10
 tick(window)
 assert(status_writes == previous_writes + 1, 'a wall-clock correction must not stall helper maintenance')
+-- Section: Rejected requests and acknowledgment fallback
 for _, request in ipairs({
   { title = snapshot.title, updated = os.time() - 10, tab_id = 12 },
   { title = snapshot.title, updated = os.time(), tab_id = 999 },
@@ -126,6 +130,7 @@ focused = false
 update(window)
 assert(overrides.enable_tab_bar == false, 'acknowledged inactive windows retain floating tabs')
 assert(spawned == 1, 'helper must launch only once per GUI process')
+-- Section: Title events and multiple windows
 -- Keyboard switching must publish from the title event without a status tick.
 focused = true
 update(window)
@@ -158,6 +163,7 @@ window_id = 99
 update(window)
 assert(activated == '{"ActivateTab":1}' and overrides.enable_tab_bar == false, 'background click must target its own window')
 assert(read('window-' .. second_key .. '.json').tabs[2].active)
+-- Section: New-tab action routing and replay prevention
 -- The plus button shares the portable shortcut's domain and working directory.
 local new_tab_action
 for _, binding in ipairs(config.keys) do

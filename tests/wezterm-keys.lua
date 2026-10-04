@@ -1,6 +1,8 @@
+-- Check portable and macOS key routing, including native private-pasteboard classification.
 local config_path = assert(arg[1], 'expected the WezTerm config path')
 local clipboard_probe
 
+-- Section: Portable mappings and platform aliases
 for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-pc-windows-msvc', 'x86_64-unknown-linux-gnu' }) do
   local probe_result = 'text\n'
   local probe_success = true
@@ -133,6 +135,8 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     assert(binding('LeftArrow', 'ALT') == nil and binding('LeftArrow', 'CMD') == nil)
   end
 end
+
+-- Section: Native clipboard format negotiation
 
 -- Exercise Apple's real format negotiation on a private pasteboard, leaving the
 -- user's general clipboard untouched. No screenshot data is read or generated.

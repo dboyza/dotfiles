@@ -13,6 +13,7 @@ using System.Threading;
 using System.Web.Script.Serialization;
 using System.Windows.Forms;
 
+// Section: Bridge payloads
 internal sealed class Tab {
     public long id { get; set; }
     public int index { get; set; }
@@ -24,6 +25,7 @@ internal sealed class Snapshot {
     public double updated { get; set; }
     public Tab[] tabs { get; set; }
 }
+// Section: Windows APIs and frame styling
 internal static class Native {
     internal delegate bool EnumCallback(IntPtr window, IntPtr data);
     [StructLayout(LayoutKind.Sequential)] internal struct Rect { public int left, top, right, bottom; }
@@ -64,6 +66,7 @@ internal static class Native {
         catch (System.ComponentModel.Win32Exception) { return false; }
     }
 }
+// Section: Validated state exchange
 internal static class Bridge {
     // Keep limits aligned with config/protocol.lua and the shared fixtures.
     internal const double FreshnessSeconds = 3;
@@ -120,6 +123,7 @@ internal static class Bridge {
         try { File.Delete(Path.Combine(Root, name)); } catch (IOException) { } catch (UnauthorizedAccessException) { }
     }
 }
+// Section: DPI-aware geometry
 internal sealed class Layout {
     internal Rectangle Bounds;
     internal readonly List<Rectangle> Tabs = new List<Rectangle>();
@@ -147,6 +151,7 @@ internal sealed class Layout {
         return result;
     }
 }
+// Section: Nonactivating rendering and click requests
 internal sealed class Overlay : Form {
     private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36), Muted = Color.FromArgb(57, 53, 82);
     private static readonly Color Subtle = Color.FromArgb(144, 140, 170), Surface = Color.FromArgb(35, 33, 54);
@@ -260,6 +265,7 @@ internal sealed class Overlay : Form {
         base.Dispose(disposing);
     }
 }
+// Section: Window discovery and snapshot reconciliation
 internal sealed class Companion : ApplicationContext {
     private readonly Dictionary<IntPtr, Overlay> overlays = new Dictionary<IntPtr, Overlay>();
     private readonly Dictionary<string, Snapshot> snapshots = new Dictionary<string, Snapshot>();
@@ -352,6 +358,7 @@ internal sealed class Companion : ApplicationContext {
         base.Dispose(disposing);
     }
 }
+// Section: Native entry point and contract checks
 internal static class Program {
     [STAThread] private static int Main(string[] args) {
         if (args.Length == 3 && args[0] == "--test") {

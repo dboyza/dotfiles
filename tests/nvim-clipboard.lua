@@ -1,3 +1,4 @@
+-- Check Neovim register transport and native Windows provider selection.
 local module = arg[1]
 dofile(module)
 assert(vim.g.clipboard.name == "Dotfiles clipboard", "Shared provider was not installed")

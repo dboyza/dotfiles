@@ -1,3 +1,4 @@
+-- Provide project search, diagnostics, and format toggles without embedded test/debug runtimes.
 return {
   {
     "folke/trouble.nvim",

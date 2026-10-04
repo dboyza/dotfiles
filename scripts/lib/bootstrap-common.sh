@@ -6,6 +6,7 @@
 # shellcheck source=scripts/lib/wezterm.sh
 source "$repo_dir/scripts/lib/wezterm.sh"
 
+# Section: Prerequisite discovery and installation
 load_nix() {
   if command -v nix >/dev/null 2>&1; then
     return
@@ -79,6 +80,7 @@ install_nix() {
   fi
 }
 
+# Section: One evaluated inventory for backup and verification
 load_managed_targets() {
   local attribute inventory target
   if [[ "$os" == Darwin ]]; then
@@ -130,6 +132,7 @@ backup_managed_files() {
   done < <(managed_targets)
 }
 
+# Section: Post-activation behavior checks
 verify_managed_links() {
   local link_target missing=0 target
 
@@ -206,6 +209,7 @@ verify_wezterm_configuration() {
   fi
 }
 
+# Section: Check-only builds and final verification
 build_configuration() {
   if [[ "$os" == Darwin ]]; then
     nix "${nix_options[@]}" build \

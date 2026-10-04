@@ -1,3 +1,4 @@
+# Render a compact prompt that coordinates with the terminal palette.
 palette = "rose_pine_moon"
 add_newline = false
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# Exercise shared provider selection and clipboard consumers without changing the real clipboard.
 
 set -Eeuo pipefail
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Section: Isolated clipboard transports
 test_dir=$(mktemp -d /tmp/dotfiles-clipboard.XXXXXX)
 cleanup() {
   if [[ -n ${tmux_command:-} ]]; then
@@ -23,6 +25,7 @@ export CLIPBOARD_TEST_FILE="$test_dir/clipboard" CLIPBOARD_TEST_LOG="$test_dir/l
 export CLIPBOARD_TEST_SYSTEM=Linux CLIPBOARD_TEST_KERNEL=generic
 export WSL_DISTRO_NAME='' WSL_INTEROP='' WAYLAND_DISPLAY='' DISPLAY='' TMUX=''
 
+# Section: Provider selection and UTF-8 preservation
 round_trip() {
   local expected=$1
   : >"$CLIPBOARD_TEST_LOG"

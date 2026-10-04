@@ -1,3 +1,4 @@
+// Check update publication, concurrent launches, offline fallback, and CLI forwarding.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -7,6 +8,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { ensureInstallation, latestRelease, installRelease } from '../scripts/dotfiles-tool.mjs';
 
+// Section: Installation and executable fixtures
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dotfiles-tools-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -26,6 +28,7 @@ async function install(_tool, release, directory) {
   return { executable: 'cli.mjs', node: true };
 }
 
+// Section: Publication and offline recovery
 test('first launch installs once; unchanged releases reuse the existing executable', async t => {
   const root = fixture(t);
   let installs = 0;
@@ -66,6 +69,7 @@ test('a broken executable is never published', async t => {
   assert.deepEqual(fs.readdirSync(path.join(root, 'opencode')), []);
 });
 
+// Section: Concurrency and bypass behavior
 test('simultaneous first launches serialize installation', async t => {
   const root = fixture(t);
   let installs = 0;
@@ -110,6 +114,7 @@ test('first installation fails clearly offline and rejects unknown tool names', 
   }), /offline/);
 });
 
+// Section: Launcher argument and environment preservation
 for (const tool of ['codex', 'claude', 'pi', 'opencode', 'herdr']) test(`${tool} launcher preserves arguments, working directory, environment and exit status`, async t => {
   const base = fixture(t);
   const root = path.join(base, 'dotfiles', 'tools');
@@ -124,6 +129,7 @@ for (const tool of ['codex', 'claude', 'pi', 'opencode', 'herdr']) test(`${tool}
   assert.deepEqual(JSON.parse(result.stdout), { args, cwd: fs.realpathSync(base), marker: 'preserved' });
 });
 
+// Section: Publisher manifests and checksums
 test('Claude native release selection covers macOS, Linux, WSL, musl, and Windows architectures', async t => {
   const checksum = 'a'.repeat(64);
   for (const platform of ['darwin', 'linux', 'win32']) {
@@ -185,6 +191,7 @@ test('native downloads are verified before writing an executable', async t => {
   if (process.platform !== 'win32') assert.ok(fs.statSync(path.join(root, installed.executable)).mode & 0o111);
 });
 
+// Section: CLI update-before-launch workflow
 test('Claude launch checks, installs, and starts the new release before accepting arguments', {
   skip: process.platform === 'win32' && 'Unix executable fixture; Windows selection is tested separately',
 }, async t => {

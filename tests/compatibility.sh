@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Validate available configuration runtimes and report missing platform prerequisites explicitly.
 
 set -Eeuo pipefail
 
@@ -19,6 +20,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Section: Shell syntax and formatting
 while IFS= read -r script; do
   bash -n "$repo_dir/$script"
 done < <(cd "$repo_dir" && rg --files -g '*.sh' -g 'scripts/dotfiles-clipboard' -g 'scripts/win-*')
@@ -41,6 +43,7 @@ if command -v shfmt >/dev/null 2>&1; then
   shfmt -d -i 2 -ci "${shell_scripts[@]}"
 fi
 
+# Section: Shell initialization and managed PATH
 if [[ $(uname -s) == Darwin ]]; then
   homebrew_binary=
   for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
@@ -90,6 +93,7 @@ if command -v zsh >/dev/null 2>&1; then
   fi
 fi
 
+# Section: JSON data and WezTerm configuration
 if command -v jq >/dev/null 2>&1; then
   while IFS= read -r json_file; do
     jq empty "$repo_dir/$json_file"
@@ -110,6 +114,7 @@ if [[ -n "$wezterm_command" ]]; then
   done
 fi
 
+# Section: Multiplexer configuration
 if command -v tmux >/dev/null 2>&1; then
   tmux_tmp=$(mktemp -d /tmp/dotfiles-tmux-test.XXXXXX)
   socket_name="dotfiles-test-$$"
@@ -143,6 +148,7 @@ if command -v tmux >/dev/null 2>&1; then
   tmux_tmp=
 fi
 
+# Section: Editor and key routing
 if command -v nvim >/dev/null 2>&1; then
   NVIM_LOG_FILE="$test_dir/wezterm-keys.log" \
     nvim --headless -u NONE -i NONE -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/wezterm-keys.lua" "$repo_dir/wezterm/.wezterm.lua"
@@ -169,6 +175,7 @@ if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoLogo -NoProfile -NonInteractive -File "$repo_dir/tests/windows.ps1"
 fi
 
+# Section: Explicit coverage gaps
 for dependency in shellcheck shfmt zsh jq tmux nvim herdr pwsh; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     printf 'UNAVAILABLE: compatibility requires %s for its associated checks\n' "$dependency"

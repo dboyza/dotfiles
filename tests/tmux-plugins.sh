@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Check restoration plugin startup and reloads in a disposable tmux server and home.
 
 set -Eeuo pipefail
 
@@ -16,6 +17,7 @@ for plugin in "${plugins[@]}"; do
   fi
 done
 
+# Section: Disposable server and home
 test_dir=$(mktemp -d /tmp/dotfiles-tmux-plugins.XXXXXX)
 test_home="$test_dir/home"
 socket_name=dotfiles-plugins
@@ -61,6 +63,7 @@ if test_tmux list-keys -T prefix | grep -F '/tpm/' >/dev/null; then
   printf 'tmux plugin test: TPM bindings remain\n' >&2
   exit 1
 fi
+# Section: Reload preservation
 # Keep user replacements of the former TPM shortcuts when reloading.
 test_tmux bind-key I display-message 'custom install shortcut'
 test_tmux bind-key U display-message 'custom update shortcut'

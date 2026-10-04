@@ -1,13 +1,7 @@
-// Pi Calm - persisted on/off preference.
-//
+// Pi Calm - atomically persist the on/off preference in Pi's runtime agent directory.
+// The state file is never tracked or deployed; missing or unreadable state means off.
+
 // Copyright (c) 2026 Kun Chen. MIT License - see the LICENSE file in this directory.
-//
-// The preference lives in a plain local state file named "calm" directly under
-// Pi's agent directory (~/.pi/agent by default, PI_CODING_AGENT_DIR when set).
-// That directory is Pi runtime territory: this repository never tracks the
-// state file and Home Manager never manages it. The file contains exactly
-// "on\n" or "off\n"; anything else, including a missing or unreadable file,
-// means off.
 
 import { randomUUID } from "node:crypto";
 import {
@@ -23,12 +17,9 @@ import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
 
 export const CALM_PREFERENCE_FILE_NAME = "calm";
 
-/**
- * Resolve Pi's agent directory through Pi's exported getAgentDir(), which
- * honors PI_CODING_AGENT_DIR and tilde expansion. If a future Pi stops
- * exporting it, fall back to the documented environment variable and default
- * path instead of failing.
- */
+// Section: Runtime state location
+
+// Prefer Pi's path resolution, falling back to its environment variable and default.
 export function calmAgentDir(): string {
   if (typeof PiCodingAgent.getAgentDir === "function") return PiCodingAgent.getAgentDir();
   const envDir = process.env.PI_CODING_AGENT_DIR?.trim();
@@ -40,7 +31,9 @@ export function calmPreferencePath(): string {
   return join(calmAgentDir(), CALM_PREFERENCE_FILE_NAME);
 }
 
-/** Load the persisted preference. Calm is off by default and on any read error. */
+// Section: Tolerant reads and atomic preference writes
+
+// Calm is off by default and on any read error.
 export function loadCalmPreference(): boolean {
   try {
     return readFileSync(calmPreferencePath(), "utf8").trim() === "on";
@@ -49,12 +42,7 @@ export function loadCalmPreference(): boolean {
   }
 }
 
-/**
- * Persist the preference atomically (unique temp file plus rename) so a
- * crashed write never leaves a truncated state file. A failure throws a clear
- * error naming the path so /calm can surface it instead of silently applying
- * a toggle that would not survive a restart.
- */
+// Publish by atomic rename; report write failures so a toggle cannot silently fail to persist.
 export function persistCalmPreference(active: boolean): void {
   const path = calmPreferencePath();
   try {

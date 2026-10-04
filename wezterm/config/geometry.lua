@@ -1,8 +1,10 @@
+-- Center startup windows and toggle bounded sizes without changing native fullscreen.
 return function(wezterm, platform)
   local is_macos = platform.is_macos
   local mux = wezterm.mux
   local wsl_spawn_command = platform.spawn_command
   -- Leave desktop margins on macOS; retain bounded geometry elsewhere.
+  -- Section: Bounded sizes and centering
   local function launch_size(screen)
     if is_macos then
       return math.max(1, math.floor(screen.width * 0.94)), math.max(1, math.floor(screen.height * 0.88))
@@ -19,6 +21,7 @@ return function(wezterm, platform)
     )
   end
 
+  -- Section: Interactive size toggle
   wezterm.on('toggle-window-size', function(window)
     local dimensions = window:get_dimensions()
     -- Native fullscreen owns geometry until the user leaves it.
@@ -39,6 +42,7 @@ return function(wezterm, platform)
       center_window(window, screen, small_width, small_height)
     end
   end)
+  -- Section: Initial window placement
   wezterm.on('gui-startup', function(cmd)
     local spawn_cmd = cmd
     if not spawn_cmd then

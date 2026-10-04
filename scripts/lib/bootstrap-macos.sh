@@ -3,6 +3,7 @@
 # shellcheck disable=SC2154
 # macOS bootstrap functions. This file is sourced by bootstrap.sh.
 
+# Section: Homebrew discovery and prerequisites
 find_homebrew() {
   local candidate
 
@@ -45,6 +46,7 @@ preflight_platform_installation() {
   fi
 }
 
+# Section: Interactive prerequisite installation
 install_homebrew() {
   local homebrew_binary installer
 
@@ -65,6 +67,7 @@ install_homebrew() {
   eval "$("$homebrew_binary" shellenv)"
 }
 
+# Section: Preserve conflicting system shell files
 backup_darwin_shell_files() {
   local backup counter link_target name stamp target
   local etc_dir=${BOOTSTRAP_DARWIN_ETC_DIR:-/etc}
@@ -97,6 +100,7 @@ backup_darwin_shell_files() {
   done
 }
 
+# Section: Host shortcut verification
 verify_platform() {
   local enabled plist plistbuddy shortcut
   plist="$HOME/Library/Preferences/com.apple.symbolichotkeys.plist"
@@ -110,6 +114,7 @@ verify_platform() {
   done
 }
 
+# Section: nix-darwin activation
 activate_platform() {
   install_homebrew
   backup_darwin_shell_files

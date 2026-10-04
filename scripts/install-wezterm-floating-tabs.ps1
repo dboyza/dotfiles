@@ -1,3 +1,4 @@
+# Build, validate, and install the native Windows tab companion with private bridge permissions.
 param(
     [string] $Source = (Join-Path (Split-Path -Parent $PSScriptRoot) "wezterm/floating-tabs/windows.cs"),
     [switch] $Check
@@ -6,6 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+# Section: Private bridge ACL
 function Protect-FloatingTabsState {
     param([Parameter(Mandatory = $true)][string] $Directory)
     # Persist only the DACL. Set-Acl can also try to write audit information,
@@ -31,6 +33,7 @@ if (-not (Test-Path -LiteralPath $compiler)) {
     $compiler = Join-Path $env:WINDIR "Microsoft.NET/Framework/v4.0.30319/csc.exe"
 }
 if (-not (Test-Path -LiteralPath $compiler)) { throw "The Windows .NET Framework C# compiler is unavailable." }
+# Section: Build identity and compiler checks
 $sourcePath = (Resolve-Path -LiteralPath $Source).ProviderPath
 $installRoot = Join-Path $HOME ".local/share/dotfiles/wezterm-floating-tabs"
 $stateRoot = Join-Path $HOME ".local/state/dotfiles/wezterm-floating-tabs"
@@ -45,6 +48,7 @@ try {
 $build = Join-Path ([System.IO.Path]::GetTempPath()) "wezterm-floating-tabs-$([Guid]::NewGuid().ToString('N'))"
 [void] [System.IO.Directory]::CreateDirectory($build)
 try {
+    # Section: Compile and exercise native behavior
     $executable = Join-Path $build "wezterm-floating-tabs.exe"
     & $compiler /nologo /target:winexe /platform:anycpu /optimize+ `
         /reference:System.Windows.Forms.dll /reference:System.Drawing.dll /reference:System.Web.Extensions.dll `
@@ -60,6 +64,7 @@ try {
     Write-Host ([System.IO.File]::ReadAllText($result)).Trim()
     if ($Check) { return }
 
+    # Section: Install the verified companion
     [void] [System.IO.Directory]::CreateDirectory($installRoot)
     [void] [System.IO.Directory]::CreateDirectory($stateRoot)
     Protect-FloatingTabsState -Directory $stateRoot

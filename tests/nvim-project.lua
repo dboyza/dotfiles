@@ -1,3 +1,4 @@
+-- Check project-root selection and session-scoped formatting toggles.
 local project = require("config.project")
 local temp = vim.fn.tempname()
 vim.fn.mkdir(temp .. "/project one/.git", "p")

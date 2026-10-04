@@ -1,4 +1,6 @@
+-- Provide project Git status and buffer-local hunk actions.
 return {
+  -- Section: Project status
   {
     "NeogitOrg/neogit",
     cmd = "Neogit",
@@ -17,6 +19,7 @@ return {
       integrations = { telescope = true },
     },
   },
+  -- Section: Buffer hunk actions
   {
     "lewis6991/gitsigns.nvim",
     event = { "BufReadPre", "BufNewFile" },

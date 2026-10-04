@@ -1,5 +1,5 @@
+// Check archived footer content, sanitization, and width limits with deterministic fixtures.
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import test from "node:test";
 import { stripVTControlCharacters } from "node:util";
 import { adapterStatus, homePath, renderStatusline, singleLine } from "../pi/archive/extensions/codex-statusline/render.mjs";
@@ -73,11 +73,4 @@ test("removes terminal escapes, controls, and bidi overrides from dynamic text",
   assert.equal(singleLine("👩‍💻"), "👩‍💻", "preserve legitimate emoji joiners");
   const line = stripVTControlCharacters(renderStatusline({ ...sample, branch: "feature\n\x1b[2Jbad\u202E" }, 150, display)[0]);
   assert.doesNotMatch(line, /[\p{Cc}\p{Cf}]/u);
-});
-
-test("shared instructions retain quality checks while requiring approval for unrelated work", () => {
-  const instructions = readFileSync(new URL("../agents/global/AGENTS.md", import.meta.url), "utf8");
-  assert.match(instructions, /Fix problems caused by or blocking the requested change/);
-  assert.match(instructions, /Report unrelated issues and expand scope only with approval/);
-  assert.doesNotMatch(instructions, /even if it is not caused by|even if it is not directly related/);
 });

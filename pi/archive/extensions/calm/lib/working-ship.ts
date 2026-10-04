@@ -1,35 +1,9 @@
-// Pi Calm - animated working presentation.
-//
+// Pi Calm - deterministic boat animation with session-owned freeze/resume state.
+// See ../README.md for cadence, resize, and widget lifetime details.
+
 // Adapted from the Firstmate project's Calm implementation.
 // Copyright (c) 2026 Kun Chen. MIT License - see the LICENSE file in this directory.
-//
-// Calm replaces Pi's stock working row with a tiny two-row ASCII boat while one
-// logical agent run is active. This module owns only the sprite geometry, the
-// bounce track, the two animation cadences, the session-scoped freeze/resume
-// state, and the temporary TUI widget; ../index.ts owns when the presentation
-// is installed and removed, and stays the sole caller of setWorkingVisible().
-//
-// Cadence: one scheduler drives two logically independent clocks. Every tick
-// advances the water phase, and only every CALM_WORKING_SHIP_TICKS_PER_MOVE-th
-// tick moves the boat, so the water visibly ripples several times between boat
-// steps and the boat itself reads as calm. Both clocks stop together when the
-// widget is disposed. Ticks, not wall-clock timestamps, drive every state
-// change, so tests can seek time exactly.
-//
-// Continuity: one extension-owned animation instance survives hide/show within
-// the same Pi process and Calm extension lifetime. Disposing the widget freezes
-// column, direction, water phase, and tick cadence without advancing them for
-// hidden wall time. The next working period resumes from that exact logical
-// state. A fresh session or new extension lifetime calls reset() and starts at
-// the normal initial position. State is never a module-level or process-global
-// singleton.
-//
-// Verified against Pi 0.82.0, which exposes ExtensionUIContext.setWidget() with
-// a component factory, per-widget dispose(), and TUI.requestRender(). Pi renders
-// a widget through Component.render(width), so this module recomputes its track
-// from that width on every frame instead of caching a terminal size that a
-// resize would invalidate. A resize while the boat is hidden is applied on the
-// first resumed frame through the same clamp path.
+
 import type { Component, TUI } from "@earendil-works/pi-tui";
 
 // The hull is symmetric and replaces waves on its row rather than adding a third row.
@@ -66,10 +40,7 @@ export type CalmWorkingShipAnimation = {
   restoreLastRendered(): void;
   /** Restore the normal initial column, direction, water phase, and cadence. */
   reset(): void;
-  /**
-   * Clamp the frozen column and direction to `width` without advancing time.
-   * Used when a terminal resize lands while the working presentation is hidden.
-   */
+  // Apply resizes while hidden without advancing the frozen animation.
   clampToWidth(width: number): void;
   /** Current hull column, exposed for deterministic motion assertions. */
   position(): number;
@@ -78,6 +49,8 @@ export type CalmWorkingShipAnimation = {
   /** Current water phase, exposed for deterministic ripple assertions. */
   waterPhase(): number;
 };
+
+// Section: Geometry and deterministic animation
 
 /** Longest hull start column that still fits the sprite in `width` usable cells. */
 function trackSpan(width: number): number {
@@ -212,14 +185,10 @@ export function createCalmWorkingShipAnimation(): CalmWorkingShipAnimation {
   };
 }
 
-/**
- * Build the temporary Calm working widget bound to one caller-owned animation.
- * Pi disposes the previous component before installing a replacement under the same
- * key and when it clears extension widgets, so the single scheduler driving both
- * cadences cannot outlive the widget or duplicate. Disposing freezes the shared
- * animation in place; the next widget bound to the same animation resumes without
- * applying hidden wall time.
- */
+// Section: Disposable TUI widget
+
+// Pi disposes replacements under the same key, keeping one scheduler per widget.
+// Disposal freezes caller-owned state; the next widget resumes without hidden elapsed time.
 export function createCalmWorkingShipWidget(
   tui: TUI,
   animation: CalmWorkingShipAnimation = createCalmWorkingShipAnimation(),

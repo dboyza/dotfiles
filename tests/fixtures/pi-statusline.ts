@@ -8,6 +8,7 @@ export default function (pi: ExtensionAPI) {
   pi.registerCommand("footer-fixture", {
     description: "Set synthetic footer status and check real terminal-cell widths",
     handler: async (args, ctx) => {
+      // Section: Structured tool transcript
       if (args === "structured") {
         const active = pi.getActiveTools();
         for (const name of ["exec_command", "write_stdin", "apply_patch", "view_image"]) assert.ok(active.includes(name), name);
@@ -29,6 +30,7 @@ export default function (pi: ExtensionAPI) {
         });
         return;
       }
+      // Section: Thinking and provider transitions
       if (args === "medium") pi.setThinkingLevel("medium");
       if (args === "other") {
         const model = ctx.modelRegistry.find("offline", "fixture-model");
@@ -38,6 +40,7 @@ export default function (pi: ExtensionAPI) {
         ctx.ui.setStatus("codex-cache", undefined);
         return;
       }
+      // Section: Unicode display-cell width limits
       for (let width = 0; width <= 180; width++) {
         const lines = renderStatusline({
           model: "gpt-6-astra", thinking: "high", cwd: "/home/test/日本語/👩‍💻/café", home: "/home/test",

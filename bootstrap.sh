@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# Public setup entry point: detect the host, preflight, then check or activate.
 
 set -Eeuo pipefail
 
+# Section: Arguments
 usage() {
   cat <<'EOF'
 Usage: ./bootstrap.sh [--check | --update]
@@ -26,6 +28,7 @@ case "${1:-}" in
     ;;
 esac
 
+# Section: Checkout and host detection
 unset CDPATH
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 if [[ ! -f "$repo_dir/flake.nix" ]]; then
@@ -64,6 +67,7 @@ case "$os" in
     ;;
 esac
 
+# Section: Shared environment and platform library
 export DOTFILES_USER=${USER:-$(id -un)}
 export DOTFILES_HOME=$HOME
 export DOTFILES_REPO=$repo_dir
@@ -77,6 +81,7 @@ source "$repo_dir/scripts/lib/bootstrap-common.sh"
 # shellcheck source=/dev/null
 source "$repo_dir/scripts/lib/bootstrap-$platform_library.sh"
 
+# Section: Prerequisite checks
 if $check_only; then
   require_existing_nix
 else
@@ -84,6 +89,7 @@ else
   install_nix
 fi
 
+# Section: Pinned build or update and activation
 nix_options=(--extra-experimental-features "nix-command flakes")
 flake_ref="path:$repo_dir"
 

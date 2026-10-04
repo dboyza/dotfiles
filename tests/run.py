@@ -14,6 +14,7 @@ def main():
     parser.add_argument('--archive', action='store_true', help='Include inactive Pi extension checks')
     parser.add_argument('--strict', action='store_true', help='Fail if any prerequisite is unavailable')
     args = parser.parse_args()
+    # Section: Suite selection
     suites = [
         ('macOS app installer', ['python3', '-B', 'tests/macos-apps.py']),
         ('activity decisions', ['python3', '-B', 'tests/adrafinil-agent-poll.py']),
@@ -36,6 +37,7 @@ def main():
         suites.append(('archived Pi extensions', ['node', '--test', 'tests/pi-statusline.test.mjs', 'tests/pi-scroll.test.mjs']))
     else:
         results.append(('archived Pi extensions (opt in with --archive)', 'SKIPPED'))
+    # Section: Execution and explicit coverage outcomes
     for name, command in suites:
         print(f'\nRunning {name}', flush=True)
         if not shutil.which(command[0]):
@@ -48,6 +50,7 @@ def main():
             if status == 'PASSED' and any(line.startswith('UNAVAILABLE:') for line in result.stdout.splitlines()):
                 status = 'UNAVAILABLE'
         results.append((name, status))
+    # Section: Summary and process verdict
     print('\nLocal verification results')
     for name, status in results:
         print(f'{status:11} {name}')

@@ -1,3 +1,4 @@
+# Declare Linux packages and the canonical inventory of managed home files.
 {
   config,
   repoDirectory,
@@ -11,6 +12,7 @@
   ...
 }:
 let
+  # Section: Shared inventories and live-link helpers
   managedTools = builtins.attrNames (
     builtins.fromJSON (builtins.readFile ../scripts/managed-tools.json)
   );
@@ -22,6 +24,7 @@ let
 
   live = relative: managed (config.lib.file.mkOutOfStoreSymlink "${repoDirectory}/${relative}");
 
+  # Section: Package compatibility overrides
   pre-commit-without-dotnet-tests = pkgs.pre-commit.overridePythonAttrs (old: {
     nativeCheckInputs = builtins.filter (input: input != pkgs.dotnet-sdk) old.nativeCheckInputs;
     preCheck = lib.concatStringsSep "\n" (
@@ -32,6 +35,7 @@ let
   });
 in
 {
+  # Section: User identity, PATH, and Linux packages
   home = {
     inherit homeDirectory username;
     stateVersion = "24.11";
@@ -96,6 +100,7 @@ in
 
   programs.home-manager.enable = true;
 
+  # Section: Canonical managed-file inventory
   home.file = {
     ".zshenv" = live "zsh/.zshenv";
     ".zshrc" = live "zsh/.zshrc";

@@ -1,6 +1,8 @@
+# Run native Windows companion, ACL, and real WezTerm bridge checks in temporary storage.
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 $repository = Split-Path -Parent $PSScriptRoot
+# Section: Native build and shared fixtures
 & (Join-Path $repository "scripts/install-wezterm-floating-tabs.ps1") -Check
 
 $wezterm = Get-Command wezterm.exe -ErrorAction SilentlyContinue
@@ -9,6 +11,7 @@ if (-not (Test-Path -LiteralPath $command)) { throw "Install Windows WezTerm to 
 $fixture = Join-Path ([System.IO.Path]::GetTempPath()) "floating-tabs-$([Guid]::NewGuid().ToString('N'))"
 $previousHome = $env:DOTFILES_FLOATING_TEST_HOME
 try {
+    # Section: Repeatable private directory permissions
     # Regression: applying the private ACL repeatedly must not require elevation.
     $installerAst = [System.Management.Automation.Language.Parser]::ParseFile(
         (Join-Path $repository "scripts/install-wezterm-floating-tabs.ps1"), [ref] $null, [ref] $null)
@@ -32,6 +35,7 @@ try {
         }
     }
     Write-Host "Repeated private state ACL configuration passed"
+    # Section: Real WezTerm bridge and verdict
     $bin = Join-Path $fixture ".local/share/dotfiles/wezterm-floating-tabs"
     [void] [System.IO.Directory]::CreateDirectory($bin)
     [void] [System.IO.Directory]::CreateDirectory((Join-Path $fixture ".local/state/dotfiles/wezterm-floating-tabs"))

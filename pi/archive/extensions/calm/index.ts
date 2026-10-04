@@ -1,24 +1,9 @@
-// Pi Calm - a standalone conversation-presentation toggle for Pi.
-//
+// Pi Calm - an archived toggle for conversation presentation.
+// Change rendering only; execution, stored messages, and exports remain complete.
+
 // Adapted from the Firstmate project's Calm implementation.
 // Copyright (c) 2026 Kun Chen. MIT License - see the LICENSE file in this directory.
-//
-// Verified against Pi 0.82.0, which exports its shared tool-row component,
-// session_start replacement reasons, agent_start
-// and agent_settled, ExtensionUIContext.setToolsExpanded(), setWorkingVisible(),
-// setWidget() with a disposable component factory, and setHiddenThinkingLabel().
-// ./lib/working-ship.ts owns the animated working presentation this file
-// installs. ./lib/preference.ts owns the local state file. The collapsed-thinking
-// presentation adapter probes the exact public API seam it patches and degrades
-// independently with one clear diagnostic (see installCalmPresentationAdapter
-// below) if a future Pi removes it. The shared tool-row adapter is limited to
-// Pi's seven known built-in names, so generic custom tools and unsupported
-// transcript classes deliberately stay visible.
-//
-// Calm changes presentation only. It never intercepts, transforms, reroutes,
-// removes, or reorders semantic input, tool execution, model context, session
-// storage, or export data; /export and /share render the complete stock
-// transcript.
+
 import { type ExtensionAPI, type ExtensionUIContext } from "@earendil-works/pi-coding-agent";
 import { getKeybindings } from "@earendil-works/pi-tui";
 import { installCalmBuiltInToolShellLayout } from "./lib/built-in-tool-shells.ts";
@@ -35,9 +20,9 @@ import {
   createCalmWorkingShipWidget,
 } from "./lib/working-ship.ts";
 
-// Each presentation adapter probes the exact Pi API it patches. If a future Pi
-// removes that API, only the affected adapter degrades; the rest of Calm keeps
-// working.
+// Section: Guarded presentation adapters
+
+// Skip only the adapter whose Pi API is unavailable; other presentation features still work.
 function installCalmPresentationAdapter(name: string, install: () => void): void {
   try {
     install();
@@ -47,25 +32,19 @@ function installCalmPresentationAdapter(name: string, install: () => void): void
   }
 }
 
+// Section: User toggle and session lifecycle
 export default function (pi: ExtensionAPI) {
   installCalmPresentationAdapter("collapsed-thinking", installCalmCollapsedThinkingLayout);
   installCalmPresentationAdapter("built-in-tool-shells", installCalmBuiltInToolShellLayout);
 
   let removeTerminalInputHandler: (() => void) | undefined;
-  // One logical agent run, tracked from agent_start through agent_settled rather
-  // than from turns or tool calls, so the boat never flickers between tool calls,
-  // automatic continuations, retries, or compaction that stay inside the same run.
+  // Track the full agent run so tool calls, retries, and compaction do not flicker the boat.
   let agentRunActive = false;
   let workingShipShown = false;
-  // One animation instance per extension lifetime. Hiding the working widget
-  // freezes this state; the next working period resumes it. session_start resets
-  // it so a fresh Pi session starts at the normal initial position. Never
-  // module-global.
+  // Reuse frozen animation state within this extension lifetime; session_start resets it.
   const workingShipAnimation = createCalmWorkingShipAnimation();
 
-  // Single owner of Calm's working-row presentation choice. The widget is only
-  // created or removed on a real transition, so repeated starts cannot duplicate
-  // its timer.
+  // Create or remove the widget only on transitions, keeping exactly one animation timer.
   const applyWorkingPresentation = (
     ui: ExtensionUIContext,
     forceStockVisibility = false,
@@ -107,9 +86,8 @@ export default function (pi: ExtensionAPI) {
         return;
       }
 
-      // /export and /share render through the same tool renderers the transcript
-      // uses, so force stock output for the duration of the command. Session and
-      // export data are never filtered; this only concerns the visual components.
+      // Export/share reuse transcript renderers, so temporarily restore stock presentation.
+      // Stored messages and export data remain unfiltered.
       setCalmStockExportRendering(true);
       setTimeout(() => {
         setCalmStockExportRendering(false);

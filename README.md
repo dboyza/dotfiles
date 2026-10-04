@@ -127,6 +127,8 @@ Run the complete local test suite with:
 
 ## Repository Layout
 
+Use the [code map and editing guide](docs/code-map.md) to locate behavior, understand data-file ownership, and choose relevant checks.
+
 | Path | Purpose |
 | --- | --- |
 | `bootstrap.sh` | Selects the platform and coordinates preflight, update, activation, and verification. |

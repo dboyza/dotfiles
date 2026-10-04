@@ -28,6 +28,7 @@ Listed by owning process:
 '''
 
 
+# Section: Activity and fallback fixtures
 class PollTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
@@ -38,6 +39,7 @@ class PollTests(unittest.TestCase):
         data = {"pid": pid, "sessionId": f"session-{pid}", "status": status, **extra}
         (self.sessions / f"{pid}.json").write_text(json.dumps(data))
 
+    # Section: Process identity and activity evidence
     def test_process_identity_excludes_other_users_helpers_and_prompt_text(self):
         snapshot = poller.processes('''
 101 501 /a/version/bin/codex
@@ -81,6 +83,7 @@ class PollTests(unittest.TestCase):
             poller.reconcile("adrafinil", {}, status)
             command.assert_called_once_with(["adrafinil", "release", "claude-code:dotfiles-poll:201"])
 
+    # Section: Fallback ownership and failure recovery
     def test_empty_registry_acquires_then_idle_releases_only_our_hold(self):
         key = "codex:dotfiles-poll:101"
         status = {"paused": False, "isBlocking": False, "assertions": []}
@@ -121,6 +124,7 @@ class PollTests(unittest.TestCase):
         with patch.object(poller.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "acquire refused: paused")), self.assertRaisesRegex(RuntimeError, "acquire refused"):
             poller.run(["adrafinil", "acquire"])
 
+    # Section: Native coverage and handoff races
     def test_native_hook_already_covers_busy_agent_without_a_second_hold(self):
         status = {"paused": False, "assertions": [
             {"key": "claude-code:session-201", "pid": 201, "tool": "claude-code", "origin": "hook"},
@@ -194,6 +198,7 @@ class PollTests(unittest.TestCase):
             self.assertEqual(poller.main(), 0)
             command.assert_not_called()
 
+    # Section: Socket and snapshot validation
     def test_socket_coverage_requires_exact_endpoint_and_known_codex_process(self):
         sockets = """p101
 f35
@@ -255,6 +260,7 @@ n->0xb
             command.assert_called_once_with(["adrafinil", "release", key])
 
 
+# Section: Native session lifecycle and guarded cleanup
 class StaleHoldTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()

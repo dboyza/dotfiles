@@ -1,3 +1,4 @@
+// Exercise the archived footer with real Pi rendering and isolated adapter state.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -6,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
+// Section: Isolated CLI and adapter setup
 const cli = process.argv[2];
 if (platform() !== "darwin" || !cli) {
   console.log("Pi statusline TUI smoke skipped: macOS and an explicit Pi CLI path are required.");
@@ -25,6 +27,7 @@ const tmux = (...args) => run("tmux", ["-L", socket, ...args]);
 const json = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`);
 const quote = (text) => `'${text.replaceAll("'", "'\\''")}'`;
 const pane = () => tmux("capture-pane", "-p", "-t", "footer");
+// Section: Terminal observation helpers
 async function waitFor(pattern) {
   for (let attempt = 0; attempt < 100; attempt++) {
     const text = pane();
@@ -39,6 +42,7 @@ async function command(text) {
   await delay(250);
 }
 
+// Section: Footer lifecycle and rendering scenarios
 try {
   mkdirSync(agent);
   mkdirSync(workspace);

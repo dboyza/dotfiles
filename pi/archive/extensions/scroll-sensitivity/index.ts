@@ -1,3 +1,4 @@
+// Archived opt-in wheel-step adjustment with guarded Pi renderer access.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { createScrollStep } from "./step.mjs";
 

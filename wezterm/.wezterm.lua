@@ -1,5 +1,8 @@
+-- Locate the checkout and load each responsibility from config/, watching it for edits.
 local wezterm = require 'wezterm'
 local config = wezterm.config_builder()
+
+-- Section: Checkout discovery
 
 -- Loaders and tests pass the checkout file explicitly. Unix home-file symlinks
 -- resolve here so modules stay beside their source, including paths with spaces.
@@ -31,6 +34,7 @@ else
   directory = assert(source:match('^(.*)[/\\]'))
 end
 
+-- Section: Watched module composition
 local function load(name)
   local path = directory .. '/config/' .. name .. '.lua'
   if wezterm.add_to_config_reload_watch_list then wezterm.add_to_config_reload_watch_list(path) end

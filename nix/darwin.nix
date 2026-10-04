@@ -1,3 +1,4 @@
+# Configure macOS system preferences, activation hooks, and package ownership.
 {
   allowUnfreePredicate,
   config,
@@ -9,6 +10,7 @@
   ...
 }:
 let
+  # Section: Install-only app activation
   appInstaller = pkgs.writeShellScript "install-missing-macos-apps" ''
     brew_binary=$(command -v brew || true)
     for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
@@ -30,6 +32,7 @@ in
 {
   nixpkgs.config = { inherit allowUnfreePredicate; };
 
+  # Section: Nix daemon settings
   nix = {
     enable = true;
     channel.enable = false;
@@ -39,6 +42,7 @@ in
     ];
   };
 
+  # Section: macOS preferences and activation
   system = {
     # Explicit macOS preferences; leave unspecified settings at their existing values.
     defaults = {
@@ -178,6 +182,7 @@ in
       /bin/bash ${pkgs.lib.escapeShellArg "${repoDirectory}/scripts/install-wezterm-floating-tabs.sh"}
   '';
 
+  # Section: Package owners and home configuration
   homebrew = (import ./homebrew.nix) // {
     enable = true;
     onActivation = {

@@ -1,3 +1,4 @@
+-- Exercise editor mappings and nested pane routing with isolated external boundaries.
 -- Tests must not read or change the user clipboard.
 vim.opt.clipboard = ""
 
@@ -82,6 +83,7 @@ if vim.fn.has("macunix") == 1 then
 end
 
 -- Exercise the same word motions with portable Control and direct Option events.
+-- Section: Native input behavior
 local function feed(sequence)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(sequence, true, false, true), "xt", false)
 end
@@ -117,6 +119,8 @@ end
 assert(vim.fn.maparg("<C-j>", "n") == vim.fn.maparg("<C-Down>", "n"))
 assert(vim.fn.maparg("<C-k>", "n") == vim.fn.maparg("<C-Up>", "n"))
 assert(vim.fn.maparg("<C-k>", "i") == "", "insert-mode signature help must remain available")
+
+-- Section: Nested pane routing
 
 -- Mock only the external boundary: real window focus takes precedence over the
 -- nearest enclosing Herdr pane, which in turn takes precedence over outer tmux.

@@ -3,6 +3,7 @@
 # shellcheck disable=SC2154
 # Linux and WSL bootstrap functions. This file is sourced by bootstrap.sh.
 
+# Section: Host prerequisites
 preflight_platform_installation() {
   if [[ "$DOTFILES_WSL" != 1 ]]; then
     printf '  Platform integration: native Linux\n'
@@ -16,6 +17,7 @@ preflight_platform_installation() {
   printf '  Platform integration: Windows interoperability available\n'
 }
 
+# Section: Windows-host integration for WSL
 install_windows_fonts() {
   [[ "$DOTFILES_WSL" == 1 ]] || return 0
 
@@ -41,6 +43,7 @@ install_windows_wezterm() {
     -File "$script_source" -Source "$config_source"
 }
 
+# Section: Linux login shell
 configure_linux_shell() {
   command -v apt-get >/dev/null 2>&1 || return 0
 
@@ -60,6 +63,7 @@ verify_platform() {
   return 0
 }
 
+# Section: Home Manager activation
 activate_platform() {
   local generation
   generation=$(nix "${nix_options[@]}" build \

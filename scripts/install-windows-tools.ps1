@@ -1,3 +1,4 @@
+# Install Windows managed-tool launchers while preserving conflicting commands and PATH entries.
 param(
     [string] $Repository = (Split-Path -Parent $PSScriptRoot)
 )
@@ -9,6 +10,7 @@ if ($env:OS -ne "Windows_NT") {
     throw "Run this installer in native Windows PowerShell, not WSL."
 }
 
+# Section: Runtime prerequisites and checkout discovery
 $node = Get-Command node.exe -CommandType Application -ErrorAction SilentlyContinue
 if (-not $node) {
     throw "Install Node.js LTS with 'winget install --exact --id OpenJS.NodeJS.LTS', reopen PowerShell, then rerun this script."
@@ -32,6 +34,7 @@ $bin = Join-Path $HOME ".local/bin"
 $encoding = [System.Text.UTF8Encoding]::new($false)
 $marker = "Managed by dotfiles tool launchers."
 
+# Section: Idempotent writes and conflict backups
 function Write-ManagedLauncher {
     param([string] $Path, [string] $Content)
 
@@ -65,6 +68,7 @@ function Backup-ConflictingToolLaunchers {
 }
 
 # A local JS shim preserves Unicode and UNC checkout paths without cmd.exe interpolation.
+# Section: Shared inventory and launcher publication
 $sourceUrl = ([System.Uri]::new($source)).AbsoluteUri | ConvertTo-Json -Compress
 $shim = "// $marker`nimport { main } from $sourceUrl;`nawait main(process.argv[2], process.argv.slice(3));`n"
 Write-ManagedLauncher -Path (Join-Path $bin "dotfiles-tool.mjs") -Content $shim
@@ -78,6 +82,7 @@ foreach ($tool in $inventory.PSObject.Properties.Name) {
 }
 
 # Preserve expandable variables in the user's existing PATH and its registry value kind.
+# Section: User PATH integration
 $environmentKey = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey("Environment")
 try {
     $pathValue = $environmentKey.GetValue("Path", "", [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)

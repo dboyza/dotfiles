@@ -1,4 +1,5 @@
-# PATH
+# Configure interactive shell paths, completion, key routing, plugins, and prompt.
+# Section: PATH
 path_prepend() {
   [ -d "$1" ] || return
   case ":$PATH:" in
@@ -47,13 +48,13 @@ esac
 path=("$HOME/.local/bin" "${(@)path:#$HOME/.local/bin}")
 export PATH
 
-# History
+# Section: History
 HISTFILE="$HOME/.zsh_history"
 HISTSIZE=50000
 SAVEHIST=50000
 setopt append_history share_history hist_ignore_dups hist_ignore_space hist_reduce_blanks
 
-# Completion
+# Section: Completion
 mkdir -p "$HOME/.cache/zsh"
 zstyle ':completion:*' use-cache on
 zstyle ':completion:*' cache-path "$HOME/.cache/zsh/zcompcache"
@@ -71,7 +72,7 @@ autoload -Uz compinit
 compinit -d "$HOME/.cache/zsh/zcompdump"
 zstyle ':completion:*' menu select
 
-# Keys
+# Section: Keys
 bindkey -e
 export KEYTIMEOUT=1
 bindkey $'\e[1;5D' backward-word
@@ -140,7 +141,7 @@ bindkey $'\e[99;6u' copy-selected-region
 # Aliases shared from Bash, if compatible.
 [ -f "$HOME/.bash_aliases" ] && source "$HOME/.bash_aliases"
 
-# ls aliases
+# Section: ls aliases
 case $(uname -s 2>/dev/null) in
   Darwin*) alias ls='ls -mG' ;;
   *) alias ls='ls -m --color=auto' ;;
@@ -150,7 +151,7 @@ alias la="ls -la"
 alias l="ls -CF"
 alias k="kubectl"
 
-# tmux aliases
+# Section: tmux aliases
 alias tns="tmux new-session -s"
 alias ta="tmux attach"
 alias tat="tmux attach -t"
@@ -164,7 +165,7 @@ for plugin in zsh-autosuggestions zsh-syntax-highlighting; do
 done
 unset plugin
 
-# Prompt
+# Section: Prompt
 if command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
 fi

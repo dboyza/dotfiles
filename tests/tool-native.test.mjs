@@ -1,3 +1,4 @@
+// Check native release selection, complete bundles, and archive extraction boundaries.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -11,6 +12,7 @@ const repositories = { codex: 'openai/codex', pi: 'earendil-works/pi', opencode:
 const checksum = bytes => createHash('sha256').update(bytes).digest('hex');
 const log = () => {};
 
+// Section: Disposable releases and archives
 function fixture(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'dotfiles-native-'));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
@@ -92,6 +94,7 @@ function unsafeArchive(name, type = '0', link = '') {
   return Buffer.concat([header, Buffer.alloc(1024)]);
 }
 
+// Section: Platform assets and complete runtime bundles
 test('standalone assets cover supported OS and CPU combinations with portable x64 builds', () => {
   const cases = [
     ['darwin', 'arm64', ['codex-package-aarch64-apple-darwin.tar.gz', 'pi-darwin-arm64.tar.gz', 'opencode-darwin-arm64.zip']],
@@ -171,6 +174,7 @@ for (const tool of Object.keys(repositories)) {
   });
 }
 
+// Section: Unsafe or incomplete archives
 test('native archives reject traversal, absolute paths, symlinks, hardlinks, and special files before extraction', async t => {
   for (const [name, type, link] of [
     ['../outside', '0', ''], ['/absolute', '0', ''], ['C:\\outside', '0', ''],
@@ -198,6 +202,7 @@ test('incomplete Codex and Pi archives are never accepted', async t => {
   }
 });
 
+// Section: CLI download and launch workflow
 test('real launcher downloads a standalone archive and runs it without npm', {
   skip: process.platform === 'win32' && 'Unix executable fixture; Windows layout is tested separately',
 }, async t => {

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Prove Home Manager links observe checkout edits without another activation.
 
 set -Eeuo pipefail
 

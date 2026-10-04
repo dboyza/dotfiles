@@ -1,4 +1,6 @@
+-- Configure completion, language servers, and project-aware formatting.
 return {
+  -- Section: Completion and snippets
   {
     "saghen/blink.cmp",
     version = "1.*",
@@ -16,6 +18,7 @@ return {
       },
     },
   },
+  -- Section: Language servers and tool installation
   {
     "neovim/nvim-lspconfig",
     dependencies = {
@@ -105,6 +108,7 @@ return {
       })
     end,
   },
+  -- Section: Project-scoped formatting
   {
     "stevearc/conform.nvim",
     event = "BufWritePre",

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Build and validate the macOS companion before replacing this repository's installed helper.
 set -Eeuo pipefail
 
 if [[ $(uname -s) != Darwin ]]; then
@@ -6,6 +7,7 @@ if [[ $(uname -s) != Darwin ]]; then
   exit 0
 fi
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Section: Installed identity and freshness
 app_dir="$HOME/Applications/WezTerm Floating Tabs.app"
 state_dir="$HOME/.local/state/dotfiles/wezterm-floating-tabs"
 source_file="$repo_dir/wezterm/floating-tabs/main.swift"
@@ -17,6 +19,7 @@ if [[ -x "$app_dir/Contents/MacOS/wezterm-floating-tabs" && -f "$app_dir/Content
   printf 'Floating tabs are already installed.\n'
   exit 0
 fi
+# Section: Compile and validate in temporary storage
 build_dir=$(mktemp -d "${TMPDIR:-/tmp}/wezterm-floating-tabs.XXXXXX")
 trap 'rm -rf "$build_dir"' EXIT
 mkdir -p "$build_dir/app/Contents/MacOS" "$build_dir/app/Contents/Resources"
@@ -37,6 +40,7 @@ cat >"$build_dir/app/Contents/Info.plist" <<'PLIST'
 </dict></plist>
 PLIST
 printf '%s\n' "$source_hash" >"$build_dir/app/Contents/Resources/source.sha256"
+# Section: Sign and publish with a recoverable backup
 codesign --force --sign - --identifier com.dboyza.wezterm-floating-tabs "$build_dir/app"
 # Replace only this repository's helper, retaining a recoverable previous build.
 if [[ -e "$app_dir" ]]; then

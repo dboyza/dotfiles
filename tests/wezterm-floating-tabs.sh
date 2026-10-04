@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
+# Run bridge and native helper checks, with optional disposable-window latency measurements.
 set -Eeuo pipefail
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+# Section: Native host selection
 if [[ $(uname -s) != Darwin ]]; then
   if command -v powershell.exe >/dev/null 2>&1 && command -v wslpath >/dev/null 2>&1; then
     powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
@@ -17,6 +19,7 @@ wezterm_command=$(find_wezterm_gui || true)
   printf 'UNAVAILABLE: wezterm-gui is missing\n'
   exit 78
 }
+# Section: Isolated Lua bridge scenarios
 fixture=$(mktemp -d "${TMPDIR:-/tmp}/floating-tabs-test.XXXXXX")
 trap 'rm -rf "$fixture"' EXIT
 for target in native windows windows-wsl; do
@@ -37,9 +40,11 @@ for target in native windows windows-wsl; do
     exit 1
   fi
 done
+# Section: Native protocol and layout validation
 xcrun swiftc -module-cache-path "$fixture/modules" "$repo_dir/wezterm/floating-tabs/main.swift" -o "$fixture/helper"
 "$fixture/helper" --test "$repo_dir/tests/fixtures/floating-tabs.json"
 printf 'Floating tab bridge passed\n'
+# Section: Optional GUI latency and reload workflow
 if [[ ${1:-} == --e2e ]]; then
   python3 -B "$repo_dir/tests/wezterm-floating-tabs-e2e.py" --wezterm "$wezterm_command"
 fi

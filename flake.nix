@@ -1,6 +1,8 @@
+# Pin shared inputs and expose Linux, macOS, and WSL configuration entry points.
 {
   description = "Dylan's reproducible terminal environment";
 
+  # Section: Pinned dependencies
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
@@ -38,6 +40,7 @@
       ...
     }:
     let
+      # Section: Platform matrix and host identity
       supportedSystems = [
         "aarch64-darwin"
         "aarch64-linux"
@@ -93,6 +96,7 @@
           config = { inherit allowUnfreePredicate; };
         };
 
+      # Section: Configuration constructors
       mkHome =
         system:
         home-manager.lib.homeManagerConfiguration {
@@ -112,6 +116,7 @@
         };
     in
     {
+      # Section: Exported profiles and activation tools
       homeConfigurations = nixpkgs.lib.mapAttrs (_: system: mkHome system) linuxProfiles;
 
       darwinConfigurations = nixpkgs.lib.mapAttrs (_: system: mkDarwin system) darwinProfiles;
@@ -138,6 +143,7 @@
         hack-font = nixpkgs.legacyPackages.${system}.nerd-fonts.hack;
       });
 
+      # Section: Local development tools
       devShells = forAllSystems (
         system:
         let

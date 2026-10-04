@@ -1,8 +1,10 @@
+-- Define portable input routing and macOS aliases; tab creation is shared with the companion.
 return function(wezterm, config, platform)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
   local wsl_tab_action, powershell_tab_action = platform.new_tab, platform.powershell_tab
   -- keys
 
+  -- Section: Clipboard routing
   local function macos_paste_clipboard()
     return wezterm.action_callback(function(window, pane)
       -- Inspect formats only. Codex reads the image itself when it receives Ctrl+V.
@@ -50,6 +52,7 @@ return function(wezterm, config, platform)
     end)
   end
 
+  -- Section: Application pages versus shell scrollback
   local function foreground_process_basename(pane)
     local name = pane:get_foreground_process_name() or ''
     return name:match('([^/\\]+)$') or name
@@ -74,6 +77,7 @@ return function(wezterm, config, platform)
   end
 
   -- Keep Control+Space available for completion and application shortcuts.
+  -- Section: Portable shortcuts
   config.leader = { key = 'Space', mods = 'CTRL|SHIFT', timeout_milliseconds = 1500 }
   if is_macos then
     config.send_composed_key_when_left_alt_is_pressed = false
@@ -218,6 +222,7 @@ return function(wezterm, config, platform)
     table.insert(config.keys, { key = key, mods = 'LEADER', action = wezterm.action.ActivatePaneDirection(direction) })
     table.insert(config.keys, { key = key, mods = 'LEADER|SHIFT', action = wezterm.action.AdjustPaneSize({ direction, 5 }) })
   end
+  -- Section: Prefix commands
   local leader_bindings = {
     { key = 'm', action = wezterm.action.EmitEvent('toggle-window-size') },
     { key = 'n', action = wezterm.action.ActivateTabRelative(1) },
@@ -252,6 +257,7 @@ return function(wezterm, config, platform)
     table.insert(config.keys, { key = key, mods = 'CTRL|SHIFT', action = wezterm.action.SendKey({ key = '_', mods = 'CTRL' }) })
   end
 
+  -- Section: MacBook Command and Option aliases
   if is_macos then
     local mac_key_bindings = {
       { key = '[', mods = 'CMD', action = wezterm.action.ActivateTabRelative(-1) },
@@ -327,6 +333,7 @@ return function(wezterm, config, platform)
     end
   end
 
+  -- Section: Mouse actions and native new-tab button
   config.mouse_bindings = {
     {
       event = { Up = { streak = 1, button = 'Right' } },

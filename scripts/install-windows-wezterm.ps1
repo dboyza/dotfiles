@@ -1,3 +1,4 @@
+# Install Windows WezTerm and connect its UTF-8 loader to the live checkout.
 param(
     [Parameter(Mandatory = $true)]
     [string] $Source
@@ -5,6 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Section: WezTerm package update
 $winget = Get-Command winget.exe -ErrorAction SilentlyContinue
 if (-not $winget) {
     throw "Winget is unavailable. Install or update App Installer on Windows, then rerun bootstrap.sh."
@@ -34,6 +36,7 @@ if ($wingetExitCode -eq $noApplicableUpdate) {
 & (Join-Path $PSScriptRoot "install-wezterm-floating-tabs.ps1")
 
 # A loader works with local paths and WSL UNC paths without Developer Mode or elevation.
+# Section: Live checkout loader
 $sourcePath = (Resolve-Path -LiteralPath $Source).ProviderPath
 $luaPath = $sourcePath.Replace('\', '\\').Replace('"', '\"')
 $loader = @"
@@ -43,6 +46,7 @@ require("wezterm").add_to_config_reload_watch_list(source)
 return assert(loadfile(source))(source)
 "@
 
+# Section: Preserve and replace the user loader
 $target = Join-Path $HOME ".wezterm.lua"
 if (Test-Path -LiteralPath $target) {
     if ((Get-Content -Raw -Encoding UTF8 -LiteralPath $target).TrimEnd() -eq $loader.TrimEnd()) {

@@ -1,4 +1,6 @@
+-- Configure accelerated motion, the file explorer, and fuzzy finding.
 return {
+  -- Section: Held-key acceleration
   {
     "rhysd/accelerated-jk",
     init = function()
@@ -14,6 +16,7 @@ return {
       { "<Up>", "<Plug>(accelerated_jk_k)", desc = "Accelerated up", remap = true },
     },
   },
+  -- Section: Explorer lifecycle and focus
   {
     "nvim-neo-tree/neo-tree.nvim",
     branch = "v3.x",
@@ -87,6 +90,7 @@ return {
       },
     },
   },
+  -- Section: File and text search
   {
     "nvim-telescope/telescope.nvim",
     dependencies = {

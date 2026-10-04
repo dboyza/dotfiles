@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Emulate clipboard transports using a test-owned payload file.
 
 set -euo pipefail
 provider=${0##*/}

@@ -1,3 +1,4 @@
 #!/usr/bin/env node
+// Forward codex arguments to the shared managed installer and launcher.
 import { main } from './dotfiles-tool.mjs';
 await main('codex', process.argv.slice(2));

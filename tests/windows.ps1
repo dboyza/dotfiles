@@ -1,7 +1,9 @@
+# Parse Windows installers and exercise launcher conflict preservation without activating the system.
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
 $repository = Split-Path -Parent $PSScriptRoot
+# Section: PowerShell parser checks
 $scripts = @(
     (Join-Path $repository "scripts/install-windows-fonts.ps1"),
     (Join-Path $repository "scripts/install-windows-wezterm.ps1"),
@@ -26,6 +28,7 @@ foreach ($script in $scripts) {
 
 $tokens = $null
 $errors = $null
+# Section: Conflicting launcher preservation
 $toolInstaller = [System.Management.Automation.Language.Parser]::ParseFile($scripts[2], [ref] $tokens, [ref] $errors)
 $backupFunction = $toolInstaller.Find({
     param($node)
@@ -64,6 +67,7 @@ try {
 
 Write-Host "Native Windows PowerShell compatibility passed"
 
+# Section: Native companion coverage
 if ($env:OS -eq "Windows_NT") {
     & (Join-Path $repository "tests/wezterm-floating-tabs.ps1")
 }

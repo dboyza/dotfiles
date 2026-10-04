@@ -1,5 +1,7 @@
+-- Set fonts, colors, transparency, padding, and base frame styling.
 return function(wezterm, config, platform)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
+  -- Section: Platform font fallback
   local function platform_font(weight)
     local fonts = {
       { family = 'Hack Nerd Font', weight = weight },
@@ -17,6 +19,7 @@ return function(wezterm, config, platform)
     return wezterm.font_with_fallback(fonts)
   end
   -- ui
+  -- Section: Shared appearance
   config.color_scheme = 'rose-pine-moon'
   config.max_fps = 120
   config.font = platform_font('Regular')
@@ -32,6 +35,7 @@ return function(wezterm, config, platform)
   config.hide_mouse_cursor_when_typing = true
   config.switch_to_last_active_tab_when_closing_tab = true
 
+  -- Section: Native tab bar and window frame
   config.enable_tab_bar = true
   config.hide_tab_bar_if_only_one_tab = false
   config.tab_bar_at_bottom = false
@@ -71,6 +75,7 @@ return function(wezterm, config, platform)
     brightness = 0.5,
   }
 
+  -- Section: Terminal palette
   config.colors = {
     background = '#191724',
     foreground = '#eeecff',
@@ -89,6 +94,7 @@ return function(wezterm, config, platform)
     },
   }
 
+  -- Section: Host transparency and font sizing
   if is_windows then
     config.win32_system_backdrop = 'Acrylic'
     config.window_background_opacity = 0.7

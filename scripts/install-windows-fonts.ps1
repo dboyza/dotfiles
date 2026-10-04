@@ -1,9 +1,11 @@
+# Install missing Windows-host fonts from the supplied source directory.
 param(
     [Parameter(Mandatory = $true)]
     [string] $Source
 )
 
 $ErrorActionPreference = "Stop"
+# Section: Per-user destinations and input discovery
 $destination = Join-Path $env:LOCALAPPDATA "Microsoft\Windows\Fonts"
 $registryPath = "HKCU:\Software\Microsoft\Windows NT\CurrentVersion\Fonts"
 
@@ -15,6 +17,7 @@ if (-not $fonts) {
     throw "No TrueType fonts were found under $Source"
 }
 
+# Section: Content-addressed font registration
 $installedFonts = @()
 foreach ($font in $fonts) {
     $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $font.FullName).Hash.Substring(0, 12).ToLowerInvariant()
@@ -34,6 +37,7 @@ foreach ($font in $fonts) {
     $installedFonts += $target
 }
 
+# Section: Native font reload APIs
 Add-Type @"
 using System;
 using System.Runtime.InteropServices;
@@ -59,6 +63,7 @@ public static class FontInstaller {
 }
 "@
 
+# Section: Load fonts and notify running applications
 foreach ($fontPath in $installedFonts) {
     if ([FontInstaller]::AddFontResourceEx($fontPath, 0, [IntPtr]::Zero) -eq 0) {
         throw "Windows could not load the font resource $fontPath"

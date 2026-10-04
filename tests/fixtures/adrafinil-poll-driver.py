@@ -20,6 +20,7 @@ def write(state):
     STATE.write_text(json.dumps(state))
 
 
+# Section: Fake daemon commands
 def cli():
     state = read()
     args = sys.argv[2:]
@@ -61,6 +62,7 @@ def cli():
         print(warnings, file=sys.stderr)  # Real CLI returns 0 even on these errors.
 
 
+# Section: Real poller entry point with controlled host observations
 def driver():
     script = Path(sys.argv[2])
     spec = importlib.util.spec_from_file_location("poller", script)

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# Exercise bootstrap ordering, preflight failures, backups, and check-only behavior with isolated commands.
 
 set -Eeuo pipefail
 
+# Section: Disposable environment and fake commands
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 real_grep=$(type -P grep)
 test_dir=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-bootstrap-test.XXXXXX")
@@ -169,6 +171,7 @@ for command_name in brew claude codex gh herdr kubectl nvim opencode pre-commit 
 done
 ln -s "$fake_bin/noop" "$fake_bin/xcode-select"
 
+# Section: Fixture wiring and preserved user data
 export BOOTSTRAP_TEST_ACTIVATED="$test_dir/activated"
 export BOOTSTRAP_TEST_GENERATION="$generation"
 export BOOTSTRAP_TEST_GREP="$real_grep"
@@ -189,6 +192,7 @@ printf '{"original":true}\n' >"$HOME/.pi/agent/models.json"
 mkdir -p "$HOME/.config/example app"
 printf 'original example\n' >"$HOME/.config/example app/config"
 
+# Section: Failed inventory and normal activation
 if BOOTSTRAP_TEST_FAIL_INVENTORY=1 "$repo_dir/bootstrap.sh" >/dev/null 2>&1; then
   printf 'bootstrap test: activation accepted a failed inventory evaluation\n' >&2
   exit 1
@@ -211,6 +215,7 @@ grep -Fq 'original example' "$HOME/.config/example app/"config.backup.*
 grep -Fq 'homeConfigurations.linux-x86_64.config.home.file' "$BOOTSTRAP_TEST_NIX_LOG"
 
 rm -f "$BOOTSTRAP_TEST_ACTIVATED" "$BOOTSTRAP_TEST_NIX_LOG"
+# Section: Non-mutating check mode
 "$repo_dir/bootstrap.sh" --check >/dev/null
 
 if grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"; then
@@ -221,6 +226,7 @@ grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
 grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
 test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
 
+# Section: macOS prerequisites and shell-file preservation
 fake_etc="$test_dir/etc"
 mkdir -p "$fake_etc/static"
 printf 'existing bash config\n' >"$fake_etc/bashrc"

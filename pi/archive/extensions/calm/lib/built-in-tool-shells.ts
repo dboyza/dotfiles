@@ -1,14 +1,9 @@
-// Pi Calm - gapless built-in tool-shell presentation adapter.
-//
+// Pi Calm - hide stock built-in tool shells while preserving images and custom tools.
+// Probe Pi interfaces before patching; see ../README.md for the compatibility contract.
+
 // Adapted from the Firstmate project's Calm implementation.
 // Copyright (c) 2026 Kun Chen. MIT License - see the LICENSE file in this directory.
-//
-// Verified against Pi 0.82.0, which exports AgentSession and
-// ToolExecutionComponent. The source-aware lookup returns Pi's active definition
-// unchanged and the adapter changes only its final TUI row layout. Execution,
-// settings, SDK overrides, extension collisions, and stored results remain
-// owned by Pi. Image results remain visible without their call/result shell,
-// and custom tools or tools outside Pi's seven built-ins render unchanged.
+
 import {
   AgentSession,
   ToolExecutionComponent,
@@ -27,6 +22,7 @@ const CALM_BUILT_IN_TOOL_NAMES = new Set([
   "ls",
 ]);
 
+// Section: Supported Pi presentation interfaces
 type ToolRowPresentationState = {
   toolName: string;
   toolDefinition?: ToolDefinition;
@@ -47,6 +43,7 @@ const CALM_BUILT_IN_TOOL_SHELL_PATCH = Symbol.for(
   "pi-calm:built-in-tool-shell-layout:pi-0.82.0",
 );
 
+// Section: Idempotent adapter installation
 export function installCalmBuiltInToolShellLayout(): void {
   const registry = globalThis as typeof globalThis & {
     [key: symbol]: CalmBuiltInToolShellPatch | undefined;
@@ -76,6 +73,7 @@ export function installCalmBuiltInToolShellLayout(): void {
     hidesShell,
     builtInDefinitions: new WeakSet(),
   };
+  // Section: Built-in ownership and rendered rows
   AgentSession.prototype.getToolDefinition = function (
     name: string,
   ): ToolDefinition | undefined {

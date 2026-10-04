@@ -1,6 +1,8 @@
+-- Bootstrap Lazy and load plugin declarations with the live lockfile.
 local uv = vim.uv or vim.loop
 local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
 
+-- Section: Install the plugin manager when missing
 if not uv.fs_stat(lazypath) then
   local lazyrepo = "https://github.com/folke/lazy.nvim.git"
   local result = vim.fn.system({
@@ -23,6 +25,7 @@ if not uv.fs_stat(lazypath) then
   end
 end
 
+-- Section: Load plugin declarations and the managed lockfile
 vim.opt.rtp:prepend(lazypath)
 
 require("lazy").setup({ import = "plugins" }, {

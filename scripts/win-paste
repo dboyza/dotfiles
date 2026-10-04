@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Transport Windows clipboard text to UTF-8 stdout for WSL consumers.
 
 set -euo pipefail
 

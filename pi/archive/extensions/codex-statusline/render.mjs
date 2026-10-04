@@ -1,3 +1,4 @@
+// Render an archived, width-bounded footer from sanitized display state.
 import { posix, win32 } from "node:path";
 import { stripVTControlCharacters } from "node:util";
 
@@ -11,6 +12,7 @@ export const COLORS = {
   separator: [165, 173, 203],
 };
 
+// Section: Sanitization and platform paths
 export function singleLine(value = "") {
   return stripVTControlCharacters(String(value)).replace(/[\p{Cc}\u061c\u200e\u200f\u202a-\u202e\u2066-\u2069]/gu, " ").replace(/ +/g, " ").trim();
 }
@@ -26,6 +28,7 @@ export function homePath(cwd, home) {
   return singleLine(`~/${relative.replaceAll(paths.sep, "/")}`);
 }
 
+// Section: Adapter status extraction
 export function adapterStatus(text) {
   const plain = singleLine(text);
   const value = /\bweekly:\s*(\d+(?:\.\d+)?)% left\b/.exec(plain)?.[1];
@@ -42,6 +45,7 @@ export function color(role, text) {
   return `\x1b[38;2;${COLORS[role].join(";")}m${text}\x1b[39m`;
 }
 
+// Section: Width-constrained row layout
 export function renderStatusline(state, width, { truncateToWidth, visibleWidth }) {
   if (width <= 0) return [];
   const join = (segments) => segments.filter(Boolean).join(color("separator", " · "));

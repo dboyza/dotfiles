@@ -14,6 +14,7 @@ import subprocess
 import tempfile
 
 
+# Section: Existing-app discovery
 def bundle_id(path):
     try:
         with (path / "Contents/Info.plist").open("rb") as source:
@@ -49,6 +50,7 @@ def find_app(app, roots, spotlight="/usr/bin/mdfind"):
     return None
 
 
+# Section: Atomic bundle publication
 def publish_bundle(source, destination, bundle, writable=False):
     destination.mkdir(parents=True, exist_ok=True)
     # Stage on the destination filesystem so interrupted copies never look installed.
@@ -66,6 +68,7 @@ def publish_bundle(source, destination, bundle, writable=False):
             staged.rename(target)
 
 
+# Section: Native build prerequisites
 def check_strafe_toolchain():
     arch = platform.machine()
     if arch not in ("arm64", "x86_64"):
@@ -97,6 +100,7 @@ def check_macos_version(app):
         raise RuntimeError(f"{app['bundle']} requires macOS {app['minimum_macos']} or later")
 
 
+# Section: Verified downloads and legacy preservation
 def install_zip(app, destination, roots, spotlight):
     check_macos_version(app)
     if app.get("build") == "strafe":
@@ -140,6 +144,7 @@ def preserve_legacy(apps, destination, roots):
             print(f"Preserved existing {app['bundle']} in {destination}")
 
 
+# Section: Manifest selection and install-only orchestration
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", required=True, type=Path)

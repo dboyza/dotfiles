@@ -1,3 +1,4 @@
+-- Load core editor behavior before optional plugin configuration.
 pcall(function()
   vim.loader.enable()
 end)

@@ -1,2 +1,3 @@
+# Ignore local Nix build and development-shell state.
 result
 .direnv/

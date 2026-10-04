@@ -1,4 +1,7 @@
+-- Route editing, clipboard, and pane navigation across terminal layers.
 local keymap = vim.keymap.set
+
+-- Section: Direct macOS Command events
 
 -- Enhanced terminal input can deliver Command directly instead of WezTerm's
 -- translated Home/End events. Give both paths the same native Vim behavior.
@@ -13,10 +16,12 @@ if vim.fn.has("macunix") == 1 then
   keymap(file_modes, "<D-Down>", "<C-End>", { desc = "Move to end of file" })
 end
 
+-- Section: Clipboard aliases
 keymap({ "n", "x" }, "<leader>y", [["+y]], { desc = "Copy to clipboard" })
 keymap("n", "<leader>Y", [["+Y]], { desc = "Copy line to clipboard" })
 keymap({ "n", "x" }, "<leader>p", [["+p]], { desc = "Paste from clipboard" })
 
+-- Section: Word motion and nested-pane decisions
 local function move_word_back_in_line()
   vim.fn.search([[\<]], "bW", vim.fn.line("."))
 end
@@ -50,6 +55,7 @@ local function move_window_or_pane(direction)
   end
 end
 
+-- Section: Portable motion and scrolling
 keymap({ "n", "x", "i" }, "<C-Left>", move_word_back_in_line, { desc = "Move back one word on current line" })
 keymap({ "n", "x", "i" }, "<C-Right>", move_word_forward_in_line, { desc = "Move forward one word on current line" })
 keymap({ "n", "x" }, "<C-Up>", "5<C-y>", { desc = "Scroll up 5 lines" })
@@ -57,6 +63,7 @@ keymap({ "n", "x" }, "<C-Down>", "5<C-e>", { desc = "Scroll down 5 lines" })
 keymap("i", "<C-Up>", "<C-o>5<C-y>", { desc = "Scroll up 5 lines" })
 keymap("i", "<C-Down>", "<C-o>5<C-e>", { desc = "Scroll down 5 lines" })
 
+-- Section: Buffer and pane navigation
 keymap("n", "<leader>x", "<cmd>wq<cr>", { desc = "Save and quit" })
 keymap("n", "<leader>[", "<cmd>bprevious<cr>", { desc = "Previous buffer" })
 keymap("n", "<leader>]", "<cmd>bnext<cr>", { desc = "Next buffer" })
@@ -84,6 +91,7 @@ keymap({ "n", "x" }, "<C-k>", "5<C-y>", { desc = "Scroll up 5 lines" })
 keymap("x", "J", ":move '>+1<cr>gv=gv", { desc = "Move selection down" })
 keymap("x", "K", ":move '<-2<cr>gv=gv", { desc = "Move selection up" })
 
+-- Section: Saving, terminal mode, and diagnostics
 keymap("n", "<leader>w", "<cmd>write<cr>", { desc = "Save file" })
 keymap("n", "<leader>q", "<cmd>quit<cr>", { desc = "Quit window" })
 keymap("n", "<Esc>", "<cmd>nohlsearch<cr>", { desc = "Clear search highlight" })

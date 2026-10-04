@@ -21,6 +21,7 @@ installer = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(installer)
 
 
+# Section: App bundles and external-command fixtures
 class MacOSAppsTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="dotfiles-apps-test-")
@@ -86,6 +87,7 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
     def calls(self):
         return [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
 
+    # Section: Existing-app and Spotlight discovery
     def test_existing_manual_renamed_and_old_apps_are_unchanged(self):
         paths = [
             self.bundle(self.system / self.chrome["bundle"], self.chrome, "1.0"),
@@ -134,6 +136,7 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(len(self.calls()), 1)
 
+    # Section: Legacy preservation and install selection
     def test_legacy_bundle_survives_nix_cleanup_without_version_change(self):
         old = self.bundle(self.system / "Nix Apps" / self.wallper["bundle"], self.wallper, "0.5")
         contents = (old / "Contents/Info.plist").read_bytes()
@@ -168,6 +171,7 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(self.calls(), [])
 
+    # Section: Preflight and native build prerequisites
     def test_preflight_existing_strafe_needs_no_toolchain(self):
         app = {"bundle": "strafe.app", "id": "com.rileycx.strafe", "build": "strafe"}
         self.bundle(self.system / app["bundle"], app)
@@ -201,6 +205,7 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
                     installer.build_strafe(source)
                 run.assert_not_called()
 
+    # Section: Download verification and atomic publication
     def test_zip_checksum_failure_does_not_extract_or_install(self):
         def fake_download(command, **kwargs):
             self.assertEqual(command[0], "/usr/bin/curl")
@@ -256,6 +261,7 @@ sys.stdout.buffer.write(os.fsencode(os.environ.get("TEST_SPOTLIGHT", "")))
         self.assertEqual(list(self.destination.iterdir()), [])
         self.assertTrue(source.is_dir())
 
+    # Section: App Store and package-manager outcomes
     def test_existing_app_store_app_skips_all_install_commands(self):
         app = {"bundle": "Amphetamine.app", "id": "com.if.Amphetamine", "app_store_id": 937984704}
         existing = self.bundle(self.system / app["bundle"], app, "0.1")

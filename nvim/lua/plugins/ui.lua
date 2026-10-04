@@ -1,4 +1,6 @@
+-- Coordinate terminal tools, colors, buffer tabs, and the status line.
 return {
+  -- Section: Terminal tools and indent guides
   {
     "folke/snacks.nvim",
     priority = 1000,
@@ -49,6 +51,7 @@ return {
       },
     },
   },
+  -- Section: Theme and highlight overrides
   {
     "catppuccin/nvim",
     name = "catppuccin",
@@ -83,6 +86,7 @@ return {
       set(0, "StatusLineNC", { fg = "#6e6a86", bg = "none" })
     end,
   },
+  -- Section: Icons and buffer tabs
   {
     "nvim-tree/nvim-web-devicons",
     lazy = true,
@@ -130,6 +134,7 @@ return {
       },
     },
   },
+  -- Section: Status line
   {
     "nvim-lualine/lualine.nvim",
     dependencies = { "nvim-tree/nvim-web-devicons" },

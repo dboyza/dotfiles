@@ -1,3 +1,4 @@
+// Exercise archived Pi wheel behavior in an offline, isolated terminal session.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -6,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
+// Section: Isolated CLI and terminal setup
 const cli = process.argv[2];
 if (!cli || platform() !== "darwin") {
   console.log("Scroll TUI smoke skipped: requires macOS, tmux, and an explicit Pi CLI path.");
@@ -20,6 +22,7 @@ const tmux = (...args) => execFileSync("tmux", ["-L", socket, ...args], { env, e
 const quote = (s) => `'${s.replaceAll("'", "'\\''")}'`;
 const json = (path, data) => writeFileSync(path, JSON.stringify(data));
 const pane = () => tmux("capture-pane", "-p", "-t", "scroll");
+// Section: Terminal observation and scroll measurement
 async function waitFor(predicate) {
   for (let i = 0; i < 100; i++) {
     const text = pane();
@@ -47,6 +50,7 @@ async function measure(button, events = 10) {
   return firstRow(pane()) - before;
 }
 
+// Section: Baseline and extension workflows
 try {
   mkdirSync(agent);
   const settings = { packages: [], extensions: [join(repo, "tests/fixtures/pi-scroll.ts")], tuiMode: "fullscreen", quietStartup: true, lastChangelogVersion: "0.85.1" };

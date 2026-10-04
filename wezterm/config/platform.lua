@@ -1,7 +1,9 @@
+-- Select the host shell and WSL home directory; expose shared tab-creation actions.
 return function(wezterm, config)
   local target_triple = wezterm.target_triple:lower()
   local is_windows = target_triple:find('windows') ~= nil
   local is_macos = target_triple:find('darwin') ~= nil
+  -- Section: Executable discovery
   local function command_exists(program)
     local probe
     if is_windows then
@@ -17,6 +19,7 @@ return function(wezterm, config)
     return called and found
   end
   -- shell
+  -- Section: WSL domain and working-directory selection
   local function resolve_wsl_home(distribution)
     if not distribution then
       return nil
@@ -75,6 +78,7 @@ return function(wezterm, config)
     return selected.name, home
   end
 
+  -- Section: Host shell fallback
   local wsl_domain, wsl_home = preferred_wsl_domain()
   local powershell_prog
   if is_windows then
@@ -93,6 +97,7 @@ return function(wezterm, config)
     config.default_prog = powershell_prog
   end
 
+  -- Section: Shared new-tab actions
   local function wsl_spawn_command()
     if not wsl_domain then
       return nil

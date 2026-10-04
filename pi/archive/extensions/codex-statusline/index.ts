@@ -1,3 +1,4 @@
+// Archived footer integration: observe adapter readers and dispose watchers with the UI lifecycle.
 import { realpathSync, watchFile, unwatchFile } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
@@ -5,6 +6,8 @@ import { pathToFileURL } from "node:url";
 import { getAgentDir, type ExtensionAPI, type ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
 import { adapterStatus, renderStatusline } from "./render.mjs";
+
+// Section: Optional adapter discovery
 
 // Optional, isolated integration with the reviewed, pinned adapter's own readers.
 // No copied authentication logic, provider payload inspection, or package patches.
@@ -27,6 +30,7 @@ async function loadAdapter(pi: ExtensionAPI) {
   };
 }
 
+// Section: Footer lifecycle and user command
 export default function (pi: ExtensionAPI) {
   let enabled = true;
   let stop = () => {};
@@ -48,6 +52,7 @@ export default function (pi: ExtensionAPI) {
       const watchers: Array<[string, () => void]> = [];
       const unsubscribe = footerData.onBranchChange(() => tui.requestRender());
 
+      // Section: Observed config and quota state
       function refreshConfig() {
         if (disposed || !adapter) return;
         const config = adapter.readConfig({ cwd: ctx.cwd, projectTrusted: ctx.isProjectTrusted() });
@@ -87,6 +92,7 @@ export default function (pi: ExtensionAPI) {
         void refreshQuota();
         tui.requestRender();
       };
+      // Section: Watcher and request cleanup
       const dispose = () => {
         if (disposed) return;
         disposed = true;

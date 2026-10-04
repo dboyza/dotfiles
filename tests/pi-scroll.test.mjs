@@ -1,3 +1,4 @@
+// Check the archived scroll adapter's guarded mutation and restoration behavior.
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createScrollStep } from "../pi/archive/extensions/scroll-sensitivity/step.mjs";

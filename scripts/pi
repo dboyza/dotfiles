@@ -1,3 +1,4 @@
 #!/usr/bin/env node
+// Forward pi arguments to the shared managed installer and launcher.
 import { main } from './dotfiles-tool.mjs';
 await main('pi', process.argv.slice(2));

@@ -1,7 +1,9 @@
+-- Exchange per-window companion state and render native tabs, borders, and the clock.
 return function(wezterm, config, platform, protocol)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
   local wsl_tab_action = platform.new_tab
   -- Native companions exchange tab IDs only, never terminal text or commands.
+  -- Section: Companion discovery and polling cadence
   local overlay_root = (is_macos or is_windows) and wezterm.home_dir
     and (wezterm.home_dir .. '/.local/state/dotfiles/wezterm-floating-tabs/') or nil
   local overlay_app = is_macos and wezterm.home_dir
@@ -20,6 +22,7 @@ return function(wezterm, config, platform, protocol)
   if overlay_available then config.status_update_interval = protocol.input_interval_ms end
   local overlay_status_updated = {}
 
+  -- Section: Per-process window identity and bounded reads
   local function overlay_title(window_id)
     if not wezterm.GLOBAL.floating_tabs_token then
       wezterm.GLOBAL.floating_tabs_token = tostring(os.time()) .. tostring({}):gsub('%W', '')
@@ -46,6 +49,7 @@ return function(wezterm, config, platform, protocol)
     return protocol.fresh(reply, title, os.time())
   end
 
+  -- Section: Atomic snapshots and request consumption
   local function publish_floating_tabs(window_id, tabs)
     local title = overlay_title(window_id)
     local now = os.time()
@@ -106,6 +110,7 @@ return function(wezterm, config, platform, protocol)
     publish_floating_tabs(window:mux_window():window_id(), tabs)
   end
 
+  -- Section: Acknowledgments and native fallback
   local function update_floating_tabs(window)
     if not overlay_available then return end
     local key = overlay_key(window:mux_window():window_id())
@@ -145,6 +150,7 @@ return function(wezterm, config, platform, protocol)
   end)
 
   -- Native numbered tabs keep the top-left corner compact without a plugin.
+  -- Section: Native tab rendering and focus border
   local bar_background = config.colors.tab_bar.background
   local function capsule(text, foreground, background, active)
     return {
@@ -195,6 +201,7 @@ return function(wezterm, config, platform, protocol)
 
   wezterm.on('window-focus-changed', update_window_border)
 
+  -- Section: Fast input ticks and slower clock maintenance
   wezterm.on('update-status', function(window)
     if overlay_available and consume_floating_tab_request(window) then
       publish_window_floating_tabs(window)

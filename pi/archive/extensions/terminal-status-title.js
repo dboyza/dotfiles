@@ -1,9 +1,11 @@
+// Archived terminal-title presentation for Pi session activity.
 const DEFAULT_TITLE = "π";
 const PREFIX = "π";
 const MAX_TITLE_LENGTH = 40;
 const SPINNER_INTERVAL_MS = 120;
 const SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
+// Section: Title normalization and activity indicators
 function truncateTitle(title) {
   if (title.length <= MAX_TITLE_LENGTH) return title;
   return title.slice(0, MAX_TITLE_LENGTH - 3) + "...";
@@ -49,6 +51,7 @@ function formatTitle(pi, ctx, status, spinnerFrame) {
   return `${statusIndicator(status, spinnerFrame)} | ${suffix}`;
 }
 
+// Section: Session events and title lifecycle
 export default function terminalStatusTitle(pi) {
   let status = "idle";
   let spinnerFrame = 0;

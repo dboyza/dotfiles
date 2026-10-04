@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
+# Select one host clipboard provider for shells, editors, and tmux.
 
 set -euo pipefail
 
+# Section: Requested operation
 operation=${1:-}
 case "$operation" in
   copy | paste | --check) ;;
@@ -12,6 +14,7 @@ case "$operation" in
     ;;
 esac
 
+# Section: Host provider selection
 available() { command -v "$1" >/dev/null 2>&1; }
 
 # Select a complete provider pair once, with Windows taking priority in WSLg.
@@ -38,6 +41,7 @@ else
   exit 1
 fi
 
+# Section: Dispatch and tmux buffer handoff
 case "$operation" in
   copy) exec "${copy[@]}" ;;
   paste) exec "${paste[@]}" ;;

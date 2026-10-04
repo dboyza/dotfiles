@@ -1,3 +1,4 @@
+# Declare install-only macOS command-line packages and the terminal font.
 # macOS user tools. Nix retains configuration and activation dependencies.
 {
   taps = [

@@ -7,6 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+// Section: Managed tools and timing limits
 const inventory = JSON.parse(fs.readFileSync(new URL('./managed-tools.json', import.meta.url), 'utf8'));
 const repositories = Object.fromEntries(Object.entries(inventory)
   .filter(([, tool]) => tool.github).map(([name, tool]) => [name, tool.github]));
@@ -22,6 +23,7 @@ const stableVersion = /^\d+\.\d+\.\d+$/;
 const claudeDownloads = 'https://downloads.claude.ai/claude-code-releases';
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
+// Section: Installation paths and published state
 export function dataRoot() {
   const base = process.platform === 'win32'
     ? process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local')
@@ -49,6 +51,7 @@ function command(directory, release) {
   return release.node ? [process.execPath, executable] : [executable];
 }
 
+// Section: Official release discovery
 async function request(url, milliseconds = metadataTimeoutMs) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(milliseconds),
@@ -131,6 +134,7 @@ export async function latestRelease(tool, {
   return { version: manifest.version, url, sha256 };
 }
 
+// Section: Archive validation and extraction
 function run(executable, args, options = {}) {
   const result = spawnSync(executable, args, {
     encoding: 'utf8', timeout: commandTimeoutMs, maxBuffer: 8 * 1024 * 1024,
@@ -168,6 +172,7 @@ function requireFile(directory, relative) {
   }
 }
 
+// Section: Verified bundle installation
 export async function installRelease(tool, release, directory) {
   const bytes = Buffer.from(await (await request(release.url, downloadTimeoutMs)).arrayBuffer());
   if (createHash('sha256').update(bytes).digest('hex') !== release.sha256.toLowerCase()) {
@@ -219,6 +224,7 @@ export async function installRelease(tool, release, directory) {
   return { executable, node: false };
 }
 
+// Section: Child environment and update serialization
 function toolEnvironment(tool) {
   return {
     ...process.env,
@@ -268,6 +274,7 @@ function acquireLock(directory) {
   }
 }
 
+// Section: Executable validation and publication transaction
 function verifyInstallation(tool, directory, installed) {
   const [executable, ...args] = command(directory, installed);
   const version = run(executable, [...args, '--version'], { timeout: versionCheckTimeoutMs, env: toolEnvironment(tool) });
@@ -330,6 +337,7 @@ export async function ensureInstallation(tool, {
   return { directory, release: state.current };
 }
 
+// Section: CLI execution and signal forwarding
 export async function main(tool, args = []) {
   try {
     const updateOnly = tool === '--update-only';

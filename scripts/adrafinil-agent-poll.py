@@ -16,6 +16,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
+# Section: Poll timing and recognized identities
 LABEL = "com.dboyza.adrafinil-agent-poll"
 POLL_INTERVAL_SECONDS = 60
 FALLBACK_TTL_SECONDS = 180
@@ -28,6 +29,7 @@ CODEX_ASSERTION = re.compile(
 )
 
 
+# Section: External observations and validation
 def run(args):
     result = subprocess.run(
         [str(arg) for arg in args], input="", text=True, capture_output=True,
@@ -64,6 +66,7 @@ def validate_status(status):
     return status
 
 
+# Section: Process identity and socket ownership
 def process_snapshot(text):
     """Validate a complete ps read and retain birth times to detect reused PIDs."""
     rows, starts = [], {}
@@ -142,6 +145,7 @@ def processes(text, uid):
     return found
 
 
+# Section: Active-turn and session evidence
 def active_agents(process_map, assertions, sessions, starts=None):
     active = {
         int(pid): "codex" for pid in CODEX_ASSERTION.findall(assertions)
@@ -230,6 +234,7 @@ def codex_session_state(home, session_id):
     return None
 
 
+# Section: Native hold lifecycle decisions
 def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
     """Identify abandoned native holds without treating a shared server as work."""
     if not isinstance(status, dict) or not isinstance(status.get("assertions"), list):
@@ -285,6 +290,7 @@ def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
     return stale
 
 
+# Section: Release race checks and native coverage
 def hold_identity(entry):
     return tuple(entry.get(field) for field in ("tool", "pid", "origin", "acquiredAt", "lastActivityAt", "expiresAt"))
 
@@ -324,6 +330,7 @@ def native_coverage(status, stale, peers=None):
     return covered
 
 
+# Section: Pure fallback planning
 def plan_fallback_holds(active, status, uncertain, stale, peers):
     """Decide fallback changes from observations; unknown activity stays protected."""
     covered = native_coverage(status, stale, peers)
@@ -344,6 +351,7 @@ def plan_fallback_holds(active, status, uncertain, stale, peers):
     return covered, desired, removable
 
 
+# Section: Apply acquisitions before guarded releases
 def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peers=None):
     validate_status(status)
     if status["paused"]:
@@ -421,6 +429,7 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peer
     }
 
 
+# Section: CLI discovery and LaunchAgent installation
 def cli_path():
     candidates = [Path.home() / ".local/bin/adrafinil"]
     if shutil.which("adrafinil"):
@@ -502,6 +511,7 @@ def install(cli):
     print(f"Installed {plist}; checks every {POLL_INTERVAL_SECONDS} seconds while the Mac is awake.")
 
 
+# Section: Serialized polling and CLI entry point
 @contextmanager
 def poll_lock(path):
     import fcntl

@@ -1,3 +1,4 @@
+# Keep review-pane preferences separate from Herdr's main configuration.
 theme = "rose-pine"
 default_scope = "uncommitted"
 toggle_placement = "split"

@@ -1,8 +1,10 @@
+-- Set shared editor defaults; plugin behavior belongs in lua/plugins.
 vim.g.mapleader = " "
 vim.g.maplocalleader = " "
 
 local opt = vim.opt
 
+-- Section: Appearance and interaction
 opt.number = true
 opt.relativenumber = false
 opt.termguicolors = true
@@ -23,17 +25,20 @@ opt.breakindent = true
 opt.list = true
 opt.listchars = { tab = "» ", trail = "·", nbsp = "␣" }
 
+-- Section: Indentation
 opt.expandtab = true
 opt.shiftwidth = 2
 opt.tabstop = 2
 opt.softtabstop = 2
 opt.smartindent = true
 
+-- Section: Search
 opt.ignorecase = true
 opt.smartcase = true
 opt.hlsearch = true
 opt.incsearch = true
 
+-- Section: Persistence, splits, and response timing
 opt.undofile = true
 opt.splitright = true
 opt.splitbelow = true
@@ -49,6 +54,7 @@ end)
 opt.grepprg = "rg --vimgrep"
 opt.grepformat = "%f:%l:%c:%m"
 
+-- Section: Diagnostics
 vim.diagnostic.config({
   float = { border = "rounded", source = "if_many" },
   severity_sort = true,

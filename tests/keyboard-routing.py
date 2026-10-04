@@ -24,6 +24,7 @@ import termios
 
 REPO = Path(__file__).resolve().parents[1]
 
+# Section: Isolated tmux and editor setup
 with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as temporary:
     root = Path(temporary)
     env = dict(os.environ, HOME=temporary, TERM="xterm-256color",
@@ -75,6 +76,7 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as tempora
                               stdin=slave, stdout=slave, stderr=slave)
     os.close(slave)
 
+    # Section: PTY input and bounded observation
     def until(predicate, message):
         deadline = time.monotonic() + 5
         while time.monotonic() < deadline:
@@ -87,6 +89,7 @@ with tempfile.TemporaryDirectory(prefix="dotfiles-keys-", dir="/tmp") as tempora
     def send(keys):
         os.write(master, keys)
 
+    # Section: End-to-end navigation assertions
     try:
         until(lambda: Path(rpc).exists() and tmux("list-clients") != "", "client did not attach")
         until(lambda: tmux("display-message", "-p", "#{alternate_on}") == "1", "Neovim did not start")

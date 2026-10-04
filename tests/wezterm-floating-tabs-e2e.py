@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-"""Measure the real macOS GUI bridge using disposable idle windows, without AX.
-
-Run through tests/wezterm-floating-tabs.sh --e2e in a desktop session.
-Requests use the companion's atomic file protocol; no terminal input is sent.
-"""
+"""Measure the companion file bridge in disposable macOS GUI windows, without AX.
+Run tests/wezterm-floating-tabs.sh --e2e from a desktop session."""
 
 import argparse
 import json
@@ -21,6 +18,7 @@ import time
 REPO = Path(__file__).resolve().parents[1]
 
 
+# Section: Bounded polling and snapshot reads
 def wait_for(predicate, description, timeout=10):
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
@@ -38,6 +36,7 @@ def read_snapshot(path):
         return None
 
 
+# Section: Two-window activation latency
 def measure(bridge, snapshots):
     samples = []
     for index in range(24):
@@ -72,6 +71,7 @@ def measure(bridge, snapshots):
     }
 
 
+# Section: Disposable GUI lifecycle and reload measurements
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--wezterm", required=True, help="Foreground wezterm-gui executable")
@@ -161,8 +161,7 @@ return config
                 assert not errors.exists(), errors.read_text() if errors.exists() else ""
                 print(json.dumps(results, indent=2), flush=True)
                 for result in results.values():
-                    # Background-window scheduling is slower than the 16 ms input
-                    # cadence. Leave desktop-load headroom while rejecting the
+                    # Allow background-window scheduling overhead while rejecting the
                     # original timer's roughly 130 ms median / 250 ms tail.
                     assert result["median_ms"] < 80 and result["p95_ms"] < 200, \
                         "Click latency regressed toward the 250 ms status timer"

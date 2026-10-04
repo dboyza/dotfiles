@@ -1,25 +1,14 @@
-// Pi Calm - gapless collapsed-thinking presentation adapter.
-//
+// Pi Calm - remove collapsed thinking rows from display, preserving the original message.
+// Probe Pi interfaces before patching; expanded thinking uses stock rendering.
+
 // Adapted from the Firstmate project's Calm implementation.
 // Copyright (c) 2026 Kun Chen. MIT License - see the LICENSE file in this directory.
-//
-// Verified against Pi 0.82.0, which exports AssistantMessageComponent with an
-// updateContent method. installCalmCollapsedThinkingLayout() probes that exact
-// public seam and throws if it is missing; index.ts catches that and skips only
-// this adapter with one clear diagnostic instead of blocking Calm or Pi.
-//
-// How it works: Pi renders a hidden thinking block as one static label row.
-// Calm sets that label to the empty string and this adapter filters thinking
-// blocks out of the message handed to the stock renderer, so a collapsed
-// thinking block occupies zero rows instead of one blank one. The unfiltered
-// message is kept on lastMessage so expanding thinking (Ctrl+T) and turning
-// Calm off both restore the original reasoning content byte-for-byte. Only
-// collapsed thinking is affected: expanded reasoning, assistant text, and tool
-// calls render exactly as Pi renders them.
+
 import type { AssistantMessageComponent as PiAssistantMessageComponent } from "@earendil-works/pi-coding-agent";
 import * as PiCodingAgent from "@earendil-works/pi-coding-agent";
 import { calmHidesTranscriptChrome } from "./visibility.ts";
 
+// Section: Pi message and presentation interfaces
 type AssistantMessage = Parameters<PiAssistantMessageComponent["updateContent"]>[0];
 
 type AssistantMessagePresentationState = {
@@ -38,6 +27,7 @@ const CALM_COLLAPSED_THINKING_PATCH = Symbol.for(
   "pi-calm:collapsed-thinking-layout:pi-0.82.0",
 );
 
+// Section: Guarded adapter installation
 export function installCalmCollapsedThinkingLayout(): void {
   const registry = globalThis as typeof globalThis & {
     [key: symbol]: CalmCollapsedThinkingPatch | undefined;
@@ -59,6 +49,7 @@ export function installCalmCollapsedThinkingLayout(): void {
     throw new Error("Pi Calm requires Pi AssistantMessageComponent.updateContent");
   }
 
+  // Section: Collapsed rendering with original message preservation
   AssistantMessageComponent.prototype.updateContent = function (
     message: AssistantMessage,
   ): void {

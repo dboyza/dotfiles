@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Locate WezTerm executables and verify configuration with an explicit Lua verdict.
 
 find_wezterm() {
   if command -v wezterm >/dev/null 2>&1; then

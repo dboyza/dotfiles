@@ -1,6 +1,8 @@
+// Follow macOS WezTerm windows with native badges, a clock, and rounded border corners.
 import AppKit
 import ApplicationServices
 
+// Section: Bridge payloads and validation
 struct Tab: Codable, Equatable {
     let id: Int
     let index: Int
@@ -52,6 +54,7 @@ func testSnapshotContract(_ path: String) throws {
     }
 }
 
+// Section: State location and palette
 let stateDirectory = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent(".local/state/dotfiles/wezterm-floating-tabs")
 let lavender = NSColor(srgbRed: 196/255, green: 167/255, blue: 231/255, alpha: 1)
@@ -60,6 +63,7 @@ let muted = NSColor(srgbRed: 57/255, green: 53/255, blue: 82/255, alpha: 1)
 let subtle = NSColor(srgbRed: 144/255, green: 140/255, blue: 170/255, alpha: 1)
 let surface = NSColor(srgbRed: 35/255, green: 33/255, blue: 54/255, alpha: 0.9)
 
+// Section: Native window observation and placement
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
     var value: CFTypeRef?
     guard AXUIElementCopyAttributeValue(element, name as CFString, &value) == .success else { return nil }
@@ -91,6 +95,7 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat) -> (CGRect, CG
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
+// Section: Badge and overlay drawing
 final class Badge: NSButton {
     var actionHandler: (() -> Void)?
     init(label: String, active: Bool = false, clock: Bool = false, action: (() -> Void)? = nil) {
@@ -189,6 +194,7 @@ func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> Dispatc
     return watcher
 }
 
+// Section: Per-window rendering and click requests
 final class WindowOverlay {
     let key: String
     let onChange: () -> Void
@@ -338,6 +344,8 @@ final class WindowOverlay {
     }
 }
 
+// Section: Application lifecycle and snapshot reconciliation
+
 // Separate state and panels for each window, including windows of other GUI
 // processes. Match only owner PID and geometry, without reading screen content.
 final class Companion: NSObject, NSApplicationDelegate {
@@ -426,6 +434,7 @@ extension CGRect {
     var area: CGFloat { isNull ? 0 : width * height }
 }
 
+// Section: Diagnostic modes and app entry point
 if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
    CommandLine.arguments.count > argument + 1 {
     let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 120, pixelsHigh: 120,

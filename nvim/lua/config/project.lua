@@ -1,7 +1,9 @@
+-- Resolve project roots and keep formatting preferences scoped to each project.
 local M = {}
 local format_disabled = {}
 
 -- Keep project tools scoped to the file being edited, even when cwd is elsewhere.
+-- Section: Project scope
 function M.root(bufnr)
   local terminal = vim.b[bufnr or 0].snacks_terminal
   if terminal and terminal.cwd then
@@ -14,6 +16,7 @@ function M.root(bufnr)
     or (name ~= "" and vim.fs.dirname(name) or vim.fn.getcwd())
 end
 
+-- Section: Formatting policy and session toggles
 function M.format_on_save(bufnr)
   if vim.bo[bufnr].buftype ~= "" or format_disabled[M.root(bufnr)] then
     return

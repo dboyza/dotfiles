@@ -1,5 +1,7 @@
+-- Register buffer, window, and language-server lifecycle behavior.
 local group = vim.api.nvim_create_augroup("user_config", { clear = true })
 
+-- Section: Editing feedback and file restoration
 vim.api.nvim_create_autocmd("TextYankPost", {
   group = group,
   callback = function()
@@ -30,11 +32,13 @@ vim.api.nvim_create_autocmd("BufWritePre", {
   end,
 })
 
+-- Section: Window geometry
 vim.api.nvim_create_autocmd("VimResized", {
   group = group,
   command = "wincmd =",
 })
 
+-- Section: Buffer-local language-server actions
 vim.api.nvim_create_autocmd("LspAttach", {
   group = group,
   callback = function(event)

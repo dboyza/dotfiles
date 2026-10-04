@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Transport UTF-8 stdin to the Windows clipboard from WSL.
 
 set -euo pipefail
 

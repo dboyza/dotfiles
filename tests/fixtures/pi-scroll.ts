@@ -1,3 +1,4 @@
+// Render offline numbered rows for the archived Pi scroll smoke check.
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Text } from "@earendil-works/pi-tui";
 
