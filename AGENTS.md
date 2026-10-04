@@ -254,8 +254,12 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
-  Install the plugin through Herdr on macOS or Linux/WSL.
+  Install missing Reviewr through Herdr during bootstrap on macOS or Linux/WSL, using the reviewed commit in `scripts/herdr-workspace.mjs`; preserve existing installations.
+  Keep Reviewr opt-in rather than automatically opening it for worktrees.
   Verify upstream support and native behavior before extending this repository's plugin deployment to Windows.
+
+- Keep `herdr-workspace` as the opt-in project layout launcher for macOS and Linux/WSL, with Codex by default and an explicit agent override.
+  Create fresh panes with explicit project paths, leaving existing workspaces intact; keep the agent beside a larger Neovim pane.
 
 ## Neovim
 
@@ -268,6 +272,10 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Close Neo-tree after opening a file from it; expanding a directory should leave the explorer open.
 
 - Open Neo-tree only on request through `Space e` or `:Neotree`, not automatically at startup, in new tabs, or when opening directories.
+
+- The dedicated `herdr-workspace` profile is the explicit exception: start with a persistent right-hand Neo-tree and retain it after opening files.
+  Scope this behavior through Neovim's `g:dotfiles_workspace`, keeping normal sessions unchanged.
+  Refresh external file changes only in unmodified buffers outside editing modes; never discard unsaved edits.
 
 - Let Neo-tree close when the last editor window in its tab closes so normal quit commands do not require a second quit for the sidebar.
 

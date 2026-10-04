@@ -32,7 +32,11 @@ return {
         function()
           if vim.bo.filetype ~= "neo-tree" then
             vim.t.explorer_return_win = vim.api.nvim_get_current_win()
-            require("neo-tree.command").execute({ action = "focus", source = "filesystem", position = "left" })
+            require("neo-tree.command").execute({
+              action = "focus",
+              source = "filesystem",
+              position = require("config.workspace").position(),
+            })
             return
           end
 
@@ -74,7 +78,9 @@ return {
         {
           event = "file_opened",
           handler = function()
-            require("neo-tree.command").execute({ action = "close" })
+            if not require("config.workspace").enabled() then
+              require("neo-tree.command").execute({ action = "close" })
+            end
           end,
         },
       },
@@ -85,7 +91,7 @@ return {
         hijack_netrw_behavior = "disabled",
       },
       window = {
-        position = "left",
+        position = require("config.workspace").position(),
         width = 34,
       },
     },

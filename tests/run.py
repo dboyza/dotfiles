@@ -20,6 +20,7 @@ def main():
         ('activity decisions', ['python3', '-B', 'tests/adrafinil-agent-poll.py']),
         ('activity CLI workflow', ['python3', '-B', 'tests/adrafinil-agent-poll-e2e.py']),
         ('managed tools', ['node', '--test', 'tests/tool-updates.test.mjs', 'tests/tool-native.test.mjs']),
+        ('Herdr workspace', ['node', '--test', 'tests/herdr-workspace.test.mjs']),
         ('runner reporting', ['python3', '-B', 'tests/check-runner.py']),
         ('check verdicts', ['bash', 'tests/check-verdicts.sh']),
         ('bootstrap', ['bash', 'tests/bootstrap-latest.sh']),

@@ -3,4 +3,6 @@ theme = "rose-pine"
 default_scope = "uncommitted"
 toggle_placement = "split"
 toggle_direction = "right"
-auto_open = true
+auto_open = false
+navigator_position = "right"
+editor = "nvim"

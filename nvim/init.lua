@@ -14,4 +14,5 @@ require("config.autocmds")
 
 if vim.env.DOTFILES_NVIM_CORE_ONLY ~= "1" then
   require("config.lazy")
+  require("config.workspace").setup()
 end

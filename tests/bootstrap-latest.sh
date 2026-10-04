@@ -122,8 +122,13 @@ EOF
 
 cat >"$fake_bin/node" <<'EOF'
 #!/usr/bin/env bash
+if [[ "$#" == 2 && "$1" == "$DOTFILES_REPO/scripts/herdr-workspace.mjs" && "$2" == --install-reviewr ]]; then
+  test -e "$BOOTSTRAP_TEST_ACTIVATED" || exit 1
+  touch "$BOOTSTRAP_TEST_REVIEWR"
+  exit 0
+fi
 if [[ "$#" != 2 || "$1" != --check || "$2" != "$DOTFILES_REPO/scripts/dotfiles-tool.mjs" ]]; then
-  printf 'bootstrap test: Node must only check launcher syntax\n' >&2
+  printf 'bootstrap test: unexpected Node command\n' >&2
   exit 1
 fi
 EOF
@@ -173,6 +178,7 @@ ln -s "$fake_bin/noop" "$fake_bin/xcode-select"
 
 # Section: Fixture wiring and preserved user data
 export BOOTSTRAP_TEST_ACTIVATED="$test_dir/activated"
+export BOOTSTRAP_TEST_REVIEWR="$test_dir/reviewr-installed"
 export BOOTSTRAP_TEST_GENERATION="$generation"
 export BOOTSTRAP_TEST_GREP="$real_grep"
 export BOOTSTRAP_TEST_HOMEBREW_INSTALLED="$test_dir/homebrew-installed"
@@ -207,6 +213,7 @@ grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"
 grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
 grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
 test -e "$BOOTSTRAP_TEST_ACTIVATED"
+test -e "$BOOTSTRAP_TEST_REVIEWR"
 grep -Fq 'keep this prompt' "$HOME/.pi/agent/prompts/custom.md"
 grep -Fq '"original":true' "$HOME"/.pi/agent/models.json.backup.*
 test -L "$HOME/.pi/agent/models.json"
@@ -214,7 +221,7 @@ test -L "$HOME/.config/example app/config"
 grep -Fq 'original example' "$HOME/.config/example app/"config.backup.*
 grep -Fq 'homeConfigurations.linux-x86_64.config.home.file' "$BOOTSTRAP_TEST_NIX_LOG"
 
-rm -f "$BOOTSTRAP_TEST_ACTIVATED" "$BOOTSTRAP_TEST_NIX_LOG"
+rm -f "$BOOTSTRAP_TEST_ACTIVATED" "$BOOTSTRAP_TEST_NIX_LOG" "$BOOTSTRAP_TEST_REVIEWR"
 # Section: Non-mutating check mode
 "$repo_dir/bootstrap.sh" --check >/dev/null
 
@@ -225,6 +232,7 @@ fi
 grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
 grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
 test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
+test ! -e "$BOOTSTRAP_TEST_REVIEWR"
 
 # Section: macOS prerequisites and shell-file preservation
 fake_etc="$test_dir/etc"

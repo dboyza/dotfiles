@@ -99,3 +99,39 @@ Inspect and save any affected buffers after a rename.
 The editor configuration supports native Windows, macOS, and Linux/WSL.
 The IDE workflows have been exercised on macOS; native Windows and WSL still need runtime verification.
 Tree-sitter parser compilation requires an available C compiler on each platform.
+
+## Agent workspace
+
+Run `herdr` in a macOS or Linux/WSL terminal, then run the launcher from a shell pane:
+
+```sh
+herdr-workspace ~/code/my-project
+herdr-workspace ~/code/my-project pi
+```
+
+The default agent is Codex; alternatives are `pi`, `claude`, and `opencode`.
+Each invocation creates a fresh workspace in the current Herdr session, with a 40% agent pane and a 60% editor pane.
+The project sidebar belongs to Herdr; Neovim contains the file editor and a persistent, 34-column Neo-tree on its right.
+`Space e` switches between the tree and editor, and opening a file keeps this tree visible.
+Normal Neovim launches retain the left-hand explorer that closes after file selection.
+Quitting the last editor window still closes Neo-tree.
+
+The launcher sets `g:dotfiles_workspace` only for the new editor process.
+That profile checks for external changes every 1.5 seconds in Normal mode and refreshes unmodified buffers.
+Unsaved buffers are preserved so you can resolve competing edits yourself.
+If setup fails after workspace creation, the launcher reports its ID and leaves it intact for recovery.
+Run `herdr-workspace --help` for usage.
+
+Reviewr is available with `Control+A`, then `v`; toggle it again to recover the editor's screen space.
+Its navigator sits on the right, `2` selects All files, and `e` opens the selected file in Neovim temporarily.
+Reviewr's editor does not enable the dedicated workspace profile.
+Worktree creation does not automatically open Reviewr.
+Bootstrap installs missing Reviewr from the pinned 0.44.0 source commit through Herdr and preserves existing installations.
+To install it independently:
+
+```sh
+herdr-workspace --install-reviewr
+```
+
+Both the launcher and Reviewr run inside WSL on Windows; native Windows Herdr remains available separately.
+This layout does not embed a graphical chat interface: the agent keeps its own terminal UI.

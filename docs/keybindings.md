@@ -53,6 +53,9 @@ On macOS and Windows, it remains the fallback in fullscreen and whenever the com
 See [macOS floating tabs](macos.md#floating-wezterm-tabs) for the one-time Accessibility setup and [Windows floating tabs](windows-wsl.md#floating-wezterm-tabs-and-clock) for Windows installation.
 Herdr prefix `v` toggles Reviewr, `d` detaches, and `?` shows its full shortcut list.
 Herdr also has a native Windows launcher; its Reviewr plugin is supported here only on macOS and Linux/WSL.
+Use `herdr-workspace ~/code/project` from a Herdr shell pane for Codex beside Neovim with a persistent right-hand file tree.
+In this dedicated layout, `Space e` switches tree/editor focus without hiding the tree after file selection.
+See the [agent workspace guide](neovim.md#agent-workspace) for agent selection, file refresh, and Reviewr installation.
 
 In Neovim Normal mode, `Alt+h/j/k/l` focuses an editor window first, then the nearest enclosing Herdr pane, or tmux when outside Herdr.
 Use left Option for these Alt shortcuts on macOS; right Option remains available for composed characters.
