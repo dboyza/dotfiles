@@ -11,6 +11,10 @@
   ...
 }:
 let
+  managedTools = builtins.attrNames (
+    builtins.fromJSON (builtins.readFile ../scripts/managed-tools.json)
+  );
+
   managed = source: {
     inherit source;
     force = true;
@@ -117,11 +121,6 @@ in
     ".config/starship.toml" = live "starship/starship.toml";
     ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
     ".local/bin/dotfiles-tool.mjs" = live "scripts/dotfiles-tool.mjs";
-    ".local/bin/codex" = live "scripts/codex";
-    ".local/bin/claude" = live "scripts/claude";
-    ".local/bin/herdr" = live "scripts/herdr";
-    ".local/bin/pi" = live "scripts/pi";
-    ".local/bin/opencode" = live "scripts/opencode";
 
     ".codex/AGENTS.md" = live "agents/global/AGENTS.md";
     ".claude/CLAUDE.md" = live "agents/global/AGENTS.md";
@@ -135,6 +134,12 @@ in
     ".tmux/plugins/tmux-continuum" = managed inputs.tmux-continuum;
     ".tmux/plugins/tmux-assistant-resurrect" = managed inputs.tmux-assistant-resurrect;
   }
+  // lib.listToAttrs (
+    map (tool: {
+      name = ".local/bin/${tool}";
+      value = live "scripts/${tool}";
+    }) managedTools
+  )
   // lib.optionalAttrs isWSL {
     ".local/bin/win-copy" = live "scripts/win-copy";
     ".local/bin/win-paste" = live "scripts/win-paste";

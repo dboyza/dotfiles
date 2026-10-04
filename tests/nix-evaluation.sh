@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 if ! command -v nix >/dev/null 2>&1; then
   printf 'Nix evaluation skipped because nix is unavailable\n'
-  exit 0
+  exit 78
 fi
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
@@ -20,9 +20,10 @@ source "$repo_dir/scripts/lib/bootstrap-common.sh"
 
 verify_tool_targets() {
   local tool
-  for tool in codex claude pi opencode herdr dotfiles-tool.mjs; do
+  managed_targets | grep -Fx "$HOME/.local/bin/dotfiles-tool.mjs" >/dev/null
+  while IFS= read -r tool; do
     managed_targets | grep -Fx "$HOME/.local/bin/$tool" >/dev/null
-  done
+  done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))))' "$repo_dir/scripts/managed-tools.json")
 }
 
 os=Linux

@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { type ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@earendil-works/pi-tui";
-import { renderStatusline } from "../../pi/extensions/codex-statusline/render.mjs";
+import { renderStatusline } from "../../pi/archive/extensions/codex-statusline/render.mjs";
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("footer-fixture", {

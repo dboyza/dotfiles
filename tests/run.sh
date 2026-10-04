@@ -1,19 +1,4 @@
 #!/usr/bin/env bash
-
 set -Eeuo pipefail
-
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-
-python3 -B "$repo_dir/tests/macos-apps.py"
-python3 -B "$repo_dir/tests/adrafinil-agent-poll.py"
-python3 -B "$repo_dir/tests/adrafinil-agent-poll-e2e.py"
-node --test "$repo_dir/tests/tool-updates.test.mjs" "$repo_dir/tests/tool-native.test.mjs" "$repo_dir/tests/pi-statusline.test.mjs" "$repo_dir/tests/pi-scroll.test.mjs"
-"$repo_dir/tests/bootstrap-latest.sh"
-"$repo_dir/tests/wsl-clipboard.sh"
-"$repo_dir/tests/clipboard.sh"
-"$repo_dir/tests/tmux-plugins.sh"
-python3 -B "$repo_dir/tests/keyboard-routing.py"
-"$repo_dir/tests/compatibility.sh"
-"$repo_dir/tests/wezterm-floating-tabs.sh"
-"$repo_dir/tests/nix-evaluation.sh"
-"$repo_dir/tests/live-config.sh"
+exec python3 -B "$repo_dir/tests/run.py" "$@"

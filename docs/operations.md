@@ -40,6 +40,7 @@ Review and commit that file when the refresh is intentional.
 On every supported platform, Codex, Claude Code, Pi, opencode, and Herdr update independently at launch; bootstrap manages their launchers and runtime dependencies.
 
 After activation, bootstrap verifies managed links, Pi settings, launcher syntax, the tmux prefix, WezTerm configuration, and platform integration.
+Managed tool names and GitHub release owners are declared once in `scripts/managed-tools.json`, consumed by the updater, Nix, and the Windows launcher installer.
 The managed-file inventory comes from the evaluated Home Manager configuration, including its platform-specific files.
 Add managed files in `nix/home.nix`; backup and verification discover them automatically.
 
@@ -102,8 +103,8 @@ To prepare an installation or update without opening a session:
 node scripts/dotfiles-tool.mjs --update-only codex
 ```
 
-Pi's local extensions and pinned extension packages are independent of the Pi application version.
-Check extension behavior after upgrades, especially the Calm extension's UI integrations.
+Pi runs with factory defaults.
+Previous customizations are retained under `pi/archive/`; their optional checks run with `./tests/run.sh --archive`.
 
 ## Run automated tests
 
@@ -112,6 +113,16 @@ Run:
 ```sh
 ./tests/run.sh
 ```
+
+The runner reports `PASSED`, `FAILED`, `SKIPPED` (not selected or not applicable), and `UNAVAILABLE` (missing prerequisites).
+It continues through independent suites and exits unsuccessfully if any test fails.
+Use `./tests/run.sh --strict` to also fail when prerequisites are unavailable.
+A successful default run can therefore still have explicitly reported gaps.
+Native macOS clipboard checks require access to the private pasteboard service; a restricted sandbox can block them.
+
+Run `./tests/wezterm-floating-tabs.sh --e2e` on macOS to measure tab switching in disposable GUI windows before and after configuration reload.
+On the Windows host, run `./tests/wezterm-floating-tabs.ps1` from PowerShell for native geometry, frame, ACL, and bridge checks.
+Platform simulation and Nix evaluation do not replace these native checks.
 
 The suite checks bootstrap update, preflight, backup, and check-only behavior.
 It exercises launch-time updates with isolated installations and mocked release sources.

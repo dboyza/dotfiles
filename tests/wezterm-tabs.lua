@@ -1,13 +1,17 @@
 -- Run with WezTerm itself to validate formatting and display-cell widths.
 local wezterm = require 'wezterm'
 local callbacks = {}
-local original_on = wezterm.on
+local original_on, original_home = wezterm.on, wezterm.home_dir
+-- This suite exercises the native fallback, independent of installed companions.
+wezterm.home_dir = nil
 wezterm.on = function(name, callback) callbacks[name] = callback end
-local config = dofile(wezterm.config_dir .. '/../wezterm/.wezterm.lua')
-wezterm.on = original_on
+local source = (os.getenv('DOTFILES_TEST_REPO') or (wezterm.config_dir .. '/..')) .. '/wezterm/.wezterm.lua'
+local config = assert(loadfile(source))(source)
+wezterm.on, wezterm.home_dir = original_on, original_home
 
 local function plain(text)
-  return text:gsub('\27%[[%d;:]*m', '')
+  -- format() emits both SGR styling and an ASCII charset selector.
+  return text:gsub('\27%[[%d;:]*m', ''):gsub('\27%(B', '')
 end
 local format_title = assert(callbacks['format-tab-title'])
 for _, index in ipairs({ 0, 8, 9, 99 }) do

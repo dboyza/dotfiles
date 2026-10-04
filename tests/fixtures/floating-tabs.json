@@ -1,0 +1,220 @@
+{
+  "snapshots": [
+    {
+      "name": "fresh",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": true
+    },
+    {
+      "name": "fresh-before-deadline",
+      "file": "window-abc-42.json",
+      "now": 1002.999,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": true
+    },
+    {
+      "name": "expired-at-deadline",
+      "file": "window-abc-42.json",
+      "now": 1003,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "future-at-deadline",
+      "file": "window-abc-42.json",
+      "now": 997,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "other-window",
+      "file": "window-abc-99.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "other-title",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:99]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "unsafe-key",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"../abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "no-tabs",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[]}",
+      "valid": false
+    },
+    {
+      "name": "duplicate-tab-id",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":11,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "duplicate-tab-index",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":0,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "negative-tab-id",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":-1,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "negative-tab-index",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":-1,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "missing-active",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "multiple-active",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":true}]}",
+      "valid": false
+    },
+    {
+      "name": "no-active",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":false},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "missing-updated",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "fractional-id",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11.5,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "unknown-field",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false}],\"future_field\":\"ignored\"}",
+      "valid": true
+    },
+    {
+      "name": "malformed-json",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{",
+      "valid": false
+    }
+  ],
+  "requests": [
+    {
+      "name": "activate",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "tab_id": 11
+      },
+      "valid": true
+    },
+    {
+      "name": "new-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "new_tab"
+      },
+      "valid": true
+    },
+    {
+      "name": "unknown-action",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "close_tab"
+      },
+      "valid": false
+    },
+    {
+      "name": "ambiguous",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "new_tab",
+        "tab_id": 11
+      },
+      "valid": false
+    },
+    {
+      "name": "missing-action",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000
+      },
+      "valid": false
+    },
+    {
+      "name": "string-id",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "tab_id": "11"
+      },
+      "valid": false
+    },
+    {
+      "name": "negative-id",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "tab_id": -1
+      },
+      "valid": false
+    },
+    {
+      "name": "stale",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 997,
+        "tab_id": 11
+      },
+      "valid": false
+    },
+    {
+      "name": "wrong-window",
+      "reply": {
+        "title": "WezTerm [abc:99]",
+        "updated": 1000,
+        "tab_id": 11
+      },
+      "valid": false
+    }
+  ]
+}

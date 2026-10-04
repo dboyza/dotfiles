@@ -28,7 +28,7 @@ PI_CUA_SKIP_POSTINSTALL=1 npm_config_ignore_scripts=true npm_config_legacy_peer_
 
 package="${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/git/github.com/husain-zaidi/pi-computer-use"
 uv venv --python 3.12 "$package/.venv"
-uv pip sync --python "$package/.venv/bin/python" --require-hashes pi/computer-use/requirements.txt
+uv pip sync --python "$package/.venv/bin/python" --require-hashes pi/archive/computer-use/requirements.txt
 "$package/.venv/bin/python" -m playwright install --no-shell chromium
 uv pip check --python "$package/.venv/bin/python"
 "$package/.venv/bin/python" -c 'from importlib.metadata import version; assert version("Pillow") == "12.3.0"; print("Pillow", version("Pillow"))'
@@ -52,7 +52,7 @@ $agent = if ($env:PI_CODING_AGENT_DIR) { $env:PI_CODING_AGENT_DIR } else { Join-
 $package = Join-Path $agent "git/github.com/husain-zaidi/pi-computer-use"
 uv venv --python 3.12 "$package/.venv"
 $python = Join-Path $package ".venv/Scripts/python.exe"
-uv pip sync --python $python --require-hashes pi/computer-use/requirements.txt
+uv pip sync --python $python --require-hashes pi/archive/computer-use/requirements.txt
 & $python -m playwright install --no-shell chromium
 uv pip check --python $python
 ```
@@ -68,7 +68,7 @@ Do not enable `/computer-use desktop` unless physical input and screen capture a
 Review new versions and advisories before changing `requirements.in`, then regenerate the lock from the dotfiles checkout:
 
 ```bash
-uv pip compile pi/computer-use/requirements.in --universal --python-version 3.12 --generate-hashes --output-file pi/computer-use/requirements.txt
+uv pip compile pi/archive/computer-use/requirements.in --universal --python-version 3.12 --generate-hashes --output-file pi/archive/computer-use/requirements.txt
 ```
 
 Do not manually edit the generated requirements file.

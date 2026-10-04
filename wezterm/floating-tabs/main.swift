@@ -19,6 +19,39 @@ struct Reply: Codable {
     var action: String? = nil
 }
 
+// Keep these limits aligned with config/protocol.lua and the shared fixtures.
+let freshnessSeconds: Double = 3
+let maximumSnapshotBytes = 65536
+let cleanupAfterSeconds: Double = 30
+
+func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
+    let validKey = snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil
+    let title = "WezTerm [\(snapshot.key.replacingOccurrences(of: "-", with: ":"))]"
+    let validTabs = !snapshot.tabs.isEmpty && snapshot.tabs.allSatisfy {
+        $0.id >= 0 && $0.id <= 9007199254740991 && $0.index >= 0 && $0.index <= 2147483647
+    }
+    return validKey && filename == "window-\(snapshot.key).json" && snapshot.title == title
+        && abs(now - snapshot.updated) < freshnessSeconds && validTabs
+        && Set(snapshot.tabs.map { $0.id }).count == snapshot.tabs.count
+        && Set(snapshot.tabs.map { $0.index }).count == snapshot.tabs.count
+        && snapshot.tabs.filter { $0.active }.count == 1
+}
+
+func testSnapshotContract(_ path: String) throws {
+    struct Case: Decodable {
+        let name: String, file: String, payload: String
+        let now: Double
+        let valid: Bool
+    }
+    struct Fixtures: Decodable { let snapshots: [Case] }
+    let fixtures = try JSONDecoder().decode(Fixtures.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+    for fixture in fixtures.snapshots {
+        let snapshot = try? JSONDecoder().decode(Snapshot.self, from: Data(fixture.payload.utf8))
+        let valid = snapshot.map { validSnapshot($0, filename: fixture.file, now: fixture.now) } ?? false
+        precondition(valid == fixture.valid, "Snapshot contract: \(fixture.name)")
+    }
+}
+
 let stateDirectory = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent(".local/state/dotfiles/wezterm-floating-tabs")
 let lavender = NSColor(srgbRed: 196/255, green: 167/255, blue: 231/255, alpha: 1)
@@ -344,17 +377,16 @@ final class Companion: NSObject, NSApplicationDelegate {
             includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
         var snapshots: [String: Snapshot] = [:]
         for file in files where file.lastPathComponent.hasPrefix("window-") && file.pathExtension == "json" {
-            guard let data = try? Data(contentsOf: file),
+            guard let data = try? Data(contentsOf: file), data.count <= maximumSnapshotBytes,
                   let snapshot = try? JSONDecoder().decode(Snapshot.self, from: data),
-                  file.lastPathComponent == "window-\(snapshot.key).json",
-                  snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil else { continue }
-            if now - snapshot.updated > 30 {
+                  validSnapshot(snapshot, filename: file.lastPathComponent, now: snapshot.updated) else { continue }
+            if now - snapshot.updated > cleanupAfterSeconds {
                 for name in ["window-", "ready-", "activate-"] {
                     try? FileManager.default.removeItem(at: stateDirectory.appendingPathComponent("\(name)\(snapshot.key).json"))
                 }
                 continue
             }
-            if abs(now - snapshot.updated) < 3 && !snapshot.tabs.isEmpty { snapshots[snapshot.title] = snapshot }
+            if validSnapshot(snapshot, filename: file.lastPathComponent, now: now) { snapshots[snapshot.title] = snapshot }
         }
         let visible = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
@@ -411,7 +443,8 @@ if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
     NSGraphicsContext.restoreGraphicsState()
     try bitmap.representation(using: .png, properties: [:])!.write(
         to: URL(fileURLWithPath: CommandLine.arguments[argument + 1]))
-} else if CommandLine.arguments.contains("--test") {
+} else if let argument = CommandLine.arguments.firstIndex(of: "--test") {
+    try testSnapshotContract(CommandLine.arguments[argument + 1])
     precondition(needsOrdering(panel: 2, parent: 1, order: [1, 2]), "Click-raised window needs its normal-level panel restored")
     precondition(!needsOrdering(panel: 2, parent: 1, order: [3, 2, 1]), "Correctly stacked background panels must not be reordered")
     precondition(needsOrdering(panel: 2, parent: 1, order: [1]), "Hidden panels must be restored")

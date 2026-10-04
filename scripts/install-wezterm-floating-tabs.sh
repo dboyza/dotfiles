@@ -22,7 +22,7 @@ trap 'rm -rf "$build_dir"' EXIT
 mkdir -p "$build_dir/app/Contents/MacOS" "$build_dir/app/Contents/Resources"
 xcrun swiftc -O -module-cache-path "$build_dir/modules" "$source_file" \
   -o "$build_dir/app/Contents/MacOS/wezterm-floating-tabs"
-"$build_dir/app/Contents/MacOS/wezterm-floating-tabs" --test
+"$build_dir/app/Contents/MacOS/wezterm-floating-tabs" --test "$repo_dir/tests/fixtures/floating-tabs.json"
 cat >"$build_dir/app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

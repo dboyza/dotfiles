@@ -5,14 +5,14 @@ set -Eeuo pipefail
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 if ! command -v tmux >/dev/null 2>&1; then
   printf 'tmux plugin test skipped: tmux is not installed\n'
-  exit 0
+  exit 78
 fi
 
 plugins=(tmux-resurrect tmux-assistant-resurrect tmux-continuum)
 for plugin in "${plugins[@]}"; do
   if [[ ! -d "$HOME/.tmux/plugins/$plugin" ]]; then
     printf 'tmux plugin test skipped: %s is not installed\n' "$plugin"
-    exit 0
+    exit 78
   fi
 done
 

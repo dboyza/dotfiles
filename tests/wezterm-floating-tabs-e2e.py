@@ -10,6 +10,7 @@ import json
 import math
 import os
 from pathlib import Path
+import shutil
 import statistics
 import subprocess
 import sys
@@ -86,6 +87,10 @@ def main():
         helper = fixture / "Applications/WezTerm Floating Tabs.app/Contents/MacOS/wezterm-floating-tabs"
         helper.parent.mkdir(parents=True)
         helper.touch()
+        # Copy the configuration so reload checks never edit the live checkout.
+        checkout = fixture / "checkout with spaces"
+        shutil.copytree(args.config.resolve().parent, checkout)
+        source_path = checkout / args.config.name
         config = fixture / "test.lua"
         config.write_text("""local w = require 'wezterm'
 w.home_dir = """ + json.dumps(str(fixture)) + """
@@ -104,7 +109,8 @@ w.on = function(name, callback)
     end)
   end
 end
-local config = dofile(""" + json.dumps(str(args.config.resolve())) + """)
+local source = """ + json.dumps(str(source_path)) + """
+local config = assert(loadfile(source))(source)
 w.on = on
 w.on('gui-startup', function()
   for _ = 1, 2 do
@@ -145,6 +151,12 @@ return config
                 wait_for(lambda: (fixture / "loaded").read_text() != loaded, "configuration reload")
                 time.sleep(1)
                 results["after_reload"] = measure(bridge, snapshots)
+                loaded = (fixture / "loaded").read_text()
+                with (checkout / "config/tabs.lua").open("a") as module:
+                    module.write("\n-- Exercise a watched module reload.\n")
+                wait_for(lambda: (fixture / "loaded").read_text() != loaded, "module reload")
+                time.sleep(1)
+                results["after_module_reload"] = measure(bridge, snapshots)
                 errors = fixture / "lua-errors"
                 assert not errors.exists(), errors.read_text() if errors.exists() else ""
                 print(json.dumps(results, indent=2), flush=True)

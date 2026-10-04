@@ -6,7 +6,20 @@ local callbacks, spawned = {}, 0
 wezterm.home_dir = home
 wezterm.on = function(name, callback) callbacks[name] = callback end
 wezterm.background_child_process = function() spawned = spawned + 1 end
-local config = dofile(wezterm.config_dir .. '/../wezterm/.wezterm.lua')
+local source = (os.getenv('DOTFILES_TEST_REPO') or (wezterm.config_dir .. '/..')) .. '/wezterm/.wezterm.lua'
+local protocol = dofile(source:match('^(.*)/') .. '/config/protocol.lua')
+local fixture_file = assert(io.open(source:match('^(.*)/') .. '/../tests/fixtures/floating-tabs.json'))
+local fixtures = wezterm.json_parse(fixture_file:read('*a'))
+fixture_file:close()
+for _, case in ipairs(fixtures.snapshots) do
+  local ok, value = pcall(wezterm.json_parse, case.payload)
+  local valid = ok and protocol.valid_snapshot(value, case.file, case.now) or false
+  assert(valid == case.valid, 'snapshot contract: ' .. case.name)
+end
+for _, case in ipairs(fixtures.requests) do
+  assert(protocol.valid_request(case.reply, 'WezTerm [abc:42]', 1000) == case.valid, 'request contract: ' .. case.name)
+end
+local config = assert(loadfile(source))(source)
 wezterm.on = original_on
 local expected_border = wezterm.target_triple:lower():find('windows') and '0px' or '1px'
 for _, field in ipairs({ 'border_left_width', 'border_right_width', 'border_top_height', 'border_bottom_height' }) do

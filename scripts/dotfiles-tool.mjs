@@ -7,12 +7,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
-const repositories = {
-  codex: 'openai/codex',
-  pi: 'earendil-works/pi',
-  opencode: 'anomalyco/opencode',
-};
-const managedTools = new Set([...Object.keys(repositories), 'claude', 'herdr']);
+const inventory = JSON.parse(fs.readFileSync(new URL('./managed-tools.json', import.meta.url), 'utf8'));
+const repositories = Object.fromEntries(Object.entries(inventory)
+  .filter(([, tool]) => tool.github).map(([name, tool]) => [name, tool.github]));
+const managedTools = new Set(Object.keys(inventory));
+const metadataTimeoutMs = 5000;
+const downloadTimeoutMs = 90000;
+const commandTimeoutMs = 180000;
+const versionCheckTimeoutMs = 30000;
+const unpublishedLockGraceMs = 30000;
+const firstInstallWaitMs = 190000;
+const lockRetryMs = 100;
 const stableVersion = /^\d+\.\d+\.\d+$/;
 const claudeDownloads = 'https://downloads.claude.ai/claude-code-releases';
 const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
@@ -44,7 +49,7 @@ function command(directory, release) {
   return release.node ? [process.execPath, executable] : [executable];
 }
 
-async function request(url, milliseconds = 5000) {
+async function request(url, milliseconds = metadataTimeoutMs) {
   const response = await fetch(url, {
     signal: AbortSignal.timeout(milliseconds),
     headers: { 'User-Agent': 'dotfiles-tool-updater', Accept: 'application/json' },
@@ -128,7 +133,7 @@ export async function latestRelease(tool, {
 
 function run(executable, args, options = {}) {
   const result = spawnSync(executable, args, {
-    encoding: 'utf8', timeout: 180000, maxBuffer: 8 * 1024 * 1024,
+    encoding: 'utf8', timeout: commandTimeoutMs, maxBuffer: 8 * 1024 * 1024,
     ...options,
   });
   if (result.error) throw result.error;
@@ -164,7 +169,7 @@ function requireFile(directory, relative) {
 }
 
 export async function installRelease(tool, release, directory) {
-  const bytes = Buffer.from(await (await request(release.url, 90000)).arrayBuffer());
+  const bytes = Buffer.from(await (await request(release.url, downloadTimeoutMs)).arrayBuffer());
   if (createHash('sha256').update(bytes).digest('hex') !== release.sha256.toLowerCase()) {
     throw new Error(`${tool} download checksum mismatch`);
   }
@@ -253,7 +258,7 @@ function acquireLock(directory) {
       } catch (readError) {
         // An empty lock can mean a process is still publishing its PID.
         if (readError instanceof SyntaxError) {
-          if (Date.now() - fs.statSync(lock).mtimeMs > 30000) fs.unlinkSync(lock);
+          if (Date.now() - fs.statSync(lock).mtimeMs > unpublishedLockGraceMs) fs.unlinkSync(lock);
         } else if (readError.code !== 'ENOENT') throw readError;
       }
     } finally {
@@ -263,10 +268,19 @@ function acquireLock(directory) {
   }
 }
 
+function verifyInstallation(tool, directory, installed) {
+  const [executable, ...args] = command(directory, installed);
+  const version = run(executable, [...args, '--version'], { timeout: versionCheckTimeoutMs, env: toolEnvironment(tool) });
+  const escapedVersion = installed.version.replaceAll('.', '\\.');
+  if (!new RegExp(`(^|[^\\d.])${escapedVersion}([^\\d.]|$)`).test(version)) {
+    throw new Error('New executable failed its version check');
+  }
+}
+
 export async function ensureInstallation(tool, {
   root = dataRoot(), update = process.env.DOTFILES_TOOL_UPDATE !== '0',
   latest = latestRelease, install = installRelease,
-  log = message => console.error(`[${tool}] ${message}`), waitMilliseconds = 190000,
+  log = message => console.error(`[${tool}] ${message}`), waitMilliseconds = firstInstallWaitMs,
 } = {}) {
   if (!managedTools.has(tool)) throw new Error(`Unknown managed tool: ${tool}`);
   const directory = path.join(root, tool);
@@ -277,31 +291,31 @@ export async function ensureInstallation(tool, {
     return { directory, release: state.current };
   }
 
+  // Observe the current installation, then serialize any mutation.
   let unlock;
   const deadline = Date.now() + waitMilliseconds;
   while (!(unlock = acquireLock(directory))) {
     state = readState(directory);
     if (state) return { directory, release: state.current };
     if (Date.now() >= deadline) throw new Error('Timed out waiting for the first installation');
-    await pause(100);
+    await pause(lockRetryMs);
   }
   let staging;
   try {
     state = readState(directory);
     const release = await latest(tool);
-    if (!state || state.current.version !== release.version || state.current.artifact !== release.artifact) {
+    // Version alone is insufficient: an unchanged version may need a bundle migration.
+    const needsReplacement = !state || state.current.version !== release.version
+      || state.current.artifact !== release.artifact;
+    if (needsReplacement) {
       log(`Installing ${release.version}…`);
       const name = `${release.version}-${process.platform}-${process.arch}-${randomUUID()}`;
       staging = path.join(directory, name);
       fs.mkdirSync(staging);
       const entry = await install(tool, release, staging);
       const installed = { version: release.version, artifact: release.artifact, directory: name, ...entry };
-      const [executable, ...args] = command(directory, installed);
-      const version = run(executable, [...args, '--version'], { timeout: 30000, env: toolEnvironment(tool) });
-      const escapedVersion = release.version.replaceAll('.', '\\.');
-      if (!new RegExp(`(^|[^\\d.])${escapedVersion}([^\\d.]|$)`).test(version)) {
-        throw new Error('New executable failed its version check');
-      }
+      verifyInstallation(tool, directory, installed);
+      // Publish only after the complete bundle passes its executable check.
       publish(directory, { current: installed, previous: state?.current || null });
       staging = null;
       state = readState(directory);

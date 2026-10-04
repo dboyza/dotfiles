@@ -195,13 +195,12 @@ verify_wezterm_configuration() {
     return 0
   fi
 
-  local wezterm_command
-  if ! wezterm_command=$(find_wezterm); then
+  if ! find_wezterm_gui >/dev/null; then
     printf 'bootstrap: WezTerm executable is missing\n' >&2
     return 1
   fi
 
-  if ! "$wezterm_command" --config-file "$HOME/.wezterm.lua" show-keys >/dev/null; then
+  if ! check_wezterm_config "$HOME/.wezterm.lua" >/dev/null; then
     printf 'bootstrap: WezTerm rejected the activated configuration\n' >&2
     return 1
   fi

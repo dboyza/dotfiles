@@ -60,7 +60,7 @@ Linux desktop installations receive WezTerm, GCC, and common X11 and Wayland cli
 WSL receives Windows WezTerm, a Windows font installation, and UTF-8-safe Windows clipboard helpers.
 macOS receives WezTerm through Homebrew and system integration through nix-darwin.
 
-Pi includes the local Calm extension, terminal-title status, model overrides, and the Rose Pine Moon theme.
+Pi uses factory defaults; previous extensions, model overrides, and themes are kept in `pi/archive/` and are not deployed.
 Its settings declare pinned web-access, Codex fast-mode, and OpenAI server-compaction packages.
 The server-compaction extension is experimental and sends relevant compaction and continuity data to OpenAI.
 
@@ -92,7 +92,7 @@ If a check or update fails, the launcher starts the installed version, and simul
 Use `DOTFILES_TOOL_UPDATE=0 codex` to skip the update check for a launch; the same variable works with all five tools.
 The bypass requires a previously installed version.
 To install or update without starting a session, run `node scripts/dotfiles-tool.mjs --update-only codex` from the checkout, substituting any of the five tool names.
-Pi extensions remain pinned separately in `pi/settings.json`; review their compatibility when Pi updates.
+Archived Pi customizations require an explicit opt-in and a fresh compatibility check before reactivation.
 
 Homebrew provides the remaining macOS command-line tools, including Node.js, from `nix/homebrew.nix`.
 Bootstrap installs missing Brew packages without upgrading existing ones.
@@ -138,7 +138,7 @@ Run the complete local test suite with:
 | `nix/homebrew.nix` | Declares macOS command-line dependencies and the font cask. |
 | `scripts/dotfiles-tool.mjs` | Checks and installs agent-tool releases at launch. |
 | `agents/` | Stores shared coding-agent instructions and skills. |
-| `pi/` | Stores Pi settings, model overrides, extensions, and themes. |
+| `pi/` | Stores active default settings and a separate inactive customization archive. |
 | `herdr/`, `nvim/`, `starship/`, `tmux/`, `wezterm/`, `zsh/` | Store application configuration. |
 | `scripts/` | Contains shared clipboard dispatch, WSL transport, and Windows integration helpers. |
 | `tests/` | Contains bootstrap, compatibility, platform evaluation, and integration checks. |

@@ -65,22 +65,47 @@ internal static class Native {
     }
 }
 internal static class Bridge {
+    // Keep limits aligned with config/protocol.lua and the shared fixtures.
+    internal const double FreshnessSeconds = 3;
+    internal const int MaximumSnapshotBytes = 65536;
+    internal const double CleanupAfterSeconds = 30;
     internal static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "state", "dotfiles", "wezterm-floating-tabs");
-    internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = 65536 };
+    internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = MaximumSnapshotBytes };
     internal static double Now { get { return (DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalSeconds; } }
     internal static bool Valid(Snapshot snapshot, string file, double now) {
         return snapshot != null && snapshot.key != null && Regex.IsMatch(snapshot.key, "^[A-Za-z0-9]+-[0-9]+$")
             && Path.GetFileName(file) == "window-" + snapshot.key + ".json"
             && snapshot.title == "WezTerm [" + snapshot.key.Replace('-', ':') + "]"
-            && Math.Abs(now - snapshot.updated) < 3 && snapshot.tabs != null && snapshot.tabs.Length > 0
-            && snapshot.tabs.All(tab => tab != null && tab.index >= 0 && tab.id >= 0)
-            && snapshot.tabs.Select(tab => tab.id).Distinct().Count() == snapshot.tabs.Length;
+            && Math.Abs(now - snapshot.updated) < FreshnessSeconds && snapshot.tabs != null && snapshot.tabs.Length > 0
+            && snapshot.tabs.All(tab => tab != null && tab.index >= 0 && tab.id >= 0 && tab.id <= 9007199254740991)
+            && snapshot.tabs.Select(tab => tab.id).Distinct().Count() == snapshot.tabs.Length
+            && snapshot.tabs.Select(tab => tab.index).Distinct().Count() == snapshot.tabs.Length
+            && snapshot.tabs.Count(tab => tab.active) == 1;
+    }
+    private static bool Integer(object value, double maximum) {
+        if (!(value is int || value is long || value is decimal || value is double)) return false;
+        double number = Convert.ToDouble(value);
+        return number >= 0 && number <= maximum && Math.Floor(number) == number;
+    }
+    internal static Snapshot Decode(string text) {
+        // JavaScriptSerializer otherwise fills missing value-type fields with zero.
+        var value = Json.DeserializeObject(text) as Dictionary<string, object>;
+        if (value == null || !value.ContainsKey("updated") ||
+            !(value["updated"] is int || value["updated"] is long || value["updated"] is decimal || value["updated"] is double) ||
+            !value.ContainsKey("tabs") || !(value["tabs"] is object[])) return null;
+        foreach (var item in (object[])value["tabs"]) {
+            var tab = item as Dictionary<string, object>;
+            if (tab == null || !tab.ContainsKey("id") || !Integer(tab["id"], 9007199254740991) ||
+                !tab.ContainsKey("index") || !Integer(tab["index"], Int32.MaxValue) ||
+                !tab.ContainsKey("active") || !(tab["active"] is bool)) return null;
+        }
+        return Json.Deserialize<Snapshot>(text);
     }
     internal static Snapshot Read(string file) {
         // Allow WezTerm to replace the snapshot while a reader holds it open.
         using (var stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete)) {
-            if (stream.Length > 65536) return null;
-            using (var reader = new StreamReader(stream)) return Json.Deserialize<Snapshot>(reader.ReadToEnd());
+            if (stream.Length > MaximumSnapshotBytes) return null;
+            using (var reader = new StreamReader(stream)) return Decode(reader.ReadToEnd());
         }
     }
     internal static void Write(string root, string name, object reply) {
@@ -277,12 +302,12 @@ internal sealed class Companion : ApplicationContext {
             }
             // Windows Lua publication briefly removes the old destination before
             // renaming. Keep its last valid snapshot until the freshness deadline.
-            foreach (var title in snapshots.Keys.Where(title => Math.Abs(Bridge.Now - snapshots[title].updated) >= 3).ToArray()) snapshots.Remove(title);
+            foreach (var title in snapshots.Keys.Where(title => Math.Abs(Bridge.Now - snapshots[title].updated) >= Bridge.FreshnessSeconds).ToArray()) snapshots.Remove(title);
             foreach (var file in Directory.GetFiles(Bridge.Root, "window-*.json")) {
                 try {
                     var snapshot = Bridge.Read(file);
                     if (Bridge.Valid(snapshot, file, Bridge.Now)) snapshots[snapshot.title] = snapshot;
-                    else if (snapshot != null && Bridge.Valid(snapshot, file, snapshot.updated) && Bridge.Now - snapshot.updated > 30) {
+                    else if (snapshot != null && Bridge.Valid(snapshot, file, snapshot.updated) && Bridge.Now - snapshot.updated > Bridge.CleanupAfterSeconds) {
                         foreach (var prefix in new[] { "window-", "ready-", "activate-" }) Bridge.Remove(prefix + snapshot.key + ".json");
                     }
                 } catch (IOException) { } catch (UnauthorizedAccessException) { }
@@ -329,8 +354,8 @@ internal sealed class Companion : ApplicationContext {
 }
 internal static class Program {
     [STAThread] private static int Main(string[] args) {
-        if (args.Length == 2 && args[0] == "--test") {
-            try { Test(); File.WriteAllText(args[1], "Windows floating tabs checks passed\n"); return 0; }
+        if (args.Length == 3 && args[0] == "--test") {
+            try { TestContract(args[2]); Test(); File.WriteAllText(args[1], "Windows floating tabs checks passed\n"); return 0; }
             catch (Exception error) { File.WriteAllText(args[1], error.ToString()); return 1; }
         }
         bool created;
@@ -346,6 +371,22 @@ internal static class Program {
         return 0;
     }
     private static void Require(bool value, string message) { if (!value) throw new Exception(message); }
+    private static void TestContract(string path) {
+        var fixtures = Bridge.Json.Deserialize<ContractFixtures>(File.ReadAllText(path));
+        foreach (var fixture in fixtures.snapshots) {
+            Snapshot snapshot = null;
+            try { snapshot = Bridge.Decode(fixture.payload); } catch (ArgumentException) { } catch (InvalidOperationException) { }
+            Require(Bridge.Valid(snapshot, fixture.file, fixture.now) == fixture.valid, "Snapshot contract: " + fixture.name);
+        }
+    }
+    private sealed class ContractFixtures { public ContractCase[] snapshots { get; set; } }
+    private sealed class ContractCase {
+        public string name { get; set; }
+        public string file { get; set; }
+        public string payload { get; set; }
+        public double now { get; set; }
+        public bool valid { get; set; }
+    }
     private static void Test() {
         using (var window = new Form()) {
             int preference;

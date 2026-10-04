@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 if ! command -v nix >/dev/null 2>&1; then
   printf 'Live configuration test skipped because nix is unavailable\n'
-  exit 0
+  exit 78
 fi
 
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)

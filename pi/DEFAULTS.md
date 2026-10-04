@@ -6,7 +6,7 @@ No default model or reasoning override is pinned by dotfiles.
 Pi may later write ordinary runtime preferences and version metadata into the managed settings file.
 
 Home Manager deploys only Pi's settings and shared agent instructions.
-The source under `extensions/`, `themes/`, `models.json`, and the package review/setup documents is retained as an inactive archive, not loaded automatically.
+Custom extensions, themes, model overrides, and package setup notes live in [`archive/`](archive/) and are not loaded automatically.
 Do not restore those deployment links or package entries without an explicit request.
 The shared skills directory remains available through Pi's normal discovery, unchanged for other agents.
 
@@ -22,4 +22,4 @@ The running process retains its old configuration and tools until restarted, and
 Changes to other applications or their integrations are not part of this reset.
 
 If customization is requested again, restore only the approved settings and resources from the backup.
-Before installing packages, reapply disabled npm lifecycle scripts and review exact package pins as described in `PACKAGE-REVIEW.md`.
+Before installing packages, reapply disabled npm lifecycle scripts and review exact package pins as described in `archive/PACKAGE-REVIEW.md`.

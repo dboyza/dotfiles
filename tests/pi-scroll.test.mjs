@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createScrollStep } from "../pi/extensions/scroll-sensitivity/step.mjs";
+import { createScrollStep } from "../pi/archive/extensions/scroll-sensitivity/step.mjs";
 
 test("changes the native step and restores its original value on disposal", () => {
   const tui = { mode: "fullscreen", wheelScrollLines: 1 };

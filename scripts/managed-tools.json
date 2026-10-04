@@ -1,0 +1,7 @@
+{
+  "codex": { "github": "openai/codex" },
+  "claude": {},
+  "pi": { "github": "earendil-works/pi" },
+  "opencode": { "github": "anomalyco/opencode" },
+  "herdr": {}
+}

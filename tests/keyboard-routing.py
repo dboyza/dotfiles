@@ -15,7 +15,7 @@ import time
 # Native Windows has no tmux or Unix PTYs; mocked WezTerm and Neovim tests cover it.
 if os.name == "nt" or not all(shutil.which(tool) for tool in ("tmux", "nvim")):
     print("Keyboard PTY integration skipped: requires Unix, tmux, and Neovim")
-    sys.exit(0)
+    sys.exit(78)
 
 import pty
 import fcntl

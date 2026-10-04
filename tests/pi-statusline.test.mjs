@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { stripVTControlCharacters } from "node:util";
-import { adapterStatus, homePath, renderStatusline, singleLine } from "../pi/extensions/codex-statusline/render.mjs";
+import { adapterStatus, homePath, renderStatusline, singleLine } from "../pi/archive/extensions/codex-statusline/render.mjs";
 
 // Unit layout fixtures are ASCII; the real Pi TUI smoke test covers terminal-cell widths.
 const display = {

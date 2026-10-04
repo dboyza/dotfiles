@@ -27,7 +27,7 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
       return probe_success, probe_result, ''
     end,
   }
-  local config = dofile(config_path)
+  local config = assert(loadfile(config_path))(config_path)
   local function binding(key, mods)
     for _, entry in ipairs(config.keys) do
       if entry.key == key and entry.mods == mods then return entry.action end
@@ -153,6 +153,9 @@ if vim.uv.os_uname().sysname == 'Darwin' then
     local script = [[
       ObjC.import('AppKit');
       const fixtureBoard = $.NSPasteboard.pasteboardWithUniqueName;
+      if (!fixtureBoard || typeof fixtureBoard.setStringForType !== 'function') {
+        throw new Error('Private pasteboard unavailable. Run this native check with macOS pasteboard access.');
+      }
       const fixtureTypes = ]] .. types_json .. [[;
       fixtureBoard.clearContents;
       fixtureTypes.forEach(type => fixtureBoard.setStringForType('fixture', type));

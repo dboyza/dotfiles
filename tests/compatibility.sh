@@ -2,7 +2,9 @@
 
 set -Eeuo pipefail
 
+export DOTFILES_TEST_REPO
 repo_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
+DOTFILES_TEST_REPO=$repo_dir
 # shellcheck source=scripts/lib/wezterm.sh
 source "$repo_dir/scripts/lib/wezterm.sh"
 test_dir=$(mktemp -d "${TMPDIR:-/tmp}/dotfiles-compatibility.XXXXXX")
@@ -56,7 +58,7 @@ if [[ $(uname -s) == Darwin ]]; then
     )
     # Managed launchers must win even while old Brew installations remain.
     mkdir -p "$test_dir/home/.local/bin"
-    for tool in codex claude pi opencode herdr; do
+    while IFS= read -r tool; do
       printf '#!/bin/sh\nexit 99\n' >"$test_dir/home/.local/bin/$tool"
       chmod +x "$test_dir/home/.local/bin/$tool"
       detected_tool=$(
@@ -64,7 +66,7 @@ if [[ $(uname -s) == Darwin ]]; then
           zsh -dfc 'source "$1"; command -v "$2"' zsh "$repo_dir/zsh/.zshrc" "$tool"
       )
       [[ "$detected_tool" == "$test_dir/home/.local/bin/$tool" ]] || exit 1
-    done
+    done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))))' "$repo_dir/scripts/managed-tools.json")
     if [[ "$detected_homebrew" != "$homebrew_binary" ]]; then
       printf 'compatibility test: zsh did not initialize Homebrew from %s\n' "$homebrew_binary" >&2
       exit 1
@@ -94,12 +96,12 @@ if command -v jq >/dev/null 2>&1; then
   done < <(cd "$repo_dir" && rg --files -g '*.json')
 fi
 
-wezterm_command=$(find_wezterm || true)
+wezterm_command=$(find_wezterm_gui || true)
 
 if [[ -n "$wezterm_command" ]]; then
   keys="$test_dir/wezterm-keys"
-  "$wezterm_command" --config-file "$repo_dir/wezterm/.wezterm.lua" show-keys >"$keys"
-  "$wezterm_command" --config-file "$repo_dir/tests/wezterm-tabs.lua" show-keys >/dev/null
+  check_wezterm_config "$repo_dir/wezterm/.wezterm.lua" >"$keys"
+  check_wezterm_config "$repo_dir/tests/wezterm-tabs.lua" >/dev/null
   for direction in Left Right Up Down; do
     if ! grep -E "^[[:space:]]*CTRL[[:space:]]+${direction}Arrow[[:space:]]+->[[:space:]]+SendKey.*mods: CTRL" "$keys" >/dev/null; then
       printf 'compatibility test: WezTerm does not pass Control+%s through unchanged\n' "$direction" >&2
@@ -143,10 +145,10 @@ fi
 
 if command -v nvim >/dev/null 2>&1; then
   NVIM_LOG_FILE="$test_dir/wezterm-keys.log" \
-    nvim --headless -u NONE -i NONE -l "$repo_dir/tests/wezterm-keys.lua" "$repo_dir/wezterm/.wezterm.lua"
+    nvim --headless -u NONE -i NONE -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/wezterm-keys.lua" "$repo_dir/wezterm/.wezterm.lua"
 
   NVIM_LOG_FILE="$test_dir/wezterm-nvim.log" \
-    nvim --headless -u NONE -l "$repo_dir/tests/wezterm-launch-size.lua" "$repo_dir/wezterm/.wezterm.lua"
+    nvim --headless -u NONE -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/wezterm-launch-size.lua" "$repo_dir/wezterm/.wezterm.lua"
 
   (
     export DOTFILES_NVIM_CORE_ONLY=1
@@ -154,8 +156,8 @@ if command -v nvim >/dev/null 2>&1; then
     export XDG_CONFIG_HOME="$test_dir/config"
     export XDG_DATA_HOME="$test_dir/data"
     export XDG_STATE_HOME="$test_dir/state"
-    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-core.lua"
-    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/nvim-project.lua"
+    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/nvim-core.lua"
+    nvim --headless -u "$repo_dir/nvim/init.lua" -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/nvim-project.lua"
   )
 fi
 
@@ -167,4 +169,12 @@ if command -v pwsh >/dev/null 2>&1; then
   pwsh -NoLogo -NoProfile -NonInteractive -File "$repo_dir/tests/windows.ps1"
 fi
 
-printf 'Cross-platform configuration compatibility passed\n'
+for dependency in shellcheck shfmt zsh jq tmux nvim herdr pwsh; do
+  if ! command -v "$dependency" >/dev/null 2>&1; then
+    printf 'UNAVAILABLE: compatibility requires %s for its associated checks\n' "$dependency"
+  fi
+done
+if [[ -z "$wezterm_command" ]]; then
+  printf 'UNAVAILABLE: WezTerm configuration checks require wezterm-gui\n'
+fi
+printf 'Available configuration compatibility checks passed\n'

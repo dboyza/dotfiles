@@ -84,7 +84,7 @@ local function verify_launch_geometry(
     return wezterm
   end
 
-  assert(loadfile(config_path))()
+  assert(loadfile(config_path))(config_path)
   assert(callbacks['gui-startup'], 'WezTerm config did not register gui-startup')
   callbacks['gui-startup']()
 

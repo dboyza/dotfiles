@@ -273,7 +273,7 @@ class StaleHoldTests(unittest.TestCase):
         path = self.home / "session.jsonl"
         lines = []
         for kind, seconds in events:
-            timestamp = poller.datetime.fromtimestamp(poller.APPLE_EPOCH + seconds, poller.timezone.utc).isoformat()
+            timestamp = poller.datetime.fromtimestamp(poller.APPLE_EPOCH_SECONDS + seconds, poller.timezone.utc).isoformat()
             lines.append(json.dumps({"type": "event_msg", "timestamp": timestamp, "payload": {"type": kind}}))
         path.write_text("\n".join(lines) + "\n")
         with closing(sqlite3.connect(self.home / "state_5.sqlite")) as connection, connection:
@@ -342,11 +342,11 @@ class StaleHoldTests(unittest.TestCase):
         self.hold.update(key="claude-code:session", tool="claude-code")
         path = self.home / "5010.json"
         status = {"pid": 5010, "sessionId": "session", "status": "idle",
-                  "statusUpdatedAt": (poller.APPLE_EPOCH + 150) * 1000}
+                  "statusUpdatedAt": (poller.APPLE_EPOCH_SECONDS + 150) * 1000}
         path.write_text(json.dumps(status))
         self.assertIn(self.hold["key"], self.detect())
         for changes in [{"status": "busy"}, {"status": "waiting"}, {"sessionId": "other"},
-                        {"statusUpdatedAt": (poller.APPLE_EPOCH + 90) * 1000}]:
+                        {"statusUpdatedAt": (poller.APPLE_EPOCH_SECONDS + 90) * 1000}]:
             path.write_text(json.dumps({**status, **changes}))
             self.assertEqual(self.detect(), {})
 

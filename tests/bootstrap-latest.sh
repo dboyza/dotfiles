@@ -157,6 +157,13 @@ EOF
 chmod +x "$fake_bin/nix" "$fake_bin/uname" "$fake_bin/grep" "$fake_bin/getent" "$fake_bin/sudo" "$fake_bin/curl" \
   "$fake_bin/node" "$fake_bin/pi" "$fake_bin/tmux" "$fake_bin/PlistBuddy" "$fake_bin/jq" "$fake_bin/noop" "$generation/activate"
 
+cat >"$fake_bin/wezterm-gui" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+printf 'passed\n' >"${DOTFILES_WEZTERM_CHECK_RESULT:?}"
+EOF
+chmod +x "$fake_bin/wezterm-gui"
+
 for command_name in brew claude codex gh herdr kubectl nvim opencode pre-commit starship terraform uv wezterm; do
   ln -s "$fake_bin/noop" "$fake_bin/$command_name"
 done

@@ -17,9 +17,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 LABEL = "com.dboyza.adrafinil-agent-poll"
-INTERVAL = 60
-TTL = 180
-APPLE_EPOCH = 978307200
+POLL_INTERVAL_SECONDS = 60
+FALLBACK_TTL_SECONDS = 180
+APPLE_EPOCH_SECONDS = 978307200
 SESSION_KEY = re.compile(r"^codex:([0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12})$")
 KEY_PATTERN = re.compile(r"^(codex|claude-code):dotfiles-poll:[1-9][0-9]*$")
 CODEX_ASSERTION = re.compile(
@@ -254,7 +254,7 @@ def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
             stale[key] = "owning process exited"
             continue
         touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
-        if starts and pid in starts and number(touched) and touched + APPLE_EPOCH < starts[pid] - 1:
+        if starts and pid in starts and number(touched) and touched + APPLE_EPOCH_SECONDS < starts[pid] - 1:
             stale[key] = "owning PID was reused by a newer process"
             continue
         if tool == "codex" and (match := SESSION_KEY.fullmatch(key)):
@@ -262,7 +262,7 @@ def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
             touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
             if activity is None or not number(touched):
                 continue
-            touched += APPLE_EPOCH
+            touched += APPLE_EPOCH_SECONDS
             state, timestamp = activity
             if state == "idle" and timestamp >= touched:
                 stale[key] = "Codex turn completed or was interrupted"
@@ -280,7 +280,7 @@ def stale_agent_holds(status, process_text, sessions, codex_home, starts=None):
                 # A start hook can precede Claude's busy-status write.
                 updated = session.get("statusUpdatedAt")
                 touched = entry.get("lastActivityAt", entry.get("acquiredAt"))
-                if number(updated) and number(touched) and updated / 1000 >= touched + APPLE_EPOCH:
+                if number(updated) and number(touched) and updated / 1000 >= touched + APPLE_EPOCH_SECONDS:
                     stale[key] = "Claude session is idle"
     return stale
 
@@ -303,7 +303,7 @@ def release_hold(cli, key):
 def native_coverage(status, stale, peers=None):
     """A valid native hold already protects this tool and process."""
     covered = set()
-    now = datetime.now(timezone.utc).timestamp() - APPLE_EPOCH
+    now = datetime.now(timezone.utc).timestamp() - APPLE_EPOCH_SECONDS
     for entry in status["assertions"]:
         if not isinstance(entry, dict):
             continue
@@ -316,7 +316,7 @@ def native_coverage(status, stale, peers=None):
             continue
         expires = entry.get("expiresAt")
         # A nearly expired hold cannot cover active work until our next tick.
-        if expires is not None and (not number(expires) or expires <= now + INTERVAL):
+        if expires is not None and (not number(expires) or expires <= now + POLL_INTERVAL_SECONDS):
             continue
         covered.add((tool, pid))
     servers = {pid for tool, pid in covered if tool == "codex"}
@@ -324,11 +324,8 @@ def native_coverage(status, stale, peers=None):
     return covered
 
 
-def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peers=None):
-    validate_status(status)
-    if status["paused"]:
-        return {"paused": True, "active": active, "acquired": [], "released": []}
-    stale = dict(stale or {})
+def plan_fallback_holds(active, status, uncertain, stale, peers):
+    """Decide fallback changes from observations; unknown activity stays protected."""
     covered = native_coverage(status, stale, peers)
     owned = {
         entry["key"] for entry in status["assertions"]
@@ -339,13 +336,27 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peer
         f"{tool}:dotfiles-poll:{pid}": (pid, tool)
         for pid, tool in active.items() if (tool, pid) not in covered
     }
+    # Unknown activity keeps its existing lease without renewing it.
+    removable = {
+        key for key in owned - desired.keys()
+        if int(key.rsplit(":", 1)[1]) not in uncertain
+    }
+    return covered, desired, removable
+
+
+def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peers=None):
+    validate_status(status)
+    if status["paused"]:
+        return {"paused": True, "active": active, "acquired": [], "released": []}
+    stale = dict(stale or {})
+    covered, desired, removable = plan_fallback_holds(active, status, uncertain, stale, peers)
     errors, acquired, paused = [], [], False
 
     def acquire(key, pid, tool):
         try:
             if not dry_run:
                 run([cli, "acquire", key, "--tool", tool, "--pid", pid,
-                     "--ttl", TTL, "--reason", "Active work detected by the one-minute check"])
+                     "--ttl", FALLBACK_TTL_SECONDS, "--reason", "Active work detected by the one-minute check"])
             acquired.append(key)
         except (OSError, RuntimeError, subprocess.SubprocessError) as error:
             errors.append(f"{key}: {error}")
@@ -362,14 +373,8 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peer
     # Acquire first so a handoff between agents never briefly drops our last hold.
     for key, (pid, tool) in sorted(desired.items()):
         acquire(key, pid, tool)
-    # An unreadable Claude status is not proof of idle. Leave its existing lease
-    # to expire without renewal, allowing the next tick to recover a partial read.
-    released = sorted(
-        key for key in owned - desired.keys()
-        if int(key.rsplit(":", 1)[1]) not in uncertain
-    )
     # Do not remove native protection if obtaining its replacement just failed.
-    pending = sorted(set(released) | (stale.keys() if not errors else set()))
+    pending = sorted(removable | (stale.keys() if not errors else set()))
     released = []
     before = {entry["key"]: entry for entry in status["assertions"]}
     for key in pending:
@@ -385,7 +390,12 @@ def reconcile(cli, active, status, dry_run=False, uncertain=(), stale=None, peer
                     if latest["paused"]:
                         paused = True
                         break
-                    if latest.get("daemonBootID") != status.get("daemonBootID") or key not in before or key not in after or hold_identity(before[key]) != hold_identity(after[key]):
+                    daemon_changed = latest.get("daemonBootID") != status.get("daemonBootID")
+                    hold_missing = key not in before or key not in after
+                    if daemon_changed or hold_missing:
+                        continue
+                    hold_changed = hold_identity(before[key]) != hold_identity(after[key])
+                    if hold_changed:
                         continue
                 else:
                     pid = int(key.rsplit(":", 1)[1])
@@ -442,7 +452,7 @@ def launch_agent(home, python, script, cli):
         "Label": LABEL,
         "ProgramArguments": [str(python), "-B", str(script), "--cli", str(cli)],
         "RunAtLoad": True,
-        "StartInterval": INTERVAL,
+        "StartInterval": POLL_INTERVAL_SECONDS,
         "ProcessType": "Background",
         "EnvironmentVariables": {"HOME": str(home), **{
             name: str(Path(os.environ[name]).expanduser().absolute())
@@ -489,7 +499,7 @@ def install(cli):
             if loaded:
                 run(["/bin/launchctl", "bootstrap", domain, plist])
         raise
-    print(f"Installed {plist}; checks every {INTERVAL} seconds while the Mac is awake.")
+    print(f"Installed {plist}; checks every {POLL_INTERVAL_SECONDS} seconds while the Mac is awake.")
 
 
 @contextmanager
@@ -510,13 +520,16 @@ def poll_lock(path):
 
 
 def poll_once(cli, dry_run):
+    # Observe and validate first. Failed observations must never release protection.
     status = validate_status(json.loads(run([cli, "status", "--json"])))
     if status["paused"]:
         return {"paused": True, "active": {}, "acquired": [], "released": []}
     process_text, starts = process_snapshot(run(["/bin/ps", "-axo", "pid=,uid=,lstart=,comm="]))
     snapshot = processes(process_text, os.getuid())
     power = run(["/usr/bin/pmset", "-g", "assertions"])
-    if "Assertion status system-wide:" not in power or not any(marker in power for marker in ("Listed by owning process:", "No assertions.")):
+    has_header = "Assertion status system-wide:" in power
+    has_process_section = any(marker in power for marker in ("Listed by owning process:", "No assertions."))
+    if not has_header or not has_process_section:
         raise RuntimeError("Unrecognized power assertion snapshot; no holds changed.")
     sessions = Path(os.environ.get("CLAUDE_CONFIG_DIR", str(Path.home() / ".claude"))).expanduser().absolute() / "sessions"
     codex_home = Path(os.environ.get("CODEX_HOME", str(Path.home() / ".codex"))).expanduser().absolute()

@@ -60,7 +60,7 @@ try {
   assert.equal(await measure(73), 50);
   console.log("REPRODUCED: 10 ordinary wheel events move 10 lines; Alt-wheel moves 50 lines.");
   if (process.env.PI_SCROLL_BASELINE_ONLY !== "1") {
-    settings.extensions.push(join(repo, "pi/extensions/scroll-sensitivity"));
+    settings.extensions.push(join(repo, "pi/archive/extensions/scroll-sensitivity"));
     json(join(agent, "settings.json"), settings);
     await command("/reload");
     await command("/scroll-speed fast");

@@ -51,7 +51,8 @@ try {
         "/out:$executable" $sourcePath
     if ($LASTEXITCODE -ne 0) { throw "Floating tabs compilation failed." }
     $result = Join-Path $build "test-result.txt"
-    $test = Start-Process -FilePath $executable -ArgumentList @("--test", "`"$result`"") -Wait -PassThru
+    $contract = Join-Path (Split-Path -Parent $PSScriptRoot) "tests/fixtures/floating-tabs.json"
+    $test = Start-Process -FilePath $executable -ArgumentList @("--test", "`"$result`"", "`"$contract`"") -Wait -PassThru
     if ($test.ExitCode -ne 0 -or -not (Test-Path -LiteralPath $result)) {
         if (Test-Path -LiteralPath $result) { Write-Host ([System.IO.File]::ReadAllText($result)) }
         throw "Floating tabs native checks failed."

@@ -62,7 +62,7 @@ fi
 if command -v nvim >/dev/null 2>&1; then
   export WAYLAND_DISPLAY=wayland-0
   PATH="$fake_bin:$PATH" NVIM_LOG_FILE="$test_dir/nvim.log" \
-    nvim --headless -u NONE -i NONE -l "$repo_dir/tests/nvim-clipboard.lua" "$repo_dir/nvim/lua/config/clipboard.lua"
+    nvim --headless -u NONE -i NONE -l "$repo_dir/tests/run-lua.lua" "$repo_dir/tests/nvim-clipboard.lua" "$repo_dir/nvim/lua/config/clipboard.lua"
 fi
 
 # Run the real Zsh selection widget with only the editor display calls stubbed.
@@ -135,3 +135,9 @@ if [[ -n $tmux_command ]]; then
   "$tmux_command" -S "$test_dir/tmux.sock" list-keys -T copy-mode-vi | grep -E -- '-T[[:space:]]+copy-mode-vi[[:space:]]+y[[:space:]]' | grep -q 'copy-pipe-and-cancel'
 fi
 printf 'Shared clipboard selection and UTF-8 round trips passed\n'
+
+for dependency in nvim zsh tmux; do
+  if ! command -v "$dependency" >/dev/null 2>&1; then
+    printf 'UNAVAILABLE: clipboard integration requires %s for its associated checks\n' "$dependency"
+  fi
+done

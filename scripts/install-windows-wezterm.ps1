@@ -40,7 +40,7 @@ $loader = @"
 -- Managed by dotfiles. Configuration stays in the checkout.
 local source = "$luaPath"
 require("wezterm").add_to_config_reload_watch_list(source)
-return dofile(source)
+return assert(loadfile(source))(source)
 "@
 
 $target = Join-Path $HOME ".wezterm.lua"

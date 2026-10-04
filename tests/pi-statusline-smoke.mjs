@@ -45,8 +45,8 @@ try {
   run("git", ["-C", workspace, "init", "-q", "-b", "main"]);
   writeFileSync(join(workspace, "AGENTS.md"), "# Offline footer fixture\n");
   json(join(agent, "settings.json"), {
-    packages: [adapter], extensions: [join(repo, "pi/extensions/codex-statusline"), join(repo, "tests/fixtures/pi-statusline.ts")],
-    themes: [join(repo, "pi/themes/rose-pine-moon.json")], theme: "rose-pine-moon", tuiMode: "fullscreen",
+    packages: [adapter], extensions: [join(repo, "pi/archive/extensions/codex-statusline"), join(repo, "tests/fixtures/pi-statusline.ts")],
+    themes: [join(repo, "pi/archive/themes/rose-pine-moon.json")], theme: "rose-pine-moon", tuiMode: "fullscreen",
     defaultProvider: "openai-codex", defaultModel: "gpt-6-astra", defaultThinkingLevel: "high", quietStartup: true,
     lastChangelogVersion: "0.85.1", npmCommand: ["npm", "--ignore-scripts", "--omit=dev", "--legacy-peer-deps"],
   });
