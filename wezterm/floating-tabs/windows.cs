@@ -300,15 +300,11 @@ internal sealed class Companion : ApplicationContext {
         refreshing = true;
         try {
             IntPtr foreground = Native.GetForegroundWindow();
-            bool showBadges = Native.IsWezTerm(foreground);
             bool refreshFrames = foreground != lastForeground || Bridge.Now - lastFrameRefresh >= 1;
             lastForeground = foreground;
             if (refreshFrames) lastFrameRefresh = Bridge.Now;
-            if (!showBadges) {
-                foreach (var overlay in overlays.Values) overlay.Suspend();
-                // Window styling remains active while another app has focus.
-                if (!refreshFrames) return;
-            }
+            // Owned overlays follow their windows behind other applications.
+            // Keep acknowledgments fresh on focus loss to avoid native-tab flicker.
             // Windows Lua publication briefly removes the old destination before
             // renaming. Keep its last valid snapshot until the freshness deadline.
             foreach (var title in snapshots.Keys.Where(title => Math.Abs(Bridge.Now - snapshots[title].updated) >= Bridge.FreshnessSeconds).ToArray()) snapshots.Remove(title);
@@ -332,7 +328,7 @@ internal sealed class Companion : ApplicationContext {
                 Snapshot snapshot;
                 if (!snapshots.TryGetValue(title.ToString(), out snapshot)) return true;
                 if (refreshFrames) Native.StyleFrame(window, window == foreground);
-                if (!showBadges || Native.IsZoomed(window)) return true;
+                if (Native.IsZoomed(window)) return true;
                 Native.Rect rect;
                 if (Native.Frame(window, 9, out rect, Marshal.SizeOf(typeof(Native.Rect))) != 0 && !Native.GetWindowRect(window, out rect)) return true;
                 var frame = Rectangle.FromLTRB(rect.left, rect.top, rect.right, rect.bottom);

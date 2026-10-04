@@ -204,7 +204,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Rearm WezTerm's status timer with a status setter even on input-only ticks; idle windows otherwise stop polling in WezTerm 20240203.
   Validate latency and reloads with `tests/wezterm-floating-tabs.sh --e2e` in disposable macOS GUI windows, and require an explicit Lua test verdict because WezTerm can exit successfully after falling back from a configuration error.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
-  Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, another application gains focus, or there is no room above the window.
+  Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails or there is no room above the window.
+  On macOS, also restore native tabs when another application gains focus.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
@@ -219,6 +220,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Use nonactivating owned windows, per-monitor DPI, and native fallback when maximized, fullscreen, or badges cannot fit.
   Let Windows DWM draw the rounded, muted lavender window outline and dim it on focus loss; keep Windows Lua frame border widths at zero so an inner rectangle cannot square off the corners.
   Apply DWM frame styling independently of badge visibility so it persists when another application has focus.
+  Keep Windows overlays and acknowledgments active on focus loss, following their owner's stacking order behind other applications without switching to native tabs.
   Validate DWM border colors separately from native setter success; `DWMWA_BORDER_COLOR` does not provide portable getter readback.
   Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
   Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.
