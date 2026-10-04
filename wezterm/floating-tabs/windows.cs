@@ -139,12 +139,12 @@ internal sealed class Layout {
         var result = new Layout { Bounds = new Rectangle(frame.Left, y, frame.Width, height) };
         int x = inset;
         foreach (var tab in tabs) {
-            int width = (int)Math.Round(Math.Max(42, (tab.index + 1).ToString().Length * 10 + 28) * scale);
+            int width = (int)Math.Round(Math.Max(48, (tab.index + 1).ToString().Length * 10 + 34) * scale);
             if (x + width > frame.Width - inset) return null; // Keep all tabs accessible through the native bar.
             result.Tabs.Add(new Rectangle(x, 0, width, height));
             x += width + gap;
         }
-        int newTabWidth = (int)Math.Round(42 * scale);
+        int newTabWidth = (int)Math.Round(48 * scale);
         if (x + newTabWidth > frame.Width - inset) return null;
         result.NewTab = new Rectangle(x, 0, newTabWidth, height);
         x += newTabWidth + gap;

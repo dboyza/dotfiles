@@ -146,7 +146,7 @@ Remove-Item Env:DOTFILES_TOOL_UPDATE
 The native Windows companion draws clickable numbered tabs, a + button after the last tab, and a centered clock across each WezTerm window's upper edge, using the same colors as the macOS helper.
 The active tab keeps its lavender fill beside dark inactive badges and a smaller dark 12-hour clock with AM/PM.
 Inactive tabs, the + button, and the clock have two-pixel, DPI-scaled lavender outlines.
-Tab bubbles and the + button are at least 42 pixels wide before display scaling, with extra room for longer tab numbers.
+Tab bubbles and the + button are at least 48 pixels wide before display scaling, with extra room for longer tab numbers.
 The + button creates a new tab using the same shell and working directory as `Ctrl+Shift+T`.
 WSL bootstrap installs it on the Windows host automatically.
 It also works with native Windows PowerShell sessions and requires no WSL runtime once installed.
