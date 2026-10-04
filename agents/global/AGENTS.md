@@ -26,5 +26,9 @@
 - Always initialize an AGENTS.md in a repo if there is not one already.
 - Always ensure the repository root has a `CLAUDE.md` that imports `AGENTS.md` using `@AGENTS.md`.
   Keep shared instructions in `AGENTS.md` rather than duplicating them, and preserve any existing Claude-specific guidance.
-- Ensure the AGENTS.md is a living document - kept up to date, deduped, and not bloated.
+- Treat every project/repository-level `AGENTS.md` as a living document, and state this near the top of each file.
+  Keep it accurate, concise, clearly organized, maintainable, and deduplicated as the project evolves.
+  During relevant work, verify affected guidance against current code and user decisions, correct stale claims, prune obsolete or redundant instructions, and replace superseded guidance.
+  Record only verified, durable project knowledge; omit transient session details and do not add entries merely because a task finished.
+  Preserve explicit user requirements when code disagrees, and report the mismatch instead of silently changing the policy.
 - When using subagents, use GPT-5.6 Luna on High effort and limit delegation to the scope the user requested.
