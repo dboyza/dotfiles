@@ -1,4 +1,4 @@
-# Nvim maintenance instructions
+# Neovim maintenance instructions
 
 - Keep Neovim's Neo-tree sidebar, Bufferline tab row, and Lualine status line visually coordinated with the transparent Rosé Pine terminal theme.
 

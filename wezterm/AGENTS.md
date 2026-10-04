@@ -1,4 +1,4 @@
-# Wezterm maintenance instructions
+# WezTerm maintenance instructions
 
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
 
@@ -32,8 +32,6 @@
   Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
   Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
   Complete macOS border corners with small click-through arcs that match focus and screen pixel density; native rectangular borders are clipped at the window radius.
-  Preserve tmux's left-aligned window list, lavender active tabs, and transparent bottom bar.
-  Use tmux's `e` numeric comparisons for width thresholds because its plain comparison formats compare strings.
 
 - Resolve the selected WSL distribution's home directory explicitly for new WezTerm tabs so they do not inherit a Windows working directory.
 
@@ -58,7 +56,7 @@
   Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
   Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.
 
-- Keep `.wezterm.lua` as the module loader and keep appearance, shell/platform selection, keys, geometry, and bridge logic in `config/`.
+- Keep `wezterm/.wezterm.lua` as the module loader and keep appearance, shell/platform selection, keys, geometry, and bridge logic in `wezterm/config/`.
   Loaders must forward the source path and watch each module; preserve legacy Windows loaders and Unix symlink chains, including paths containing spaces.
 - Treat `tests/fixtures/floating-tabs.json` as the shared Lua/Swift/C# snapshot contract.
   Keep freshness in seconds, input timing in milliseconds, byte limits explicit, and requests consumed before execution.

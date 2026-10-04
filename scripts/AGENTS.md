@@ -20,7 +20,7 @@
   Preserve complete Codex and Pi runtime bundles and Herdr's ConPTY runtime on Windows; reject archive links and unsafe paths before extraction.
   Track the selected archive in installation state so old npm installs migrate even when the version is unchanged.
   Keep Node.js for the launchers and npm for extension or development workflows, without using npm to install the applications.
-  Keep Claude Code's internal updater disabled only in managed child processes so it cannot compete with launcher version selection.
+  Disable Claude Code and opencode self-updates and Pi's version check only in managed child processes so the launcher owns version selection.
   Put `~/.local/bin` ahead of Homebrew and Nix package paths after shell initialization so old installs cannot shadow managed launchers.
   On native Windows, back up same-name executables and PowerShell scripts before installing `.cmd` launchers so command precedence cannot bypass updates.
   Use opencode baseline builds on x64 for older CPUs; Pi standalone Linux builds require glibc.
@@ -30,7 +30,7 @@
 - Run flake operations through `bootstrap.sh` or export `DOTFILES_USER`, `DOTFILES_HOME`, `DOTFILES_REPO`, and `DOTFILES_WSL`, because host identity is intentionally resolved at evaluation time.
 
 - Keep normal `./bootstrap.sh` activation update-first for Nix inputs and Windows Winget packages; macOS desktop apps are install-only.
-  Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration.
+  Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration, requiring an existing Nix installation instead of installing prerequisites.
 
 - Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
 
@@ -50,8 +50,6 @@
 
 - Keep the bootstrap managed-target inventory centralized so backup and verification always operate on the same paths.
   Evaluate enabled Home Manager `home.file` targets once before backup; do not maintain a second list in shell scripts.
-
-- Keep `./bootstrap.sh --check` non-mutating and require an existing Nix installation instead of installing prerequisites.
 
 - Share clipboard provider selection through `scripts/dotfiles-clipboard`; keep the Windows UTF-8 transport in `scripts/win-copy` and `scripts/win-paste`.
 
