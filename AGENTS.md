@@ -57,6 +57,9 @@
   Exchange only window identities, tab IDs, freshness timestamps, and the explicit `new_tab` action through the private state directory.
   Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
   Consume click requests before acting so new-tab requests cannot replay.
+  Service helper input every 16 ms, keeping heartbeat, fallback, and clock work on the slower maintenance cadence.
+  Rearm WezTerm's status timer with a status setter even on input-only ticks; idle windows otherwise stop polling in WezTerm 20240203.
+  Validate latency and reloads with `tests/wezterm-floating-tabs.sh --e2e` in disposable macOS GUI windows, and require an explicit Lua test verdict because WezTerm can exit successfully after falling back from a configuration error.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails, another application gains focus, or there is no room above the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.

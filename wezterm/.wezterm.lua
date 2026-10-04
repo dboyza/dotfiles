@@ -625,6 +625,11 @@ if overlay_executable then
   local file = io.open(overlay_executable, 'rb')
   if file then file:close(); overlay_available = true end
 end
+-- Clicks need a frame-sized interval. Keep the slower status/heartbeat work on
+-- its original cadence rather than rebuilding it for every input check.
+local overlay_status_interval = config.status_update_interval / 1000
+if overlay_available then config.status_update_interval = 16 end
+local overlay_status_updated = {}
 
 local function overlay_title(window_id)
   if not wezterm.GLOBAL.floating_tabs_token then
@@ -680,6 +685,38 @@ local function publish_floating_tabs(window_id, tabs)
   end
 end
 
+local function consume_floating_tab_request(window)
+  local key = overlay_key(window:mux_window():window_id())
+  local title = overlay_title(window:mux_window():window_id())
+  local request = overlay_read('activate-' .. key .. '.json')
+  if request and request.title == title then
+    local consumed = os.remove(overlay_root .. 'activate-' .. key .. '.json')
+    if consumed and overlay_fresh(request, title) then
+      if request.action == 'new_tab' then
+        window:perform_action(wsl_tab_action(), window:active_pane())
+        return true
+      elseif request.action == nil then
+        for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+          if tab.tab:tab_id() == request.tab_id then
+            tab.tab:activate()
+            return true
+          end
+        end
+      end
+    end
+  end
+  return false
+end
+
+local function publish_window_floating_tabs(window)
+  -- Snapshot after handling a click, not before activating its destination.
+  local tabs = {}
+  for _, tab in ipairs(window:mux_window():tabs_with_info()) do
+    table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
+  end
+  publish_floating_tabs(window:mux_window():window_id(), tabs)
+end
+
 local function update_floating_tabs(window)
   if not overlay_available then return end
   local key = overlay_key(window:mux_window():window_id())
@@ -692,28 +729,7 @@ local function update_floating_tabs(window)
       wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
     end
   end
-  local request = overlay_read('activate-' .. key .. '.json')
-  if request and request.title == title then
-    local consumed = os.remove(overlay_root .. 'activate-' .. key .. '.json')
-    if consumed and overlay_fresh(request, title) then
-      if request.action == 'new_tab' then
-        window:perform_action(wsl_tab_action(), window:active_pane())
-      elseif request.action == nil then
-        for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-          if tab.tab:tab_id() == request.tab_id then
-            window:perform_action(wezterm.action.ActivateTab(tab.index), window:active_pane())
-            break
-          end
-        end
-      end
-    end
-  end
-  -- Snapshot after handling a click, not before activating its destination.
-  local tabs = {}
-  for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-    table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
-  end
-  publish_floating_tabs(window:mux_window():window_id(), tabs)
+  publish_window_floating_tabs(window)
   local ready = overlay_fresh(overlay_read('ready-' .. key .. '.json'), title)
   local overrides = window:get_config_overrides() or {}
   local show_native = not ready
@@ -791,9 +807,21 @@ end
 wezterm.on('window-focus-changed', update_window_border)
 
 wezterm.on('update-status', function(window)
+  if overlay_available and consume_floating_tab_request(window) then
+    publish_window_floating_tabs(window)
+  end
+  -- WezTerm 20240203 rearms its status timer when a status setter updates the
+  -- title. Do this even on input-only ticks or polling can stop on idle tabs.
+  window:set_left_status('')
+  if overlay_available then
+    local id = window:mux_window():window_id()
+    local now = tonumber(wezterm.time.now():format('%s%.3f'))
+    local previous = overlay_status_updated[id]
+    if previous and now >= previous and now - previous < overlay_status_interval then return end
+    overlay_status_updated[id] = now
+  end
   update_window_border(window)
   update_floating_tabs(window)
-  window:set_left_status('')
   local size = window:active_tab():get_size()
   -- The tab bar spans the full window, including terminal padding.
   local cell_width = size.pixel_width / math.max(1, size.cols)

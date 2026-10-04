@@ -37,8 +37,10 @@ try {
     [void] [System.IO.Directory]::CreateDirectory((Join-Path $fixture ".local/state/dotfiles/wezterm-floating-tabs"))
     [System.IO.File]::WriteAllText((Join-Path $bin "wezterm-floating-tabs.exe"), "fixture")
     $env:DOTFILES_FLOATING_TEST_HOME = $fixture.Replace('\', '/')
-    & $command --config-file (Join-Path $PSScriptRoot "wezterm-floating-tabs.lua") show-keys | Out-Null
+    & $command --config-file (Join-Path $PSScriptRoot "wezterm-floating-tabs-check.lua") show-keys | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Windows floating tabs bridge failed." }
+    $verdict = [System.IO.File]::ReadAllText((Join-Path $fixture "bridge-result.txt"))
+    if ($verdict.Trim() -ne "passed") { throw $verdict }
     Write-Host "Windows floating tabs Lua bridge passed"
 } finally {
     $env:DOTFILES_FLOATING_TEST_HOME = $previousHome

@@ -176,6 +176,7 @@ Linux GUI WezTerm retains its native tabs and clock; WSL sessions displayed by W
 
 The executable is installed under `%USERPROFILE%\.local\share\dotfiles\wezterm-floating-tabs`.
 Per-window snapshots, acknowledgments, and click requests live under `%USERPROFILE%\.local\state\dotfiles\wezterm-floating-tabs`, restricted to the current user and SYSTEM.
+Click requests are checked every 16 ms, independently of the slower clock, heartbeat, and native-tab fallback maintenance.
 Only window identities, tab IDs, timestamps, and the explicit new-tab action cross the bridge; the companion does not read terminal contents or capture the screen.
 To stop it for the current session, end `wezterm-floating-tabs.exe` in Task Manager; native tabs recover automatically.
 

@@ -301,6 +301,7 @@ The grant remains manual; neither activation nor WezTerm startup changes macOS p
 WezTerm launches the installed helper once when the first window in a new GUI process updates its status, so no separate login item is needed.
 
 Click a number to focus its window and switch tabs, or keep using the existing terminal shortcuts.
+Click requests are checked every 16 ms; the clock, heartbeat, and native-tab fallback retain their slower maintenance cadence.
 The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
 The helper uses the native tab bar when another application is focused, a window enters fullscreen, or it sits too close to the menu bar for external badges.
 If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
@@ -313,3 +314,5 @@ Closed-window snapshots expire and are cleaned up after 30 seconds.
 Window titles include an opaque identity so the companion never attaches another WezTerm process's tabs to the wrong window.
 It does not collect command lines, working directories, terminal contents, or session history.
 Run `./tests/wezterm-floating-tabs.sh` on macOS to check the native layout and the real WezTerm bridge in an isolated fixture home.
+Add `--e2e` in a desktop session to measure activation latency across two disposable idle windows before and after a configuration reload.
+This exercises the helper's click-request protocol without reading terminal contents or requiring a new Accessibility grant.
