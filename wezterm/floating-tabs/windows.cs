@@ -237,7 +237,7 @@ internal sealed class Overlay : Form {
     private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font, bool isClock = false) {
         using (var path = Capsule(rect, 8 * scale)) {
             using (var brush = new SolidBrush(active ? Lavender : (isClock ? Dark : Surface))) graphics.FillPath(brush, path);
-            if (!active) using (var pen = new Pen(Muted, 1)) { pen.Alignment = PenAlignment.Inset; graphics.DrawPath(pen, path); }
+            if (!active) using (var pen = new Pen(isClock ? Lavender : Muted, 1)) { pen.Alignment = PenAlignment.Inset; graphics.DrawPath(pen, path); }
         }
         TextRenderer.DrawText(graphics, text, font, rect, active ? Dark : Subtle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
