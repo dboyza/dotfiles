@@ -1,6 +1,6 @@
 # Code map and editing guide
 
-Start with the file that owns the behavior, then read its nearby `AGENTS.md` before editing.
+Read the relevant section of the root [AGENTS.md](../AGENTS.md), then start with the file that owns the behavior.
 Handwritten source files use a short purpose comment and `Section:` labels at responsibility boundaries.
 Each explanation stays within two lines; longer rationale belongs in the component guide.
 Tiny files and configuration tables use their existing structure instead of artificial sections.
@@ -21,7 +21,7 @@ Tiny files and configuration tables use their existing structure instead of arti
 | Clipboard selection and UTF-8 transport | `scripts/dotfiles-clipboard`, `scripts/win-{copy,paste}` | `tests/clipboard.sh`, `tests/wsl-clipboard.sh` |
 | Shell, prompt, multiplexers | `zsh/`, `starship/starship.toml`, `tmux/.tmux.conf`, `herdr/*.toml` | `tests/compatibility.sh`, `tests/tmux-plugins.sh`, `tests/keyboard-routing.py` |
 | Active Pi settings and archived customization | `pi/settings.json`, `pi/DEFAULTS.md`, `pi/archive/README.md` | `./tests/run.sh --archive` for archived unit checks |
-| Agent instructions and authored skills | `agents/global/AGENTS.md`, `agents/skills/` | Review deployed links and the skill's own instructions |
+| Agent instructions and authored skills | Root `AGENTS.md` for this repo; `agents/global/AGENTS.md` for shared policy; `agents/skills/` for skills | Review deployed links and the skill's own instructions |
 | Test selection and pass/fail reporting | `tests/run.py`, `tests/run-lua.lua`, `scripts/lib/check-wezterm.lua` | `tests/check-runner.py`, `tests/check-verdicts.sh` |
 
 The [terminal guide](../wezterm/README.md) documents module boundaries and the shared bridge protocol.
