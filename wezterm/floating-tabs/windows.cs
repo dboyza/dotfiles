@@ -47,11 +47,14 @@ internal static class Native {
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int Frame(IntPtr window, int attribute, out Rect rect, int size);
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int GetAttribute(IntPtr window, int attribute, out int value, int size);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
+    internal static int FrameBorderColor(bool focused) {
+        return focused ? 0xAA8C90 : 0x523539; // COLORREF is 0x00BBGGRR, not RGB.
+    }
     internal static bool StyleFrame(IntPtr window, bool focused) {
         // DWM draws a continuous outline around its own rounded window mask.
         // Client-side rectangular borders remain square inside that mask.
         int round = 2; // DWMWCP_ROUND; Windows keeps maximized/fullscreen edges square.
-        int border = focused ? 0xAA8C90 : 0x523539; // COLORREF is 0x00BBGGRR, not RGB.
+        int border = FrameBorderColor(focused);
         return DwmSetWindowAttribute(window, 33, ref round, 4) == 0
             && DwmSetWindowAttribute(window, 34, ref border, 4) == 0;
     }
@@ -395,16 +398,20 @@ internal static class Program {
         public bool valid { get; set; }
     }
     private static void Test() {
+        // DWMWA_BORDER_COLOR supports setting, not portable readback through DwmGetWindowAttribute.
+        // Check color selection separately from Windows accepting the native styling calls.
+        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(true)).ToArgb() == Color.FromArgb(144, 140, 170).ToArgb(),
+            "Focused frame color must use muted lavender");
+        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(false)).ToArgb() == Color.FromArgb(57, 53, 82).ToArgb(),
+            "Unfocused frame color must dim");
         using (var window = new Form()) {
             int preference;
             Require(Native.StyleFrame(window.Handle, true), "Windows must accept the rounded muted lavender frame");
             Require(Native.GetAttribute(window.Handle, 33, out preference, 4) == 0 && preference == 2,
                 "Native corner preference must opt into rounded corners");
-            Require(Native.GetAttribute(window.Handle, 34, out preference, 4) == 0 && preference == 0xAA8C90,
-                "Focused frame color must use muted lavender");
             Require(Native.StyleFrame(window.Handle, false), "Frame styling must remain safe on refresh");
-            Require(Native.GetAttribute(window.Handle, 34, out preference, 4) == 0 && preference == 0x523539,
-                "Unfocused frame color must dim without changing the rounded corners");
+            Require(Native.GetAttribute(window.Handle, 33, out preference, 4) == 0 && preference == 2,
+                "Unfocused frame must retain rounded corners");
         }
         var tabs = new[] { new Tab { id = 1, index = 0, active = true }, new Tab { id = 2, index = 1 } };
         var frame = new Rectangle(50, 80, 1400, 850);

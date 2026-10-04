@@ -219,6 +219,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Use nonactivating owned windows, per-monitor DPI, and native fallback when maximized, fullscreen, or badges cannot fit.
   Let Windows DWM draw the rounded, muted lavender window outline and dim it on focus loss; keep Windows Lua frame border widths at zero so an inner rectangle cannot square off the corners.
   Apply DWM frame styling independently of badge visibility so it persists when another application has focus.
+  Validate DWM border colors separately from native setter success; `DWMWA_BORDER_COLOR` does not provide portable getter readback.
   Windows Lua rename cannot replace an existing destination; retain the last valid snapshot during replacement gaps until its freshness deadline.
   Run `tests/wezterm-floating-tabs.ps1` for native layout and real Windows WezTerm bridge checks.
 
