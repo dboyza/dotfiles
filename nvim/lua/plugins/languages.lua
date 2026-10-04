@@ -2,7 +2,6 @@ return {
   {
     "saghen/blink.cmp",
     version = "1.*",
-    dependencies = { { "L3MON4D3/LuaSnip", version = "v2.*" } },
     opts = {
       keymap = { preset = "super-tab" },
       appearance = { nerd_font_variant = "mono" },
@@ -11,7 +10,7 @@ return {
       },
       fuzzy = { implementation = "lua" },
       signature = { enabled = true },
-      snippets = { preset = "luasnip" },
+      snippets = { preset = "default" },
       sources = {
         default = { "lsp", "path", "snippets", "buffer" },
       },
@@ -24,13 +23,16 @@ return {
       "mason-org/mason-lspconfig.nvim",
       "WhoIsSethDaniel/mason-tool-installer.nvim",
       "saghen/blink.cmp",
-      { "j-hui/fidget.nvim", opts = {} },
     },
     config = function()
       local mason_path = vim.fn.stdpath("data") .. "/mason"
       local servers = {
         bashls = {
-          cmd = { "node", mason_path .. "/packages/bash-language-server/node_modules/bash-language-server/out/cli.js", "start" },
+          cmd = {
+            "node",
+            mason_path .. "/packages/bash-language-server/node_modules/bash-language-server/out/cli.js",
+            "start",
+          },
         },
         lua_ls = {
           settings = {
@@ -64,7 +66,11 @@ return {
           end,
         },
         ts_ls = {
-          cmd = { "node", mason_path .. "/packages/typescript-language-server/node_modules/typescript-language-server/lib/cli.mjs", "--stdio" },
+          cmd = {
+            "node",
+            mason_path .. "/packages/typescript-language-server/node_modules/typescript-language-server/lib/cli.mjs",
+            "--stdio",
+          },
         },
       }
       local capabilities = require("blink.cmp").get_lsp_capabilities()
@@ -81,8 +87,6 @@ return {
         "prettierd",
         "shfmt",
         "uv",
-        "debugpy",
-        "js-debug-adapter",
       }
 
       for server, config in pairs(servers) do
@@ -107,7 +111,9 @@ return {
     keys = {
       {
         "<leader>tf",
-        function() require("config.project").toggle_format() end,
+        function()
+          require("config.project").toggle_format()
+        end,
         desc = "Toggle project format on save",
       },
       {
@@ -120,7 +126,9 @@ return {
       },
     },
     opts = {
-      format_on_save = function(bufnr) return require("config.project").format_on_save(bufnr) end,
+      format_on_save = function(bufnr)
+        return require("config.project").format_on_save(bufnr)
+      end,
       default_format_opts = { lsp_format = "fallback" },
       formatters_by_ft = {
         javascript = { "prettierd", "prettier", stop_after_first = true },

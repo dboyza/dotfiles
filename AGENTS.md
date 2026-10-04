@@ -172,11 +172,11 @@
 - Keep Pyright type checking off by default in Neovim while retaining Python completion and navigation.
 - Keep Neogit on `Space gg`, scoped through `config.project.root()`, with the existing Telescope picker and theme integration.
   Preserve `Space h` for Gitsigns hunk actions.
-- Keep Neovim's IDE shortcuts under `Space T` for tests and `Space r` for debugging, preserving `Space d` for diagnostics and `Space t` for toggles.
+- Use Neovim's native commenting and Blink's native `vim.snippet` integration.
+  Keep test runners and debuggers in project terminals or external tools rather than installing Neotest, DAP, or their Mason adapters.
+- Keep Neovim's `Space rn` for symbol renaming, `Space d` for diagnostics, and `Space t` for toggles.
   Document changes in `docs/neovim.md`.
   Scope format-on-save toggles and terminal working directories through `config.project`; toggles last for the current Neovim session.
-  Run Jest and Vitest through Node entry points with argument arrays, avoiding platform-specific `.bin` shims and whitespace-split executable paths.
-  Keep debug adapters managed by Mason, and keep test runners in the user's project environment.
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
   Install the plugin through Herdr on macOS or Linux/WSL; upstream does not support native Windows.
 

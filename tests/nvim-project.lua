@@ -31,37 +31,5 @@ assert(not project.format_on_save(b), "special buffers must not autoformat")
 vim.b[b].snacks_terminal = { cwd = first }
 assert(project.root(b) == first, "terminal toggle must reuse its original project")
 
--- Validate argv boundaries independently of OS executable shim conventions.
-local adapters = require("config.test-adapters")
-vim.fn.mkdir(first .. "/node_modules/vitest", "p")
-vim.fn.writefile({ "" }, first .. "/node_modules/vitest/vitest.mjs")
-local adapter = adapters.node({
-  root = function()
-    return first
-  end,
-  is_test_file = function()
-    return true
-  end,
-  build_spec = function()
-    return {
-      command = { "node", "--watch=false", first .. "/a.test.js" },
-      strategy = { args = { "--watch=false", first .. "/a.test.js" } },
-    }
-  end,
-}, "vitest/vitest.mjs")
-local path = first .. "/src/a.test.js"
-local spec = adapter.build_spec({ tree = {
-  data = function()
-    return { path = path }
-  end,
-}, strategy = "dap" })
-assert(spec.command[2] == first .. "/node_modules/vitest/vitest.mjs", "Node entry path must stay one argument")
-assert(spec.command[3] == "--watch=false", "runner flags must be preserved")
-assert(spec.strategy.args[1] == spec.command[2], "debugging must use the same Node entry point")
-assert(
-  not adapter.root(second) and not adapter.is_test_file(second .. "/a.test.js"),
-  "runner must ignore unrelated projects"
-)
-
 vim.fn.delete(temp, "rf")
-print("Neovim project roots, format toggles, and portable test commands passed")
+print("Neovim project roots and format toggles passed")

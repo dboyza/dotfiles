@@ -2,7 +2,7 @@
 
 Restart Neovim after changing the configuration.
 Lazy installs missing plugins and records their versions in `nvim/lazy-lock.json`.
-Mason installs language servers, formatters, and the Python and JavaScript debug adapters.
+Mason installs language servers, formatters, and supporting tools.
 Use `:Lazy` and `:Mason` to inspect installation progress or errors.
 
 `Space` is the leader key.
@@ -12,6 +12,8 @@ See the [shared keyboard guide](keybindings.md) for word movement, Command alias
 ## Completion and formatting
 
 Completion documentation opens automatically after 300 ms; signature help remains enabled.
+Blink uses Neovim's native snippet engine to expand language-server completion snippets.
+Use `Tab` to accept completion or advance through snippet placeholders, and `Shift+Tab` to move backward.
 Saving formats supported files, including JSX and TSX, with a 1.5-second timeout.
 Formatting follows the project's formatter configuration and falls back to an attached language server when no configured formatter is available.
 
@@ -64,51 +66,18 @@ Neogit uses the existing theme and Telescope picker.
 
 The existing `Space h` Git hunk actions remain available in source buffers.
 
-## Tests
+## Commenting
 
-Neotest supports pytest, Vitest, and Jest.
-Install pytest in your project's virtual environment and install Jest or Vitest through the project's package manager.
-JavaScript runners must be available under a local or ancestor `node_modules` directory; Plug'n'Play-only installations need project-specific adapter configuration.
-The configuration runs their JavaScript entry points directly, supporting paths with spaces and avoiding Windows shell shims.
+Use Neovim's native `gcc` to toggle the current line's comment and `gc` with a motion or Visual selection to toggle multiple lines.
+Comment delimiters follow the file type.
+The mini.comment-specific `gc` comment-block text object is no longer installed.
 
-| Shortcut | Action |
-| --- | --- |
-| `Space Tn` | Run the nearest test |
-| `Space Tf` | Run the current test file |
-| `Space Ta` | Run tests under the current project root |
-| `Space Tl` | Rerun the last test |
-| `Space Td` | Debug the nearest test |
-| `Space Ts` | Toggle the test tree and results |
-| `Space To` / `Space TO` | Open test output / toggle the output panel |
-| `Space Tq` | Stop the test |
+## Running project commands
 
-Test discovery needs the corresponding Tree-sitter parser.
-Python, JavaScript, TypeScript, and TSX parsers are configured for installation when a C compiler and the Tree-sitter CLI are available.
-In repositories containing multiple test frameworks, use the test summary to select each runner's suite.
-
-## Debugging
-
-Mason installs `debugpy` and `js-debug-adapter`; Node.js runs the JavaScript adapter.
-Python debugging detects project virtual environments independently from Mason's adapter environment.
-The debug panels open when a session initializes and close when it ends.
-
-| Shortcut | Action |
-| --- | --- |
-| `Space rc` | Start or continue debugging |
-| `Space rb` / `Space rB` | Toggle a breakpoint / set a conditional breakpoint |
-| `Space ro` / `Space ri` / `Space rO` | Step over / into / out |
-| `Space rq` | Stop debugging |
-| `Space rl` | Repeat the last debug configuration |
-| `Space ru` | Toggle variables, breakpoints, stacks, watches, and console |
-| `Space re` | Evaluate the word under the cursor or selected expression |
-
-Python has launch and attach configurations.
-JavaScript and TypeScript have Node launch and process-attach configurations with source maps.
-The current-file launch uses Node directly; applications requiring bundlers, JSX/TSX transformation, or a custom TypeScript runtime need a project-specific launch configuration.
-Browser debugging is not configured.
-
-Open Neovim from your project root to use its `.vscode/launch.json` configurations.
-nvim-dap reads these when starting a session; use valid JSON without trailing commas.
+Open the project terminal with `Space ft` to run your project's test runner or command-line debugger.
+Keep pytest, Jest, Vitest, and other project dependencies in the project's own environment.
+The former `Space T` test actions and `Space r` debugger actions are no longer configured.
+`Space rn` still renames symbols through the language server.
 
 ## Terminal and file renaming
 
@@ -127,6 +96,6 @@ Inspect and save any affected buffers after a rename.
 
 ## Platform validation
 
-The configuration includes native Windows interpreter paths and portable argument arrays for test runners, plus macOS and Linux/WSL paths.
+The editor configuration supports native Windows, macOS, and Linux/WSL.
 The IDE workflows have been exercised on macOS; native Windows and WSL still need runtime verification.
 Tree-sitter parser compilation requires an available C compiler on each platform.

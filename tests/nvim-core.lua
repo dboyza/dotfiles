@@ -85,6 +85,22 @@ end
 local function feed(sequence)
   vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes(sequence, true, false, true), "xt", false)
 end
+
+-- Native commenting must keep both line and Visual-mode workflows available.
+vim.bo.commentstring = "# %s"
+vim.api.nvim_buf_set_lines(0, 0, -1, false, { "first", "second" })
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+feed("gcc")
+assert(vim.api.nvim_get_current_line() == "# first", "gcc must comment the current line")
+feed("gcc")
+assert(vim.api.nvim_get_current_line() == "first", "gcc must uncomment the current line")
+feed("Vjgc")
+assert(vim.deep_equal(vim.api.nvim_buf_get_lines(0, 0, -1, false), { "# first", "# second" }))
+vim.api.nvim_win_set_cursor(0, { 1, 0 })
+feed("gcj")
+assert(vim.deep_equal(vim.api.nvim_buf_get_lines(0, 0, -1, false), { "first", "second" }))
+print("Neovim native line, Visual, and motion commenting passed")
+
 for _, modifier in ipairs({ "C", "A" }) do
   vim.api.nvim_buf_set_lines(0, 0, -1, false, { "alpha beta gamma" })
   vim.api.nvim_win_set_cursor(0, { 1, 0 })

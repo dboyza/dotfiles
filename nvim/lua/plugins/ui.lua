@@ -58,11 +58,8 @@ return {
         flavour = "mocha",
         transparent_background = true,
         integrations = {
-          dap = true,
-          dap_ui = true,
           grug_far = true,
           lsp_trouble = true,
-          neotest = true,
           neogit = true,
           snacks = { enabled = true },
         },

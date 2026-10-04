@@ -97,6 +97,8 @@ International layouts and custom OS shortcuts may require local adjustments; the
 Neovim retains its modal editing vocabulary and the [IDE workflow shortcuts](neovim.md).
 `Space` opens the shortcut menu; `Space fk` searches mappings.
 `Space gg` opens Neogit for the current file's project in a new tab; `Space h` retains the Git hunk actions.
+Native `gcc` toggles a line comment, and `gc` comments a motion or Visual selection.
+`Tab` accepts completion or advances through native snippet placeholders; `Shift+Tab` moves to the previous placeholder.
 `Control+H/L` aliases word navigation and `Control+J/K` aliases five-line scrolling in Normal and Visual modes.
 Insert-mode completion keeps its own `Control+K` signature-help binding.
 `j/k` and Up/Down accelerate only after 40 rapid repeats; counted motions remain native.
@@ -117,6 +119,9 @@ tmux prefix lowercase `h/j/k/l` now focuses panes; uppercase `H/J/K/L` continues
 Herdr pane focus moved from bare Alt chords to prefix `h/j/k/l`, allowing nested Neovim to receive Alt chords.
 Neovim Option+Left/Right now moves by words instead of resizing; use its native window-resize commands.
 Neovim `Control+J/K` now scrolls like `Control+Down/Up` rather than moving the cursor five lines.
+Neotest's `Space T` shortcuts and the `Space r` debugger shortcuts have been removed; `Space rn` still renames symbols through the language server.
+Use the project terminal (`Space ft`) for test runners and command-line debuggers.
+Native commenting replaces mini.comment; its extra `gc` comment-block text object is no longer provided.
 
 WezTerm reloads automatically; use `Control+Shift+R` if needed.
 Reload tmux with prefix `r`, reload Herdr with prefix `r`, and restart Neovim.

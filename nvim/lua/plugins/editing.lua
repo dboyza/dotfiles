@@ -15,9 +15,8 @@ return {
         { "<leader>f", group = "find" },
         { "<leader>g", group = "git" },
         { "<leader>h", group = "git hunk" },
-        { "<leader>r", group = "run and debug" },
+        { "<leader>r", group = "rename" },
         { "<leader>s", group = "search" },
-        { "<leader>T", group = "test" },
         { "<leader>t", group = "toggle" },
       },
     },
@@ -35,7 +34,6 @@ return {
         mappings = { around_next = "aa", inside_next = "ii" },
         n_lines = 500,
       })
-      require("mini.comment").setup()
       require("mini.pairs").setup()
       require("mini.surround").setup()
     end,
