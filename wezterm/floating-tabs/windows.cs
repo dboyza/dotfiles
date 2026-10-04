@@ -139,12 +139,12 @@ internal sealed class Layout {
         var result = new Layout { Bounds = new Rectangle(frame.Left, y, frame.Width, height) };
         int x = inset;
         foreach (var tab in tabs) {
-            int width = (int)Math.Round(Math.Max(28, (tab.index + 1).ToString().Length * 10 + 14) * scale);
+            int width = (int)Math.Round(Math.Max(42, (tab.index + 1).ToString().Length * 10 + 28) * scale);
             if (x + width > frame.Width - inset) return null; // Keep all tabs accessible through the native bar.
             result.Tabs.Add(new Rectangle(x, 0, width, height));
             x += width + gap;
         }
-        int newTabWidth = (int)Math.Round(28 * scale);
+        int newTabWidth = (int)Math.Round(42 * scale);
         if (x + newTabWidth > frame.Width - inset) return null;
         result.NewTab = new Rectangle(x, 0, newTabWidth, height);
         x += newTabWidth + gap;
@@ -156,7 +156,7 @@ internal sealed class Layout {
 }
 // Section: Nonactivating rendering and click requests
 internal sealed class Overlay : Form {
-    private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36), Muted = Color.FromArgb(57, 53, 82);
+    private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36);
     private static readonly Color Subtle = Color.FromArgb(144, 140, 170), Surface = Color.FromArgb(35, 33, 54);
     internal Snapshot Snapshot;
     private readonly IntPtr parent;
@@ -237,7 +237,13 @@ internal sealed class Overlay : Form {
     private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font, bool isClock = false) {
         using (var path = Capsule(rect, 8 * scale)) {
             using (var brush = new SolidBrush(active ? Lavender : (isClock ? Dark : Surface))) graphics.FillPath(brush, path);
-            if (!active) using (var pen = new Pen(isClock ? Lavender : Muted, 1)) { pen.Alignment = PenAlignment.Inset; graphics.DrawPath(pen, path); }
+            if (!active) {
+                // Inset the stroke so the overlay's rounded region cannot clip its outer half.
+                int inset = (int)Math.Ceiling(scale);
+                var outline = Rectangle.Inflate(rect, -inset, -inset);
+                using (var border = Capsule(outline, 8 * scale - inset))
+                using (var pen = new Pen(Lavender, 2 * scale)) graphics.DrawPath(pen, border);
+            }
         }
         TextRenderer.DrawText(graphics, text, font, rect, active ? Dark : Subtle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
