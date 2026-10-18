@@ -28,6 +28,31 @@ internal sealed class Snapshot {
     public double updated { get; set; }
     public Tab[] tabs { get; set; }
 }
+// BEGIN generated palette (edit theme/palette.json, then run scripts/sync-palette.py)
+internal static class Palette {
+    internal static readonly Color Deep = Color.FromArgb(25, 23, 36);
+    internal static readonly Color Base = Color.FromArgb(35, 33, 54);
+    internal static readonly Color Surface = Color.FromArgb(42, 39, 63);
+    internal static readonly Color Overlay = Color.FromArgb(57, 53, 82);
+    internal static readonly Color Muted = Color.FromArgb(110, 106, 134);
+    internal static readonly Color Subtle = Color.FromArgb(144, 140, 170);
+    internal static readonly Color Text = Color.FromArgb(224, 222, 244);
+    internal static readonly Color Bright = Color.FromArgb(238, 236, 255);
+    internal static readonly Color Love = Color.FromArgb(235, 111, 146);
+    internal static readonly Color Gold = Color.FromArgb(246, 193, 119);
+    internal static readonly Color Rose = Color.FromArgb(234, 154, 151);
+    internal static readonly Color Blush = Color.FromArgb(235, 188, 186);
+    internal static readonly Color Pine = Color.FromArgb(62, 143, 176);
+    internal static readonly Color Foam = Color.FromArgb(156, 207, 216);
+    internal static readonly Color Iris = Color.FromArgb(196, 167, 231);
+    internal static readonly Color Highlight = Color.FromArgb(68, 65, 90);
+    internal static readonly Color Cursorline = Color.FromArgb(49, 43, 68);
+    internal static readonly Color CursorlineNr = Color.FromArgb(58, 49, 72);
+    internal static readonly Color Cursor = Color.FromArgb(255, 255, 255);
+    internal const int FrameFocused = 0xAA8C90;
+    internal const int FrameUnfocused = 0x523539;
+}
+// END generated palette
 // Section: Windows APIs and frame styling
 internal static class Native {
     internal delegate bool EnumCallback(IntPtr window, IntPtr data);
@@ -51,7 +76,7 @@ internal static class Native {
     [DllImport("dwmapi.dll", EntryPoint = "DwmGetWindowAttribute")] internal static extern int GetAttribute(IntPtr window, int attribute, out int value, int size);
     [DllImport("dwmapi.dll")] private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
     internal static int FrameBorderColor(bool focused) {
-        return focused ? 0xAA8C90 : 0x523539; // COLORREF is 0x00BBGGRR, not RGB.
+        return focused ? Palette.FrameFocused : Palette.FrameUnfocused;
     }
     internal static bool StyleFrame(IntPtr window, bool focused) {
         // DWM draws a continuous outline around its own rounded window mask.
@@ -180,9 +205,8 @@ internal sealed class Layout {
 }
 // Section: Nonactivating rendering and click requests
 internal sealed class Overlay : Form {
-    private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36);
-    private static readonly Color Subtle = Color.FromArgb(144, 140, 170), Surface = Color.FromArgb(35, 33, 54);
-    private static readonly Color Muted = Color.FromArgb(57, 53, 82), Bright = Color.FromArgb(224, 222, 244), Rose = Color.FromArgb(235, 111, 146);
+    private static readonly Color Lavender = Palette.Iris, Dark = Palette.Deep, Subtle = Palette.Subtle, Surface = Palette.Base;
+    private static readonly Color Muted = Palette.Overlay, Bright = Palette.Text, Rose = Palette.Love;
     // JetBrains Mono matches the terminal when installed; GDI+ would otherwise substitute a proportional font silently.
     private static readonly string FontName = PickFont();
     private static string PickFont() {
@@ -502,9 +526,9 @@ internal static class Program {
     private static void Test() {
         // DWMWA_BORDER_COLOR supports setting, not portable readback through DwmGetWindowAttribute.
         // Check color selection separately from Windows accepting the native styling calls.
-        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(true)).ToArgb() == Color.FromArgb(144, 140, 170).ToArgb(),
+        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(true)).ToArgb() == Palette.Subtle.ToArgb(),
             "Focused frame color must use muted lavender");
-        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(false)).ToArgb() == Color.FromArgb(57, 53, 82).ToArgb(),
+        Require(ColorTranslator.FromWin32(Native.FrameBorderColor(false)).ToArgb() == Palette.Overlay.ToArgb(),
             "Unfocused frame color must dim");
         using (var window = new Form()) {
             int preference;

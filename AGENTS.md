@@ -163,6 +163,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 ## WezTerm and floating tabs
 
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
+  Keep `theme/palette.json` as the only place colors are defined: WezTerm and Neovim read it at startup, and `scripts/sync-palette.py` regenerates the marked blocks in Starship, tmux, and both floating-tab helpers (`--check` runs in the compatibility tests).
 
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar at the top, including with one tab.
   Native tabs are the default and fallback; hide them only while a fresh matching companion acknowledgment permits it.

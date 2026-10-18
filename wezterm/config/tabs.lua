@@ -241,7 +241,7 @@ return function(wezterm, config, platform, protocol, palette)
 
   -- Section: Native tab rendering and focus border
   -- Numbered capsule tabs keep the top-left corner compact without a plugin.
-  local bar_background = palette.base
+  local bar_background = palette.deep
   local function capsule(text, foreground, background, active)
     return {
       { Attribute = { Intensity = active and 'Bold' or 'Normal' } },
@@ -275,14 +275,14 @@ return function(wezterm, config, platform, protocol, palette)
       return wezterm.truncate_right(number, math.max(0, max_width))
     end
     local text = native_tab_text(number, cached_label(tab.tab_id, tab.active_pane), tab_alert(tab.tab_id, tab.is_active), max_width)
-    return capsule(text, tab.is_active and palette.base or (hover and palette.text or palette.muted),
-      tab.is_active and palette.accent or (hover and palette.overlay or palette.surface), tab.is_active)
+    return capsule(text, tab.is_active and palette.deep or (hover and palette.text or palette.subtle),
+      tab.is_active and palette.iris or (hover and palette.overlay or palette.base), tab.is_active)
   end)
 
   local function update_window_border(window)
     -- The Windows companion styles the actual rounded DWM frame.
     if is_windows then return end
-    local color = window:is_focused() and palette.muted or palette.overlay
+    local color = window:is_focused() and palette.subtle or palette.overlay
     local overrides = window:get_config_overrides() or {}
     local frame = overrides.window_frame or {}
     local sides = { 'border_left_color', 'border_right_color', 'border_top_color', 'border_bottom_color' }
@@ -338,7 +338,7 @@ return function(wezterm, config, platform, protocol, palette)
       window:set_right_status('')
       return
     end
-    local items = capsule(clock, palette.muted, palette.surface)
+    local items = capsule(clock, palette.subtle, palette.base)
     table.insert(items, { Text = string.rep(' ', cols - clock_start - clock_width) })
     window:set_right_status(wezterm.format(items))
   end)

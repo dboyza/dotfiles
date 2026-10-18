@@ -63,6 +63,7 @@ local function verify_launch_geometry(
       return fonts
     end,
     default_hyperlink_rules = function() return {} end,
+    json_parse = vim.json.decode,
     gui = {
       screens = function()
         return { active = screen, main = screen }

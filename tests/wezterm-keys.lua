@@ -23,6 +23,7 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     font_with_fallback = function(fonts) return fonts end,
     default_wsl_domains = function() return {} end,
     default_hyperlink_rules = function() return { { regex = 'default' } } end,
+    json_parse = vim.json.decode,
     on = function(name, callback) callbacks[name] = callback end,
     run_child_process = function(command)
       if command[1] ~= '/usr/bin/osascript' then return false, '', '' end

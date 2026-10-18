@@ -93,6 +93,15 @@ if command -v zsh >/dev/null 2>&1; then
   fi
 fi
 
+# Section: Shared palette
+python3 "$repo_dir/scripts/sync-palette.py" --check
+if command -v nvim >/dev/null 2>&1; then
+  # Neovim resolves the palette through its config directory, which is linked to this checkout.
+  XDG_CONFIG_HOME="$test_dir/palette-config" bash -c 'mkdir -p "$XDG_CONFIG_HOME" && ln -s "$0/nvim" "$XDG_CONFIG_HOME/nvim"' "$repo_dir"
+  XDG_CONFIG_HOME="$test_dir/palette-config" nvim --headless -u NONE -i NONE \
+    +'lua package.path = vim.env.XDG_CONFIG_HOME .. "/nvim/lua/?.lua;" .. package.path; assert(require("config.palette").iris == "#c4a7e7", "palette must load")' +q
+fi
+
 # Section: JSON data and WezTerm configuration
 if command -v jq >/dev/null 2>&1; then
   while IFS= read -r json_file; do

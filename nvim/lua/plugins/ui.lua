@@ -1,4 +1,6 @@
 -- Coordinate terminal tools, colors, buffer tabs, and the status line.
+local P = require("config.palette")
+
 return {
   -- Section: Terminal tools and indent guides
   {
@@ -70,20 +72,20 @@ return {
       vim.cmd.colorscheme("catppuccin")
 
       local set = vim.api.nvim_set_hl
-      set(0, "SnacksIndent", { fg = "#44415a" })
-      set(0, "SnacksIndentScope", { fg = "#c4a7e7" })
+      set(0, "SnacksIndent", { fg = P.highlight })
+      set(0, "SnacksIndentScope", { fg = P.iris })
       set(0, "Normal", { bg = "none" })
       set(0, "NormalNC", { bg = "none" })
       set(0, "NormalFloat", { bg = "none" })
       set(0, "SignColumn", { bg = "none" })
-      set(0, "LineNr", { fg = "#6e6a86", bg = "none" })
-      set(0, "CursorLine", { bg = "#312b44" })
-      set(0, "CursorLineNr", { fg = "#e0def4", bg = "#3a3148", bold = true })
-      set(0, "WinBar", { fg = "#908caa", bg = "#232136" })
-      set(0, "WinBarNC", { fg = "#6e6a86", bg = "#232136" })
-      set(0, "WinSeparator", { fg = "#f6c177", bg = "none" })
-      set(0, "StatusLine", { fg = "#908caa", bg = "none" })
-      set(0, "StatusLineNC", { fg = "#6e6a86", bg = "none" })
+      set(0, "LineNr", { fg = P.muted, bg = "none" })
+      set(0, "CursorLine", { bg = P.cursorline })
+      set(0, "CursorLineNr", { fg = P.text, bg = P.cursorline_nr, bold = true })
+      set(0, "WinBar", { fg = P.subtle, bg = P.base })
+      set(0, "WinBarNC", { fg = P.muted, bg = P.base })
+      set(0, "WinSeparator", { fg = P.gold, bg = "none" })
+      set(0, "StatusLine", { fg = P.subtle, bg = "none" })
+      set(0, "StatusLineNC", { fg = P.muted, bg = "none" })
     end,
   },
   -- Section: Icons and buffer tabs
@@ -103,16 +105,16 @@ return {
     },
     opts = {
       highlights = {
-        background = { fg = "#6e6a86", bg = "#232136" },
-        buffer_selected = { fg = "#e0def4", bg = "#393552", bold = true, italic = false },
-        close_button = { fg = "#6e6a86", bg = "#232136" },
-        close_button_selected = { fg = "#eb6f92", bg = "#393552" },
-        fill = { bg = "#191724" },
-        indicator_selected = { fg = "#c4a7e7", bg = "#393552" },
-        modified = { fg = "#f6c177", bg = "#232136" },
-        modified_selected = { fg = "#f6c177", bg = "#393552" },
-        separator = { fg = "#191724", bg = "#232136" },
-        separator_selected = { fg = "#191724", bg = "#393552" },
+        background = { fg = P.muted, bg = P.base },
+        buffer_selected = { fg = P.text, bg = P.overlay, bold = true, italic = false },
+        close_button = { fg = P.muted, bg = P.base },
+        close_button_selected = { fg = P.love, bg = P.overlay },
+        fill = { bg = P.deep },
+        indicator_selected = { fg = P.iris, bg = P.overlay },
+        modified = { fg = P.gold, bg = P.base },
+        modified_selected = { fg = P.gold, bg = P.overlay },
+        separator = { fg = P.deep, bg = P.base },
+        separator_selected = { fg = P.deep, bg = P.overlay },
       },
       options = {
         always_show_bufferline = true,
@@ -142,18 +144,18 @@ return {
     config = function()
       local rose_pine = {
         normal = {
-          a = { fg = "#191724", bg = "#9ccfd8", gui = "bold" },
-          b = { fg = "#e0def4", bg = "#393552" },
-          c = { fg = "#908caa", bg = "none" },
+          a = { fg = P.deep, bg = P.foam, gui = "bold" },
+          b = { fg = P.text, bg = P.overlay },
+          c = { fg = P.subtle, bg = "none" },
         },
-        insert = { a = { fg = "#191724", bg = "#c4a7e7", gui = "bold" } },
-        visual = { a = { fg = "#191724", bg = "#f6c177", gui = "bold" } },
-        replace = { a = { fg = "#191724", bg = "#eb6f92", gui = "bold" } },
-        command = { a = { fg = "#191724", bg = "#ebbcba", gui = "bold" } },
+        insert = { a = { fg = P.deep, bg = P.iris, gui = "bold" } },
+        visual = { a = { fg = P.deep, bg = P.gold, gui = "bold" } },
+        replace = { a = { fg = P.deep, bg = P.love, gui = "bold" } },
+        command = { a = { fg = P.deep, bg = P.blush, gui = "bold" } },
         inactive = {
-          a = { fg = "#6e6a86", bg = "none" },
-          b = { fg = "#6e6a86", bg = "none" },
-          c = { fg = "#6e6a86", bg = "none" },
+          a = { fg = P.muted, bg = "none" },
+          b = { fg = P.muted, bg = "none" },
+          c = { fg = P.muted, bg = "none" },
         },
       }
 

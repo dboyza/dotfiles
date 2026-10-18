@@ -46,24 +46,24 @@ return function(wezterm, config, platform, palette)
   -- The scheme supplies the ANSI palette; the overrides deepen the background and brighten text.
   config.color_scheme = 'rose-pine-moon'
   config.colors = {
-    background = palette.background,
-    foreground = palette.foreground,
+    background = palette.deep,
+    foreground = palette.bright,
     cursor_bg = palette.cursor,
-    cursor_fg = palette.base,
+    cursor_fg = palette.deep,
     cursor_border = palette.cursor,
-    selection_fg = palette.base,
-    selection_bg = palette.selection,
+    selection_fg = palette.deep,
+    selection_bg = palette.love,
     visual_bell = palette.overlay,
     tab_bar = {
-      background = palette.base,
-      active_tab = { bg_color = palette.base, fg_color = palette.text, intensity = 'Normal' },
-      inactive_tab = { bg_color = palette.base, fg_color = palette.muted },
-      inactive_tab_hover = { bg_color = palette.base, fg_color = palette.text },
+      background = palette.deep,
+      active_tab = { bg_color = palette.deep, fg_color = palette.text, intensity = 'Normal' },
+      inactive_tab = { bg_color = palette.deep, fg_color = palette.subtle },
+      inactive_tab_hover = { bg_color = palette.deep, fg_color = palette.text },
     },
   }
   config.inactive_pane_hsb = { saturation = 0.0, brightness = 0.5 }
   -- Match the command palette (prefix Space) to the theme instead of WezTerm's default grey.
-  config.command_palette_bg_color = palette.surface
+  config.command_palette_bg_color = palette.base
   config.command_palette_fg_color = palette.text
   config.command_palette_font_size = is_macos and 15.0 or 12.0
 
@@ -77,10 +77,10 @@ return function(wezterm, config, platform, palette)
     border_right_width = border_width,
     border_top_height = border_width,
     border_bottom_height = border_width,
-    border_left_color = palette.muted,
-    border_right_color = palette.muted,
-    border_top_color = palette.muted,
-    border_bottom_color = palette.muted,
+    border_left_color = palette.subtle,
+    border_right_color = palette.subtle,
+    border_top_color = palette.subtle,
+    border_bottom_color = palette.subtle,
   }
 
   -- Section: Native tab bar

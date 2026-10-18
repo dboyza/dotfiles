@@ -1,16 +1,9 @@
--- Rose Pine Moon colors shared by the terminal palette, native tabs, and window border.
-return {
-  -- Section: Terminal surface
-  background = '#191724',
-  foreground = '#eeecff',
-  cursor = '#ffffff',
-  selection = '#eb6f92',
-
-  -- Section: Tab and border accents
-  base = '#191724',
-  surface = '#232136',
-  overlay = '#393552',
-  muted = '#908caa',
-  text = '#e0def4',
-  accent = '#c4a7e7',
-}
+-- Load the shared Rosé Pine Moon palette from theme/palette.json (also read by Neovim).
+return function(wezterm, directory)
+  local path = directory .. '/../theme/palette.json'
+  if wezterm.add_to_config_reload_watch_list then wezterm.add_to_config_reload_watch_list(path) end
+  local file = assert(io.open(path, 'r'), 'missing palette file: ' .. path)
+  local text = file:read('*a')
+  file:close()
+  return wezterm.json_parse(text)
+end

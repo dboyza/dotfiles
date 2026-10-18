@@ -62,13 +62,36 @@ func testSnapshotContract(_ path: String) throws {
 // Section: State location and palette
 let stateDirectory = FileManager.default.homeDirectoryForCurrentUser
     .appendingPathComponent(".local/state/dotfiles/wezterm-floating-tabs")
-let lavender = NSColor(srgbRed: 196/255, green: 167/255, blue: 231/255, alpha: 1)
-let dark = NSColor(srgbRed: 25/255, green: 23/255, blue: 36/255, alpha: 1)
-let muted = NSColor(srgbRed: 57/255, green: 53/255, blue: 82/255, alpha: 1)
-let subtle = NSColor(srgbRed: 144/255, green: 140/255, blue: 170/255, alpha: 1)
-let surface = NSColor(srgbRed: 35/255, green: 33/255, blue: 54/255, alpha: 0.9)
-let bright = NSColor(srgbRed: 224/255, green: 222/255, blue: 244/255, alpha: 1)
-let rose = NSColor(srgbRed: 235/255, green: 111/255, blue: 146/255, alpha: 1)
+// BEGIN generated palette (edit theme/palette.json, then run scripts/sync-palette.py)
+enum Palette {
+    static let deep = NSColor(srgbRed: 25/255, green: 23/255, blue: 36/255, alpha: 1)
+    static let base = NSColor(srgbRed: 35/255, green: 33/255, blue: 54/255, alpha: 1)
+    static let surface = NSColor(srgbRed: 42/255, green: 39/255, blue: 63/255, alpha: 1)
+    static let overlay = NSColor(srgbRed: 57/255, green: 53/255, blue: 82/255, alpha: 1)
+    static let muted = NSColor(srgbRed: 110/255, green: 106/255, blue: 134/255, alpha: 1)
+    static let subtle = NSColor(srgbRed: 144/255, green: 140/255, blue: 170/255, alpha: 1)
+    static let text = NSColor(srgbRed: 224/255, green: 222/255, blue: 244/255, alpha: 1)
+    static let bright = NSColor(srgbRed: 238/255, green: 236/255, blue: 255/255, alpha: 1)
+    static let love = NSColor(srgbRed: 235/255, green: 111/255, blue: 146/255, alpha: 1)
+    static let gold = NSColor(srgbRed: 246/255, green: 193/255, blue: 119/255, alpha: 1)
+    static let rose = NSColor(srgbRed: 234/255, green: 154/255, blue: 151/255, alpha: 1)
+    static let blush = NSColor(srgbRed: 235/255, green: 188/255, blue: 186/255, alpha: 1)
+    static let pine = NSColor(srgbRed: 62/255, green: 143/255, blue: 176/255, alpha: 1)
+    static let foam = NSColor(srgbRed: 156/255, green: 207/255, blue: 216/255, alpha: 1)
+    static let iris = NSColor(srgbRed: 196/255, green: 167/255, blue: 231/255, alpha: 1)
+    static let highlight = NSColor(srgbRed: 68/255, green: 65/255, blue: 90/255, alpha: 1)
+    static let cursorline = NSColor(srgbRed: 49/255, green: 43/255, blue: 68/255, alpha: 1)
+    static let cursorline_nr = NSColor(srgbRed: 58/255, green: 49/255, blue: 72/255, alpha: 1)
+    static let cursor = NSColor(srgbRed: 255/255, green: 255/255, blue: 255/255, alpha: 1)
+}
+// END generated palette
+let lavender = Palette.iris
+let dark = Palette.deep
+let muted = Palette.overlay
+let subtle = Palette.subtle
+let surface = Palette.base.withAlphaComponent(0.9)
+let bright = Palette.text
+let rose = Palette.love
 
 // Section: Native window observation and placement
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {

@@ -44,7 +44,7 @@ local function load(name)
   return dofile(path)
 end
 
-local palette = load('palette')
+local palette = load('palette')(wezterm, directory)
 local platform = load('platform')(wezterm, config)
 load('appearance')(wezterm, config, platform, palette)
 load('keys')(wezterm, config, platform)
