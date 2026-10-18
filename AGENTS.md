@@ -205,7 +205,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Validate latency and reloads with `tests/wezterm-floating-tabs.sh --e2e` in disposable macOS GUI windows, and require an explicit Lua test verdict because WezTerm can exit successfully after falling back from a configuration error.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails or there is no room above the window.
-  On macOS, also restore native tabs when another application gains focus.
+  Keep macOS overlays and acknowledgments active when another application gains focus, following their window's stacking order instead of switching to native tabs.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.

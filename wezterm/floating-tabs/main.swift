@@ -375,11 +375,12 @@ final class Companion: NSObject, NSApplicationDelegate {
         refreshing = true
         defer { refreshing = false }
         let identifiers = ["org.wezfurlong.wezterm", "com.github.wez.wezterm"]
-        guard AXIsProcessTrusted(), let front = NSWorkspace.shared.frontmostApplication,
-              identifiers.contains(front.bundleIdentifier ?? "") else {
+        guard AXIsProcessTrusted() else {
             for overlay in overlays.values { overlay.hide() }
             return
         }
+        // Overlays stay attached while another app is frontmost, avoiding a native-tab flicker on every app switch.
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
         let now = Date().timeIntervalSince1970
         let files = (try? FileManager.default.contentsOfDirectory(at: stateDirectory,
             includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
@@ -420,7 +421,7 @@ final class Companion: NSObject, NSApplicationDelegate {
                 live.insert(snapshot.key)
                 let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
                 overlays[snapshot.key] = overlay
-                let focused = app.processIdentifier == front.processIdentifier
+                let focused = app.processIdentifier == frontPID
                     && focusedWindow.map { CFEqual($0, window) } == true
                 overlay.refresh(snapshot: snapshot, window: window, pid: app.processIdentifier,
                     number: number, focused: focused, order: order)

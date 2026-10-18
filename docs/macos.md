@@ -303,7 +303,8 @@ WezTerm launches the installed helper once when the first window in a new GUI pr
 Click a number to focus its window and switch tabs, or keep using the existing terminal shortcuts.
 Click requests are checked every 16 ms; the clock, heartbeat, and native-tab fallback retain their slower maintenance cadence.
 The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
-The helper uses the native tab bar when another application is focused, a window enters fullscreen, or it sits too close to the menu bar for external badges.
+The badges stay attached when another application is focused, following their WezTerm window behind other windows.
+The helper uses the native tab bar when a window enters fullscreen or sits too close to the menu bar for external badges.
 If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
 To stop the helper for the current WezTerm session, quit `wezterm-floating-tabs` in Activity Monitor.
 Windows has a [native companion](windows-wsl.md#floating-wezterm-tabs-and-clock), including when displaying WSL sessions.
