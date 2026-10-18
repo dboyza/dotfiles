@@ -36,6 +36,7 @@ Use Home instead of relying on shell `Control+A` while inside Herdr.
 
 WezTerm also has prefix `P` for PowerShell, `f` for terminal search, `q` for Quick Select, `Space` for its command palette, and `Enter` for fullscreen.
 Prefix `[` and `]` jump to the previous and next shell prompt in direct WezTerm shells; tmux and Herdr have their own scrollback.
+Prefix `o` selects the last command's output in copy mode (press `y` to copy it), and Option or Alt triple-click copies the output under the pointer; both rely on the same prompt marks.
 Quick Select also offers `file:line` locations and `owner/repo#123` references; clicking a `file:line` opens it in Neovim in a new tab, and clicking a reference opens it on GitHub.
 Use prefix `m` to toggle between the large launch size and a smaller centered window; macOS also supports `Command+Shift+M`.
 The smaller size is 55% of the active screen's width and height, capped at 70% of the large size on very large displays.

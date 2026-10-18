@@ -180,9 +180,12 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep `max_fps` above the display rate (240): WezTerm's own frame timer at exactly 120 misses vsync and presents at 60 on ProMotion displays.
   Renderer and binary changes apply only after fully quitting and relaunching WezTerm; a live reload keeps the old front end.
 
-- Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled.
+- Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled, resolving bold, italic, and dim styles through the same fallback stack with each platform's color emoji font.
+
+- Keep Kitty graphics enabled in WezTerm (with tmux `allow-passthrough`), and style the scrollbar and pane dividers from the shared palette.
 
 - Emit WezTerm prompt (OSC 133) and directory (OSC 7) marks from Zsh only in direct WezTerm panes, not inside tmux or Herdr; prefix `[` / `]` jumps between prompts.
+  Keep prefix `o` selecting the last command's output in copy mode and Option or Alt triple-click copying the output under the pointer, both from the same prompt marks.
   Keep clicked `file:line` links opening Neovim in a new tab of the same domain and directory, typed into the new shell so it keeps the login PATH.
 
 - Launch WezTerm centered on macOS at 94% of the active screen width and 88% of its height, without maximizing.
@@ -228,8 +231,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
   Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
-  Complete macOS border corners with small click-through arcs that match focus and screen pixel density; native rectangular borders are clipped at the window radius.
-  Keep the arc radius equal to WezTerm's window corner radius (16 points for builds linked against the macOS 26 SDK, measured from screen pixels).
+  Square the macOS window corners with WezTerm nightly's `MACOS_FORCE_SQUARE_CORNERS` so the one-pixel border runs edge to edge; the helper draws no corner arcs, which would otherwise track the system corner radius.
 
 - On Windows, build the native floating-tab companion from `wezterm/floating-tabs/windows.cs` with the inbox .NET Framework compiler through `scripts/install-wezterm-floating-tabs.ps1`.
   Install it on the Windows host, including for WSL sessions; keep its bridge under the Windows user profile with a user/SYSTEM-only ACL.

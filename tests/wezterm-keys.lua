@@ -97,6 +97,13 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
 
   assert(binding('[', 'LEADER').name == 'ScrollToPrompt' and binding('[', 'LEADER').value == -1)
   assert(binding(']', 'LEADER').name == 'ScrollToPrompt' and binding(']', 'LEADER').value == 1)
+  assert(binding('o', 'LEADER').name == 'Multiple', 'prefix o must select the last command output')
+  local zone_click
+  for _, entry in ipairs(config.mouse_bindings) do
+    if entry.mods == 'ALT' and entry.event.Down and entry.event.Down.streak == 3 then zone_click = entry.action end
+  end
+  assert(zone_click and zone_click.name == 'SelectTextAtMouseCursor' and zone_click.value == 'SemanticZone',
+    'Alt triple-click must select a semantic zone')
   assert(config.hyperlink_rules[1].regex == 'default', 'custom links must extend the default rules')
 
   -- Clicked file:line links open Neovim in a new tab of the same domain and directory.

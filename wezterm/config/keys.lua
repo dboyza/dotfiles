@@ -130,6 +130,12 @@ return function(wezterm, config, platform)
     { 'f', act.Search({ CaseSensitiveString = '' }) },
     { 'q', act.QuickSelect },
     -- Jump between shell prompts marked by the Zsh integration.
+    { 'o', act.Multiple({
+      -- Select the last command's output in copy mode; press y there to copy it.
+      act.ActivateCopyMode,
+      act.CopyMode({ MoveBackwardZoneOfType = 'Output' }),
+      act.CopyMode({ SetSelectionMode = 'SemanticZone' }),
+    }) },
     { '[', act.ScrollToPrompt(-1) },
     { ']', act.ScrollToPrompt(1) },
     { 'm', act.EmitEvent('toggle-window-size') },
@@ -168,12 +174,22 @@ return function(wezterm, config, platform)
   end
 
   -- Section: Mouse
-  -- Right click pastes, replacing any selection.
+  -- Right click pastes, replacing any selection; Option or Alt triple-click copies a whole command output.
   config.mouse_bindings = {
     {
       event = { Up = { streak = 1, button = 'Right' } },
       mods = 'NONE',
       action = act.Multiple({ act.ClearSelection, act.PasteFrom('Clipboard') }),
+    },
+    {
+      event = { Down = { streak = 3, button = 'Left' } },
+      mods = 'ALT',
+      action = act.SelectTextAtMouseCursor('SemanticZone'),
+    },
+    {
+      event = { Up = { streak = 3, button = 'Left' } },
+      mods = 'ALT',
+      action = act.CompleteSelection('ClipboardAndPrimarySelection'),
     },
   }
 

@@ -34,6 +34,8 @@ if find_wezterm_gui >/dev/null; then
   done
   check_wezterm_config "$fixture/pass.lua" >/dev/null
   cp -R "$repo_dir/wezterm" "$fixture/checkout with spaces"
+  # The palette lives beside the wezterm directory in a real checkout.
+  cp -R "$repo_dir/theme" "$fixture/theme"
   mkdir -p "$fixture/home" "$fixture/links"
   ln -s "../checkout with spaces/.wezterm.lua" "$fixture/links/config.lua"
   ln -s "../links/config.lua" "$fixture/home/.wezterm.lua"

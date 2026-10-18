@@ -1,4 +1,4 @@
-// Follow macOS WezTerm windows with native badges, a clock, and rounded border corners.
+// Follow macOS WezTerm windows with native badges and a clock.
 import AppKit
 import ApplicationServices
 
@@ -426,41 +426,6 @@ final class OverlayPanel: NSPanel {
     override var canBecomeMain: Bool { false }
 }
 
-// WezTerm's rectangular frame is clipped by macOS at the corners. Draw the
-// missing arcs in small click-through panels instead of covering the terminal.
-final class CornerOutline: NSView {
-    // WezTerm nightly links the macOS 26 SDK, whose borderless windows round at 16 points
-    // (measured from screen pixels); older SDK builds used 10. The panel adds room for the stroke.
-    static let radius: CGFloat = 16
-    static let diameter: CGFloat = radius + 2
-    let corner: Int
-    var focused = true {
-        didSet { if focused != oldValue { needsDisplay = true } }
-    }
-    var strokeWidth: CGFloat = 1 {
-        didSet { if strokeWidth != oldValue { needsDisplay = true } }
-    }
-    init(corner: Int) {
-        self.corner = corner
-        super.init(frame: CGRect(x: 0, y: 0, width: Self.diameter, height: Self.diameter))
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
-    override func draw(_ dirtyRect: NSRect) {
-        let right = corner % 2 == 1
-        let top = corner >= 2
-        let radius = Self.radius
-        let inset = strokeWidth / 2
-        let center = CGPoint(x: right ? bounds.width - radius - inset : radius + inset,
-                             y: top ? bounds.height - radius - inset : radius + inset)
-        let start: CGFloat = top ? (right ? 0 : 90) : (right ? 270 : 180)
-        let path = NSBezierPath()
-        path.appendArc(withCenter: center, radius: radius, startAngle: start, endAngle: start + 90)
-        path.lineWidth = strokeWidth
-        (focused ? subtle : muted).setStroke()
-        path.stroke()
-    }
-}
-
 func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> DispatchSourceFileSystemObject? {
     let descriptor = open(directory.path, O_EVTONLY)
     guard descriptor >= 0 else { return nil }
@@ -480,7 +445,7 @@ final class WindowOverlay {
     deinit {
         if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
         hide()
-        for panel in corners + [tabsPanel, clockPanel] { panel.close() }
+        for panel in [tabsPanel, clockPanel] { panel.close() }
     }
     let tabsPanel = OverlayPanel()
     let clockPanel: OverlayPanel = {
@@ -500,12 +465,6 @@ final class WindowOverlay {
         view.documentView = strip
         return view
     }()
-    let corners: [OverlayPanel] = (0..<4).map { corner in
-        let panel = OverlayPanel()
-        panel.ignoresMouseEvents = true
-        panel.contentView = CornerOutline(corner: corner)
-        return panel
-    }
     var observer: AXObserver?
     var observedWindow: AXUIElement?
     var observedPID: pid_t = 0
@@ -538,7 +497,6 @@ final class WindowOverlay {
     }
 
     func hide() {
-        for panel in corners { panel.orderOut(nil) }
         hideBadges()
     }
 
@@ -580,18 +538,6 @@ final class WindowOverlay {
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
         else { hide(); return }
         observe(pid: pid, window: window)
-        let extent = CornerOutline.diameter
-        for (index, panel) in corners.enumerated() {
-            if let outline = panel.contentView as? CornerOutline {
-                outline.focused = focused
-                outline.strokeWidth = 1 / screen.backingScaleFactor
-            }
-            let position = CGRect(x: index % 2 == 1 ? frame.maxX - extent : frame.minX,
-                                  y: index >= 2 ? frame.maxY - extent : frame.minY,
-                                  width: extent, height: extent)
-            if panel.frame != position { panel.setFrame(position, display: true) }
-            panel.show(above: number, focused: focused, order: order)
-        }
         // Prefer named tabs; fall back to numbers when labels would crowd out the clock.
         let wide = frame.width >= 900
         let clockWidth: CGFloat = wide ? 116 : 88
@@ -736,24 +682,7 @@ extension CGRect {
 }
 
 // Section: Diagnostic modes and app entry point
-if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
-   CommandLine.arguments.count > argument + 1 {
-    let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 120, pixelsHigh: 120,
-        bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
-        colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
-    bitmap.size = NSSize(width: 60, height: 60)
-    NSGraphicsContext.saveGraphicsState()
-    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
-    NSColor.black.setFill()
-    NSRect(x: 0, y: 0, width: 60, height: 60).fill()
-    let context = NSGraphicsContext.current!.cgContext
-    context.translateBy(x: 20, y: 20)
-    let corner = CornerOutline(corner: 0)
-    corner.draw(corner.bounds)
-    NSGraphicsContext.restoreGraphicsState()
-    try bitmap.representation(using: .png, properties: [:])!.write(
-        to: URL(fileURLWithPath: CommandLine.arguments[argument + 1]))
-} else if CommandLine.arguments.contains("--render-strip") {
+if CommandLine.arguments.contains("--render-strip") {
     // Draws sample tabs (without the live blur behind them) to inspect layout and typography.
     _ = NSApplication.shared
     let tabs = [Tab(id: 1, index: 0, active: true, label: "nvim"), Tab(id: 2, index: 1, active: false, label: "my-project"),

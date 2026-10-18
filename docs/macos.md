@@ -280,7 +280,7 @@ Hovering the clock swaps the time for the date, and wide windows add the weekday
 Overlays fade back when their window is not focused.
 The badges follow window moves and resizes without taking keyboard focus.
 Focused-window overlays stay above terminal clicks; background overlays retain their window stacking order.
-Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.
+WezTerm's window corners are square on macOS, so the lavender outline runs edge to edge.
 Other applications do not get overlays.
 
 macOS activation builds the helper from `wezterm/floating-tabs/main.swift` using Apple's Command Line Tools and installs it into `~/Applications/WezTerm Floating Tabs.app`.

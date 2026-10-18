@@ -3,13 +3,30 @@ return function(wezterm, config, platform, palette)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
 
   -- Section: Fonts
-  -- JetBrains Mono Nerd Font leads; each platform falls back to a monospace font it ships.
-  local fonts = { 'JetBrainsMono Nerd Font' }
-  local fallbacks = is_windows and { 'Cascadia Mono', 'Consolas' }
-    or is_macos and { 'Menlo' }
-    or { 'DejaVu Sans Mono' }
-  for _, family in ipairs(fallbacks) do table.insert(fonts, family) end
-  config.font = wezterm.font_with_fallback(fonts)
+  -- JetBrains Mono Nerd Font leads; each platform falls back to a monospace font and its color emoji font.
+  local families = { 'JetBrainsMono Nerd Font' }
+  local fallbacks = is_windows and { 'Cascadia Mono', 'Consolas', 'Segoe UI Emoji' }
+    or is_macos and { 'Menlo', 'Apple Color Emoji' }
+    or { 'DejaVu Sans Mono', 'Noto Color Emoji' }
+  for _, family in ipairs(fallbacks) do table.insert(families, family) end
+
+  -- Every style resolves through the same fallback stack, so bold or italic text never loses a glyph.
+  local function stack(style)
+    local fonts = {}
+    for _, family in ipairs(families) do
+      table.insert(fonts, { family = family, weight = style.weight, italic = style.italic })
+    end
+    return wezterm.font_with_fallback(fonts)
+  end
+  config.font = stack({})
+  config.font_rules = {
+    { intensity = 'Bold', italic = false, font = stack({ weight = 'Bold' }) },
+    { intensity = 'Bold', italic = true, font = stack({ weight = 'Bold', italic = true }) },
+    { intensity = 'Normal', italic = true, font = stack({ italic = true }) },
+    -- Dim text (SGR 2) is a lighter weight rather than a darker color.
+    { intensity = 'Half', italic = false, font = stack({ weight = 'Light' }) },
+    { intensity = 'Half', italic = true, font = stack({ weight = 'Light', italic = true }) },
+  }
   config.font_size = 12
   config.line_height = 1.1
   -- Ligatures off: operators render exactly as typed in shells, diffs, and editors.
@@ -41,6 +58,8 @@ return function(wezterm, config, platform, palette)
   }
   config.notification_handling = 'SuppressFromFocusedWindow'
   config.default_cursor_style = 'SteadyBlock'
+  -- Show images from Kitty-protocol programs such as yazi and Neovim image plugins.
+  config.enable_kitty_graphics = true
 
   -- Section: Colors
   -- The scheme supplies the ANSI palette; the overrides deepen the background and brighten text.
@@ -53,6 +72,9 @@ return function(wezterm, config, platform, palette)
     cursor_border = palette.cursor,
     selection_fg = palette.deep,
     selection_bg = palette.love,
+    -- Pane dividers and the scrollbar follow the theme instead of WezTerm's defaults.
+    split = palette.overlay,
+    scrollbar_thumb = palette.overlay,
     visual_bell = palette.overlay,
     tab_bar = {
       background = palette.deep,
@@ -68,8 +90,10 @@ return function(wezterm, config, platform, palette)
   config.command_palette_font_size = is_macos and 15.0 or 12.0
 
   -- Section: Window frame and padding
-  config.window_decorations = 'RESIZE'
+  -- macOS nightly squares the window corners so the 1px border runs edge to edge.
+  config.window_decorations = is_macos and 'RESIZE|MACOS_FORCE_SQUARE_CORNERS' or 'RESIZE'
   config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
+  config.enable_scroll_bar = true
   -- Windows' DWM draws its own rounded border; a client-side rectangle would square off the corners.
   local border_width = is_windows and '0px' or '1px'
   config.window_frame = {
