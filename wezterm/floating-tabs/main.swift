@@ -486,6 +486,7 @@ final class TabStrip: NSView {
     private var targets: [Int: CGRect] = [:]
     private let plus = Badge(kind: .plus)
     func badge(for id: Int) -> Badge? { badges[id] }
+    func slotTarget(_ id: Int) -> CGRect? { targets[id] }
     private var activeID: Int?
     private var populated = false
     private var shown: [Tab] = []
@@ -617,7 +618,11 @@ final class TabStrip: NSView {
             var reordered = shown.filter { $0.id != id }
             reordered.insert(shown[current.from], at: current.drop)
             let layout = slots(reordered)
-            if let target = layout[id] { move(badge, id: id, to: target) }
+            // The pill was dragged by hand, so its recorded slot is stale: always glide it back into place.
+            if let target = layout[id] {
+                targets[id] = nil
+                move(badge, id: id, to: target)
+            }
             badge.alphaValue = 1
             drag = nil
             if current.drop != current.from {
@@ -981,6 +986,12 @@ if CommandLine.arguments.contains("--render-strip") {
     strip.drag(11, .moved, 3)
     strip.drag(11, .ended, 0)
     precondition(moves.isEmpty || moves[0].1 != 1, "Dropping a tab where it started must not request a move")
+    // A drag that ends in the same slot must still release the pill back to it.
+    strip.drag(12, .began, 0)
+    strip.drag(12, .moved, 20)
+    precondition(strip.badge(for: 12)!.frame.minX == 20, "A dragged pill follows the pointer")
+    strip.drag(12, .ended, 0)
+    precondition(strip.slotTarget(12) != nil && strip.slotTarget(12)!.minX != 20, "A short drag must snap the pill back to its slot")
     precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
     let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
                               tabWidth: 92, clockWidth: 116)!
