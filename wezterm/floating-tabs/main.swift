@@ -406,7 +406,10 @@ final class OverlayPanel: NSPanel {
 // WezTerm's rectangular frame is clipped by macOS at the corners. Draw the
 // missing arcs in small click-through panels instead of covering the terminal.
 final class CornerOutline: NSView {
-    static let diameter: CGFloat = 12
+    // WezTerm nightly links the macOS 26 SDK, whose borderless windows round at 16 points
+    // (measured from screen pixels); older SDK builds used 10. The panel adds room for the stroke.
+    static let radius: CGFloat = 16
+    static let diameter: CGFloat = radius + 2
     let corner: Int
     var focused = true {
         didSet { if focused != oldValue { needsDisplay = true } }
@@ -422,7 +425,7 @@ final class CornerOutline: NSView {
     override func draw(_ dirtyRect: NSRect) {
         let right = corner % 2 == 1
         let top = corner >= 2
-        let radius: CGFloat = 10
+        let radius = Self.radius
         let inset = strokeWidth / 2
         let center = CGPoint(x: right ? bounds.width - radius - inset : radius + inset,
                              y: top ? bounds.height - radius - inset : radius + inset)
