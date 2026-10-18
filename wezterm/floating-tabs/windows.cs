@@ -21,6 +21,11 @@ internal sealed class Tab {
     // Optional display hints: the program or folder name, and a background-activity flag.
     public string label { get; set; }
     public bool? alert { get; set; }
+    public string branch { get; set; }
+    public string path { get; set; }
+    // 0..100 with a state of normal, error, or indeterminate (no percent).
+    public int? progress { get; set; }
+    public string progress_state { get; set; }
 }
 internal sealed class Snapshot {
     public string key { get; set; }
@@ -103,6 +108,8 @@ internal static class Bridge {
     internal const double FreshnessSeconds = 3;
     internal const int MaximumSnapshotBytes = 65536;
     internal const int MaximumLabelBytes = 64;
+    internal const int MaximumBranchBytes = 64;
+    internal const int MaximumPathBytes = 256;
     internal const double CleanupAfterSeconds = 30;
     internal static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "state", "dotfiles", "wezterm-floating-tabs");
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = MaximumSnapshotBytes };
@@ -113,7 +120,11 @@ internal static class Bridge {
             && snapshot.title == "WezTerm [" + snapshot.key.Replace('-', ':') + "]"
             && Math.Abs(now - snapshot.updated) < FreshnessSeconds && snapshot.tabs != null && snapshot.tabs.Length > 0
             && snapshot.tabs.All(tab => tab != null && tab.index >= 0 && tab.id >= 0 && tab.id <= 9007199254740991
-                && (tab.label == null || Encoding.UTF8.GetByteCount(tab.label) <= MaximumLabelBytes))
+                && (tab.label == null || Encoding.UTF8.GetByteCount(tab.label) <= MaximumLabelBytes)
+                && (tab.branch == null || Encoding.UTF8.GetByteCount(tab.branch) <= MaximumBranchBytes)
+                && (tab.path == null || Encoding.UTF8.GetByteCount(tab.path) <= MaximumPathBytes)
+                && (!tab.progress.HasValue || (tab.progress.Value >= 0 && tab.progress.Value <= 100))
+                && (tab.progress_state == null || tab.progress_state == "normal" || tab.progress_state == "error" || tab.progress_state == "indeterminate"))
             && snapshot.tabs.Select(tab => tab.id).Distinct().Count() == snapshot.tabs.Length
             && snapshot.tabs.Select(tab => tab.index).Distinct().Count() == snapshot.tabs.Length
             && snapshot.tabs.Count(tab => tab.active) == 1;
@@ -136,6 +147,10 @@ internal static class Bridge {
                 !tab.ContainsKey("active") || !(tab["active"] is bool)) return null;
             if (tab.ContainsKey("label") && tab["label"] != null && !(tab["label"] is string)) return null;
             if (tab.ContainsKey("alert") && tab["alert"] != null && !(tab["alert"] is bool)) return null;
+            if (tab.ContainsKey("branch") && tab["branch"] != null && !(tab["branch"] is string)) return null;
+            if (tab.ContainsKey("path") && tab["path"] != null && !(tab["path"] is string)) return null;
+            if (tab.ContainsKey("progress") && tab["progress"] != null && !Integer(tab["progress"], 100)) return null;
+            if (tab.ContainsKey("progress_state") && tab["progress_state"] != null && !(tab["progress_state"] is string)) return null;
         }
         return Json.Deserialize<Snapshot>(text);
     }
@@ -186,7 +201,8 @@ internal sealed class Layout {
             int width = (int)Math.Round(Math.Max(48, digits * 10 + 34) * scale);
             if (!compact && !string.IsNullOrEmpty(tab.label)) {
                 // Approximate monospaced text widths: number, gap, label, then the alert and close slot.
-                int named = (int)Math.Round((12 + digits * 8 + 6 + tab.label.Length * 8 + 6 + 14 + 10) * scale);
+                int branchWidth = string.IsNullOrEmpty(tab.branch) ? 0 : 6 + tab.branch.Length * 7;
+                int named = (int)Math.Round((12 + digits * 8 + 6 + tab.label.Length * 8 + branchWidth + 6 + 14 + 10) * scale);
                 width = Math.Max(width, named);
             }
             if (x + width > frame.Width - inset) return null; // Keep all tabs accessible through the native bar.
@@ -327,7 +343,8 @@ internal sealed class Overlay : Form {
         bool alert = tab.alert.HasValue && tab.alert.Value && !tab.active;
         if (!named) {
             TextRenderer.DrawText(graphics, number, font, rect, Tone(ink), centered);
-            if (alert) FillDot(graphics, rect.Right - (int)(12 * scale), rect.Top + (int)(5 * scale));
+            if (!string.IsNullOrEmpty(tab.progress_state)) DrawRing(graphics, rect.Right - (int)(9 * scale), rect.Top + (int)(8 * scale), tab, ink);
+            else if (alert) FillDot(graphics, rect.Right - (int)(12 * scale), rect.Top + (int)(5 * scale));
             return;
         }
         const TextFormatFlags left = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
@@ -336,11 +353,32 @@ internal sealed class Overlay : Form {
         int slot = rect.Right - (int)Math.Round(24 * scale);
         TextRenderer.DrawText(graphics, number, font, new Rectangle(textLeft, rect.Top, numberWidth + 2, rect.Height), Tone(ink), left);
         int labelLeft = textLeft + numberWidth + (int)Math.Round(6 * scale);
-        TextRenderer.DrawText(graphics, tab.label, labelFont, new Rectangle(labelLeft, rect.Top, Math.Max(0, slot - labelLeft), rect.Height),
+        int labelWidth = TextRenderer.MeasureText(graphics, tab.label, labelFont, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding).Width;
+        TextRenderer.DrawText(graphics, tab.label, labelFont, new Rectangle(labelLeft, rect.Top, Math.Min(labelWidth + 2, Math.Max(0, slot - labelLeft)), rect.Height),
             Tone(ink), left | TextFormatFlags.EndEllipsis);
+        // The git branch follows the label in a dimmer tone.
+        int branchLeft = labelLeft + labelWidth + (int)Math.Round(6 * scale);
+        if (!string.IsNullOrEmpty(tab.branch) && branchLeft < slot) {
+            TextRenderer.DrawText(graphics, tab.branch, labelFont, new Rectangle(branchLeft, rect.Top, Math.Max(0, slot - branchLeft), rect.Height),
+                Tone(tab.active ? Palette.Overlay : (hot ? Palette.Subtle : Palette.Muted)), left | TextFormatFlags.EndEllipsis);
+        }
         var slotRect = new Rectangle(slot, rect.Top, (int)Math.Round(14 * scale), rect.Height);
+        bool ringed = !string.IsNullOrEmpty(tab.progress_state);
         if (hot) TextRenderer.DrawText(graphics, "\u00D7", font, slotRect, Tone(ink), centered);
+        else if (ringed) DrawRing(graphics, slotRect.Left + slotRect.Width / 2, rect.Top + rect.Height / 2, tab, ink);
         else if (alert) FillDot(graphics, slotRect.Left + slotRect.Width / 2 - (int)(3 * scale), rect.Top + rect.Height / 2 - (int)(3 * scale));
+    }
+    // Programs report progress through the terminal; draw the percent as an arc, or a fixed quarter when unknown.
+    private void DrawRing(Graphics graphics, int centerX, int centerY, Tab tab, Color ink) {
+        int size = (int)Math.Round(11 * scale);
+        var box = new Rectangle(centerX - size / 2, centerY - size / 2, size, size);
+        Color color = tab.progress_state == "error" ? Rose : (tab.active ? Dark : Palette.Foam);
+        float sweep = tab.progress_state == "indeterminate" ? 100f : 360f * (tab.progress.HasValue ? tab.progress.Value : 0) / 100f;
+        using (var track = new Pen(Color.FromArgb(80, Tone(ink)), Math.Max(1.5f, 1.5f * scale)))
+        using (var arc = new Pen(Tone(color), Math.Max(1.5f, 1.5f * scale))) {
+            graphics.DrawEllipse(track, box);
+            if (sweep > 0) graphics.DrawArc(arc, box, -90f, sweep);
+        }
     }
     private void FillDot(Graphics graphics, int x, int y) {
         int size = (int)Math.Round(6 * scale);
@@ -366,8 +404,17 @@ internal sealed class Overlay : Form {
     }
     protected override void OnMouseDown(MouseEventArgs e) {
         base.OnMouseDown(e);
-        if (e.Button != MouseButtons.Left || layout == null) return;
+        if ((e.Button != MouseButtons.Left && e.Button != MouseButtons.Middle) || layout == null) return;
         int hit = TabAt(e.Location);
+        // Middle-click closes a tab with the usual confirmation.
+        if (e.Button == MouseButtons.Middle) {
+            if (hit < 0) return;
+            try {
+                Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, action = "close_tab", tab_id = Snapshot.tabs[hit].id });
+                Native.SetForegroundWindow(parent);
+            } catch (IOException) { Suspend(); } catch (UnauthorizedAccessException) { Suspend(); }
+            return;
+        }
         // The close button appears on the hovered named tab, in the slot at its right edge.
         if (hit >= 0 && hit == hover && Layout.Named(layout, Snapshot.tabs[hit])
             && e.X >= layout.Tabs[hit].Right - (int)Math.Round(26 * scale)) {
@@ -561,6 +608,17 @@ internal static class Program {
         Require(Bridge.Valid(snapshot, "window-abc-42.json", Bridge.Now), "Valid snapshot rejected");
         Require(!Bridge.Valid(snapshot, "window-other-42.json", Bridge.Now), "Foreign filename accepted");
         Require(!Bridge.Valid(snapshot, "window-abc-42.json", Bridge.Now + 10), "Stale snapshot accepted");
+        var hinted = new Snapshot { key = "abc-42", title = "WezTerm [abc:42]", updated = Bridge.Now,
+            tabs = new[] { new Tab { id = 1, index = 0, active = true, label = "repo", branch = "main", path = "~/repo", progress = 70, progress_state = "normal" } } };
+        Require(Bridge.Valid(hinted, "window-abc-42.json", Bridge.Now), "Valid hints rejected");
+        hinted.tabs[0].progress = 101;
+        Require(!Bridge.Valid(hinted, "window-abc-42.json", Bridge.Now), "Out-of-range progress accepted");
+        hinted.tabs[0].progress = 70;
+        hinted.tabs[0].progress_state = "stalled";
+        Require(!Bridge.Valid(hinted, "window-abc-42.json", Bridge.Now), "Unknown progress state accepted");
+        hinted.tabs[0].progress_state = "normal";
+        hinted.tabs[0].branch = new string('b', Bridge.MaximumBranchBytes + 1);
+        Require(!Bridge.Valid(hinted, "window-abc-42.json", Bridge.Now), "Oversized branch accepted");
         snapshot.key = "../abc-42";
         Require(!Bridge.Valid(snapshot, "window-abc-42.json", Bridge.Now), "Unsafe key accepted");
         string fixture = Path.Combine(Path.GetTempPath(), "floating-tabs-" + Guid.NewGuid().ToString("N"));

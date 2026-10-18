@@ -10,6 +10,11 @@ struct Tab: Codable, Equatable {
     // Optional display hints: the program or folder name, and a background-activity flag.
     var label: String? = nil
     var alert: Bool? = nil
+    var branch: String? = nil
+    var path: String? = nil
+    // 0...100 with a state of normal, error, or indeterminate (no percent).
+    var progress: Int? = nil
+    var progress_state: String? = nil
 }
 struct Snapshot: Codable {
     let key: String
@@ -22,12 +27,16 @@ struct Reply: Codable {
     let updated: Double
     let tab_id: Int?
     var action: String? = nil
+    var index: Int? = nil
 }
 
 // Keep these limits aligned with config/protocol.lua and the shared fixtures.
 let freshnessSeconds: Double = 3
 let maximumSnapshotBytes = 65536
 let maximumLabelBytes = 64
+let maximumBranchBytes = 64
+let maximumPathBytes = 256
+let progressStates: Set<String> = ["normal", "error", "indeterminate"]
 let cleanupAfterSeconds: Double = 30
 
 func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
@@ -36,6 +45,8 @@ func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool 
     let validTabs = !snapshot.tabs.isEmpty && snapshot.tabs.allSatisfy {
         $0.id >= 0 && $0.id <= 9007199254740991 && $0.index >= 0 && $0.index <= 2147483647
             && ($0.label?.utf8.count ?? 0) <= maximumLabelBytes
+            && ($0.branch?.utf8.count ?? 0) <= maximumBranchBytes && ($0.path?.utf8.count ?? 0) <= maximumPathBytes
+            && ($0.progress.map { (0...100).contains($0) } ?? true) && ($0.progress_state.map { progressStates.contains($0) } ?? true)
     }
     return validKey && filename == "window-\(snapshot.key).json" && snapshot.title == title
         && abs(now - snapshot.updated) < freshnessSeconds && validTabs
@@ -126,8 +137,43 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat, clockWidth: CG
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
+// Section: Badge model and pointer plumbing
+// What a pill shows; comparing models lets the strip skip work when nothing changed.
+struct BadgeModel: Equatable {
+    var number = ""
+    var label: String?
+    var branch: String?
+    var path: String?
+    var active = false
+    var alert = false
+    var progress: Int?
+    var progressState: String?
+    var compact = true
+    init(number: String) { self.number = number }
+    init(tab: Tab, compact: Bool) {
+        number = String(tab.index + 1)
+        label = tab.label
+        branch = tab.branch
+        path = tab.path
+        active = tab.active
+        alert = tab.alert ?? false
+        progress = tab.progress
+        progressState = tab.progress_state
+        self.compact = compact
+    }
+}
+
+// Menu items keep their closure alive through `representedObject`.
+final class MenuAction: NSObject {
+    let run: () -> Void
+    init(_ run: @escaping () -> Void) { self.run = run }
+    @objc func fire() { run() }
+}
+
+enum DragPhase { case began, moved, ended }
+
 // Section: Badge and overlay drawing
-// Pills are frosted glass under a tint; the tint, text, and dots fade between states.
+// Pills are frosted glass under a tint; the tint, text, dots, and progress ring fade between states.
 final class Badge: NSView {
     enum Kind { case tab, plus, clock }
     static let pillHeight: CGFloat = 24
@@ -136,18 +182,27 @@ final class Badge: NSView {
     let kind: Kind
     var onClick: (() -> Void)?
     var onClose: (() -> Void)?
+    var onDrag: ((DragPhase, CGFloat) -> Void)?
+    var menuItems: (() -> [(String, () -> Void)])?
     private(set) var hovered = false
-    private var number = "", label: String?, active = false, alert = false, compact = true
+    private var model = BadgeModel(number: "")
     private let glass = NSVisualEffectView()
     // AppKit orders subview layers itself, so the tint and text live in a view stacked above the glass.
     private let content = NSView()
     private let tint = CALayer()
     private let numberLayer = CATextLayer()
     private let labelLayer = CATextLayer()
+    private let branchLayer = CATextLayer()
     private let dot = CALayer()
     private let closeLayer = CATextLayer()
+    private let ringTrack = CAShapeLayer()
+    private let ringArc = CAShapeLayer()
+    private var pressed = false, dragging = false
+    private var pressOffset: CGFloat = 0
+    private var pressOrigin = CGPoint.zero
 
-    private var named: Bool { kind == .tab && !compact && label != nil }
+    private var named: Bool { kind == .tab && !model.compact && model.label != nil }
+    var isNamed: Bool { named }
 
     static func font(_ size: CGFloat, bold: Bool) -> NSFont {
         let weight = bold ? 9 : 5
@@ -159,11 +214,14 @@ final class Badge: NSView {
     static func textWidth(_ text: String, size: CGFloat) -> CGFloat {
         ceil((text as NSString).size(withAttributes: [.font: font(size, bold: true)]).width)
     }
-    // Numbers alone stay compact; a labeled tab also gets a slot for the alert dot or close button.
-    static func width(number: String, label: String?, compact: Bool) -> CGFloat {
-        if compact || label == nil { return max(28, CGFloat(number.count * 10 + 14)) }
-        let named = label.map { 6 + textWidth($0, size: 12) } ?? 0
-        return 10 + textWidth(number, size: 13) + named + 6 + 12 + 6
+    // The branch glyph is Nerd Font private-use text, drawn dimmer after the label.
+    static func branchText(_ branch: String) -> String { "\u{e0a0} " + branch }
+    // Numbers alone stay compact; a labeled tab also names its branch and gets a slot for the dot, ring, or close button.
+    static func width(_ model: BadgeModel) -> CGFloat {
+        if model.compact || model.label == nil { return max(28, CGFloat(model.number.count * 10 + 14)) }
+        let label = model.label.map { 6 + textWidth($0, size: 12) } ?? 0
+        let branch = model.branch.map { 6 + textWidth(branchText($0), size: 11) } ?? 0
+        return 10 + textWidth(model.number, size: 13) + label + branch + 6 + 12 + 6
     }
 
     init(kind: Kind) {
@@ -186,7 +244,7 @@ final class Badge: NSView {
         tint.cornerRadius = Badge.pillHeight / 2
         content.layer?.addSublayer(tint)
         let scale = NSScreen.main?.backingScaleFactor ?? 2
-        for item in [numberLayer, labelLayer, closeLayer] {
+        for item in [numberLayer, labelLayer, branchLayer, closeLayer] {
             item.contentsScale = scale
             item.truncationMode = .end
             content.layer?.addSublayer(item)
@@ -198,6 +256,14 @@ final class Badge: NSView {
         dot.cornerRadius = 3
         dot.opacity = 0
         content.layer?.addSublayer(dot)
+        for ring in [ringTrack, ringArc] {
+            ring.fillColor = nil
+            ring.lineWidth = 2
+            ring.lineCap = .round
+            ring.opacity = 0
+            content.layer?.addSublayer(ring)
+        }
+        ringArc.strokeEnd = 0
         let mask = NSImage(size: NSSize(width: Badge.pillHeight, height: Badge.pillHeight), flipped: false) { rect in
             NSColor.black.setFill()
             NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
@@ -206,17 +272,18 @@ final class Badge: NSView {
         mask.capInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         mask.resizingMode = .stretch
         glass.maskImage = mask
-        apply(number: kind == .plus ? "+" : "", label: nil, active: false, alert: false, compact: true, animated: false)
+        apply(BadgeModel(number: kind == .plus ? "+" : ""), animated: false)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
     override var isFlipped: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
-    func apply(number: String, label: String?, active: Bool, alert: Bool, compact: Bool, animated: Bool = true) {
-        guard animated == false || (number, label, active, alert, compact) != (self.number, self.label, self.active, self.alert, self.compact)
-        else { return }
-        let relayout = compact != self.compact || label != self.label || number != self.number
-        (self.number, self.label, self.active, self.alert, self.compact) = (number, label, active, alert, compact)
+    func apply(_ next: BadgeModel, animated: Bool = true) {
+        guard !animated || next != model else { return }
+        let relayout = next.compact != model.compact || next.label != model.label || next.number != model.number
+            || next.branch != model.branch
+        model = next
+        toolTip = next.path
         if relayout { needsLayout = true }
         restyle(animated: animated)
     }
@@ -247,7 +314,7 @@ final class Badge: NSView {
             tint.backgroundColor = dark.withAlphaComponent(0.5).cgColor
             tint.borderWidth = 0.5
             tint.borderColor = muted.withAlphaComponent(0.5).cgColor
-        } else if active {
+        } else if model.active {
             tint.backgroundColor = lavender.withAlphaComponent(0.96).cgColor
             tint.borderWidth = 0
         } else {
@@ -255,28 +322,58 @@ final class Badge: NSView {
             tint.borderWidth = 0.5
             tint.borderColor = muted.withAlphaComponent(hot ? 0.9 : 0.7).cgColor
         }
-        let ink = active ? dark : (hot ? bright : subtle)
+        let ink = model.active ? dark : (hot ? bright : subtle)
         if kind != .clock {
-            numberLayer.string = number
-            numberLayer.font = Badge.font(13, bold: active)
+            numberLayer.string = model.number
+            numberLayer.font = Badge.font(13, bold: model.active)
             numberLayer.fontSize = 13
             numberLayer.foregroundColor = ink.cgColor
             numberLayer.alignmentMode = named ? .left : .center
-            labelLayer.string = label
+            labelLayer.string = model.label
             labelLayer.font = Badge.font(12, bold: false)
             labelLayer.fontSize = 12
-            labelLayer.foregroundColor = ink.withAlphaComponent(active ? 0.85 : 1).cgColor
-            labelLayer.isHidden = compact || label == nil
+            labelLayer.foregroundColor = ink.withAlphaComponent(model.active ? 0.85 : 1).cgColor
+            labelLayer.isHidden = !named
+            branchLayer.string = model.branch.map(Badge.branchText)
+            branchLayer.font = Badge.font(11, bold: false)
+            branchLayer.fontSize = 11
+            branchLayer.foregroundColor = ink.withAlphaComponent(model.active ? 0.6 : 0.7).cgColor
+            branchLayer.isHidden = !named || model.branch == nil
         }
         closeLayer.font = Badge.font(14, bold: true)
         closeLayer.fontSize = 14
         closeLayer.foregroundColor = ink.cgColor
         let showClose = named && hovered && onClose != nil
         closeLayer.opacity = showClose ? 1 : 0
-        dot.opacity = alert && !active && !showClose ? 1 : 0
+        let ringed = model.progressState != nil && kind == .tab
+        dot.opacity = model.alert && !model.active && !showClose && !ringed ? 1 : 0
+        restyleRing(ink: ink, visible: ringed && !showClose)
         CATransaction.commit()
         setAccessibilityLabel(kind == .clock ? "Current time" : (kind == .plus ? "New WezTerm tab"
-            : "WezTerm tab \(number)\(label.map { " " + $0 } ?? "")"))
+            : "WezTerm tab \(model.number)\(model.label.map { " " + $0 } ?? "")"))
+    }
+
+    // Programs report progress through the terminal; a ring shows the percent, or spins when unknown.
+    private func restyleRing(ink: NSColor, visible: Bool) {
+        ringTrack.opacity = visible ? 0.3 : 0
+        ringArc.opacity = visible ? 1 : 0
+        let color = (model.progressState == "error" ? rose : (model.active ? dark : Palette.foam)).cgColor
+        ringTrack.strokeColor = ink.cgColor
+        ringArc.strokeColor = color
+        if model.progressState == "indeterminate" {
+            ringArc.strokeEnd = 0.3
+            if ringArc.animation(forKey: "spin") == nil {
+                let spin = CABasicAnimation(keyPath: "transform.rotation.z")
+                spin.fromValue = 0
+                spin.toValue = -2 * Double.pi
+                spin.duration = 1
+                spin.repeatCount = .infinity
+                ringArc.add(spin, forKey: "spin")
+            }
+        } else {
+            ringArc.removeAnimation(forKey: "spin")
+            ringArc.strokeEnd = CGFloat(model.progress ?? 0) / 100
+        }
     }
 
     override func layout() {
@@ -290,14 +387,30 @@ final class Badge: NSView {
         layer?.shadowPath = CGPath(roundedRect: pill, cornerWidth: pill.height / 2, cornerHeight: pill.height / 2, transform: nil)
         let line = ceil(Badge.font(13, bold: false).boundingRectForFont.height)
         let textY = pill.minY + ((pill.height - line) / 2).rounded()
-        let numberWidth = Badge.textWidth(number, size: 13)
+        let numberWidth = Badge.textWidth(model.number, size: 13)
         numberLayer.frame = named ? CGRect(x: 10, y: textY, width: numberWidth + 2, height: line)
                                   : CGRect(x: 0, y: textY, width: pill.width, height: line)
         let slotX = pill.width - 6 - 12
-        labelLayer.frame = CGRect(x: 10 + numberWidth + 6, y: textY + 0.5, width: max(0, slotX - (16 + numberWidth) - 2), height: line)
+        let labelX = 10 + numberWidth + 6
+        let labelWidth = model.label.map { Badge.textWidth($0, size: 12) + 2 } ?? 0
+        labelLayer.frame = CGRect(x: labelX, y: textY + 0.5, width: min(labelWidth, max(0, slotX - labelX - 2)), height: line)
+        let branchX = labelX + labelWidth + 4
+        branchLayer.frame = CGRect(x: branchX, y: textY + 1, width: max(0, slotX - branchX - 2), height: line)
         closeLayer.frame = CGRect(x: slotX, y: textY, width: 12, height: line)
         dot.frame = named ? CGRect(x: slotX + 3, y: pill.midY - 3, width: 6, height: 6)
                           : CGRect(x: pill.maxX - 10, y: pill.maxY - 10, width: 6, height: 6)
+        // The ring replaces the dot's spot: the right-hand slot when named, the upper corner when compact.
+        let size: CGFloat = named ? 12 : 9
+        let center = named ? CGPoint(x: slotX + 6, y: pill.midY) : CGPoint(x: pill.maxX - 7, y: pill.maxY - 7)
+        for ring in [ringTrack, ringArc] {
+            ring.bounds = CGRect(x: 0, y: 0, width: size, height: size)
+            ring.position = center
+            let inner = (size - ring.lineWidth) / 2
+            let path = CGMutablePath()
+            path.addArc(center: CGPoint(x: size / 2, y: size / 2), radius: inner, startAngle: .pi / 2,
+                        endAngle: .pi / 2 - 2 * .pi, clockwise: true)
+            ring.path = path
+        }
         CATransaction.commit()
     }
 
@@ -315,24 +428,76 @@ final class Badge: NSView {
     }
     override func mouseEntered(with event: NSEvent) { setHovered(true) }
     override func mouseExited(with event: NSEvent) { setHovered(false) }
+
+    // A press activates on release, so dragging a tab to reorder it does not also switch to it.
     override func mouseDown(with event: NSEvent) {
         let point = convert(event.locationInWindow, from: nil)
-        if named && hovered && point.x >= bounds.width - 24, let onClose { onClose() } else { onClick?() }
+        if named && hovered && point.x >= bounds.width - 24, let onClose { onClose(); return }
+        pressed = true
+        dragging = false
+        pressOffset = point.x
+        pressOrigin = event.locationInWindow
+    }
+    override func mouseDragged(with event: NSEvent) {
+        guard pressed, kind == .tab, let onDrag else { return }
+        if !dragging {
+            guard abs(event.locationInWindow.x - pressOrigin.x) > 4 else { return }
+            dragging = true
+            onDrag(.began, 0)
+        }
+        let origin = (superview?.convert(event.locationInWindow, from: nil).x ?? 0) - pressOffset
+        onDrag(.moved, origin)
+    }
+    override func mouseUp(with event: NSEvent) {
+        defer { pressed = false; dragging = false }
+        if dragging { onDrag?(.ended, 0) } else if pressed { onClick?() }
+    }
+    // Middle-click closes a tab with the usual confirmation.
+    override func otherMouseUp(with event: NSEvent) {
+        if event.buttonNumber == 2 { onClose?() }
+    }
+    override func rightMouseDown(with event: NSEvent) {
+        guard kind == .tab, let items = menuItems?() else { return }
+        let menu = NSMenu()
+        for (title, run) in items {
+            if title == "-" { menu.addItem(.separator()); continue }
+            let action = MenuAction(run)
+            let item = NSMenuItem(title: title, action: #selector(MenuAction.fire), keyEquivalent: "")
+            item.target = action
+            item.representedObject = action
+            menu.addItem(item)
+        }
+        NSMenu.popUpContextMenu(menu, with: event, for: self)
     }
 }
 
-// Section: Tab strip with animated updates
+// Section: Tab strip with animated updates and drag-to-reorder
 // Badges are reused by tab ID so selection fades and openings and closings slide instead of rebuilding.
 final class TabStrip: NSView {
+    struct Handlers {
+        var activate: (Tab) -> Void
+        var close: (Tab) -> Void
+        var move: (Tab, Int) -> Void
+        var action: (Tab, String) -> Void
+        var newTab: () -> Void
+    }
+
     private var badges: [Int: Badge] = [:]
     private var targets: [Int: CGRect] = [:]
     private let plus = Badge(kind: .plus)
     func badge(for id: Int) -> Badge? { badges[id] }
     private var activeID: Int?
     private var populated = false
+    private var shown: [Tab] = []
+    private var compact = false
+    private var handlers: Handlers?
+    // While a drag runs the strip lays itself out; afterward the dropped order holds until the snapshot catches up.
+    private var drag: (id: Int, from: Int, drop: Int)?
+    private var pendingOrder: [Int]?
+    private var pendingUntil = Date.distantPast
 
     static func widths(_ tabs: [Tab], compact: Bool) -> [CGFloat] {
-        tabs.map { Badge.width(number: String($0.index + 1), label: $0.label, compact: compact) }
+        tabs.map { Badge.width(BadgeModel(tab: $0, compact: compact)) }
     }
     // Leave room on each side for the badges' shadows, which the scroll view would otherwise clip.
     static let margin: CGFloat = 3
@@ -340,21 +505,47 @@ final class TabStrip: NSView {
         widths.reduce(0, +) + CGFloat(widths.count * 4) + 28 + margin * 2
     }
 
-    func update(tabs: [Tab], compact: Bool, activate: @escaping (Tab) -> Void, close: @escaping (Tab) -> Void,
-                newTab: @escaping () -> Void) {
-        let widths = TabStrip.widths(tabs, compact: compact)
+    // Slot frames for tabs laid out in the given order.
+    private func slots(_ order: [Tab]) -> [Int: CGRect] {
+        var result: [Int: CGRect] = [:]
         var x = TabStrip.margin
-        var seen = Set<Int>()
-        for (tab, width) in zip(tabs, widths) {
-            seen.insert(tab.id)
-            let target = CGRect(x: x, y: 0, width: width, height: panelHeight)
-            let badge = badges[tab.id] ?? makeBadge(tab.id, at: target)
-            badge.onClick = { activate(tab) }
-            badge.onClose = { close(tab) }
-            badge.apply(number: String(tab.index + 1), label: tab.label, active: tab.active,
-                        alert: tab.alert ?? false, compact: compact)
-            move(badge, id: tab.id, to: target)
+        for (tab, width) in zip(order, TabStrip.widths(order, compact: compact)) {
+            result[tab.id] = CGRect(x: x, y: 0, width: width, height: panelHeight)
             x += width + 4
+        }
+        result[-1] = CGRect(x: x, y: 0, width: 28, height: panelHeight)
+        return result
+    }
+
+    func update(tabs: [Tab], compact: Bool, handlers: Handlers) {
+        self.compact = compact
+        self.handlers = handlers
+        var ordered = tabs
+        if let pending = pendingOrder {
+            let ids = tabs.map { $0.id }
+            if ids == pending || Date() >= pendingUntil || Set(ids) != Set(pending) {
+                pendingOrder = nil
+            } else {
+                ordered = pending.compactMap { id in tabs.first { $0.id == id } }
+            }
+        }
+        shown = ordered
+        let layout = slots(ordered)
+        var seen = Set<Int>()
+        for tab in ordered {
+            seen.insert(tab.id)
+            let target = layout[tab.id]!
+            let badge = badges[tab.id] ?? makeBadge(tab.id, at: target)
+            badge.onClick = { handlers.activate(tab) }
+            badge.onClose = { handlers.close(tab) }
+            badge.menuItems = {
+                [("Rename…", { handlers.action(tab, "rename_tab") }), ("Duplicate", { handlers.action(tab, "duplicate_tab") }),
+                 ("Move to New Window", { handlers.action(tab, "detach_tab") }), ("-", {}),
+                 ("Close", { handlers.close(tab) })]
+            }
+            badge.onDrag = { [weak self] phase, origin in self?.drag(tab.id, phase, origin) }
+            badge.apply(BadgeModel(tab: tab, compact: compact))
+            if drag == nil { move(badge, id: tab.id, to: target) }
         }
         for id in badges.keys where !seen.contains(id) {
             guard let gone = badges.removeValue(forKey: id) else { continue }
@@ -362,10 +553,10 @@ final class TabStrip: NSView {
             NSAnimationContext.runAnimationGroup({ $0.duration = 0.12; gone.animator().alphaValue = 0 },
                                                  completionHandler: { gone.removeFromSuperview() })
         }
-        plus.onClick = newTab
+        plus.onClick = handlers.newTab
         if plus.superview == nil { addSubview(plus) }
-        move(plus, id: -1, to: CGRect(x: x, y: 0, width: 28, height: panelHeight))
-        frame.size = CGSize(width: x + 28 + TabStrip.margin, height: panelHeight)
+        if drag == nil { move(plus, id: -1, to: layout[-1]!) }
+        frame.size = CGSize(width: layout[-1]!.maxX + TabStrip.margin, height: panelHeight)
         if let active = tabs.first(where: { $0.active })?.id, active != activeID {
             activeID = active
             if let badge = badges[active] { scrollToVisible(badge.frame) }
@@ -390,6 +581,53 @@ final class TabStrip: NSView {
         targets[id] = target
         if badge.superview == nil || !populated || badge.frame.isEmpty { badge.frame = target; return }
         NSAnimationContext.runAnimationGroup { $0.duration = 0.16; badge.animator().frame = target }
+    }
+
+    // Section: Drag to reorder
+    // The dragged pill follows the pointer while its neighbors slide apart to show where it will land.
+    private func drag(_ id: Int, _ phase: DragPhase, _ origin: CGFloat) {
+        guard let badge = badges[id], let from = shown.firstIndex(where: { $0.id == id }) else { return }
+        switch phase {
+        case .began:
+            drag = (id, from, from)
+            addSubview(badge, positioned: .above, relativeTo: nil)
+            badge.alphaValue = 0.92
+        case .moved:
+            guard let current = drag else { return }
+            let limit = (targets[-1]?.minX ?? bounds.width) - badge.frame.width - 4
+            badge.frame.origin.x = min(max(TabStrip.margin, origin), max(TabStrip.margin, limit))
+            let others = shown.filter { $0.id != id }
+            var cursor = TabStrip.margin
+            var drop = 0
+            for width in TabStrip.widths(others, compact: compact) {
+                if badge.frame.midX > cursor + width / 2 { drop += 1 }
+                cursor += width + 4
+            }
+            if drop != current.drop {
+                drag = (id, current.from, drop)
+                var reordered = others
+                reordered.insert(shown[current.from], at: drop)
+                let layout = slots(reordered)
+                for (key, target) in layout where key != id {
+                    if let other = key == -1 ? plus : badges[key] { move(other, id: key, to: target) }
+                }
+            }
+        case .ended:
+            guard let current = drag else { return }
+            var reordered = shown.filter { $0.id != id }
+            reordered.insert(shown[current.from], at: current.drop)
+            let layout = slots(reordered)
+            if let target = layout[id] { move(badge, id: id, to: target) }
+            badge.alphaValue = 1
+            drag = nil
+            if current.drop != current.from {
+                // Hold the dropped order until WezTerm publishes it, so the strip does not snap back first.
+                pendingOrder = reordered.map { $0.id }
+                pendingUntil = Date().addingTimeInterval(1.5)
+                shown = reordered
+                handlers?.move(shown[current.drop], current.drop)
+            }
+        }
     }
 }
 
@@ -550,24 +788,19 @@ final class WindowOverlay {
             placed = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width, clockWidth: clockWidth)
         }
         guard let (tabFrame, clockFrame) = placed else { hideBadges(); return }
-        strip.update(tabs: snapshot.tabs, compact: compact,
-            activate: { [weak self] tab in
-                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-                NSRunningApplication(processIdentifier: pid)?.activate()
-                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id), name: "activate-\(snapshot.key).json")
-            },
-            close: { [weak self] tab in
-                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-                NSRunningApplication(processIdentifier: pid)?.activate()
-                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id, action: "close_tab"),
-                            name: "activate-\(snapshot.key).json")
-            },
-            newTab: { [weak self] in
-                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-                NSRunningApplication(processIdentifier: pid)?.activate()
-                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970,
-                                  tab_id: nil, action: "new_tab"), name: "activate-\(snapshot.key).json")
-            })
+        // Every request first raises the window so WezTerm's prompts and confirmations are visible.
+        let send: (Int?, String?, Int?) -> Void = { [weak self] id, action, index in
+            _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+            NSRunningApplication(processIdentifier: pid)?.activate()
+            self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: id, action: action, index: index),
+                        name: "activate-\(snapshot.key).json")
+        }
+        strip.update(tabs: snapshot.tabs, compact: compact, handlers: TabStrip.Handlers(
+            activate: { send($0.id, nil, nil) },
+            close: { send($0.id, "close_tab", nil) },
+            move: { send($0.id, "move_tab", $1) },
+            action: { send($0.id, $1, nil) },
+            newTab: { send(nil, "new_tab", nil) }))
         if tabsPanel.contentView !== scroll { tabsPanel.contentView = scroll }
         if tabsPanel.frame != tabFrame { tabsPanel.setFrame(tabFrame, display: true) }
         tabsPanel.show(above: number, focused: focused, order: order)
@@ -685,10 +918,15 @@ extension CGRect {
 if CommandLine.arguments.contains("--render-strip") {
     // Draws sample tabs (without the live blur behind them) to inspect layout and typography.
     _ = NSApplication.shared
-    let tabs = [Tab(id: 1, index: 0, active: true, label: "nvim"), Tab(id: 2, index: 1, active: false, label: "my-project"),
-                Tab(id: 3, index: 2, active: false, label: "claude", alert: true), Tab(id: 4, index: 3, active: false)]
+    let tabs = [Tab(id: 1, index: 0, active: true, label: "nvim", branch: "main", progress: 65, progress_state: "normal"),
+                Tab(id: 2, index: 1, active: false, label: "my-project", branch: "feature/x"),
+                Tab(id: 3, index: 2, active: false, label: "claude", alert: true),
+                Tab(id: 4, index: 3, active: false, label: "build", progress_state: "indeterminate"),
+                Tab(id: 5, index: 4, active: false, label: "tests", progress: 40, progress_state: "error"),
+                Tab(id: 6, index: 5, active: false)]
     let strip = TabStrip()
-    strip.update(tabs: tabs, compact: false, activate: { _ in }, close: { _ in }, newTab: {})
+    strip.update(tabs: tabs, compact: false, handlers: TabStrip.Handlers(
+        activate: { _ in }, close: { _ in }, move: { _, _ in }, action: { _, _ in }, newTab: {}))
     strip.badge(for: 2)?.setHovered(true)
     let clock = Badge(kind: .clock)
     clock.setClock("Sun 1:03 AM", colonVisible: true)
@@ -712,9 +950,19 @@ if CommandLine.arguments.contains("--render-strip") {
     RunLoop.current.run(until: Date().addingTimeInterval(4))
 } else if let argument = CommandLine.arguments.firstIndex(of: "--test") {
     try testSnapshotContract(CommandLine.arguments[argument + 1])
-    precondition(Badge.width(number: "1", label: nil, compact: true) == 28, "Numbers alone stay compact")
-    precondition(Badge.width(number: "12", label: nil, compact: true) == 34, "Two-digit numbers widen the pill")
-    precondition(Badge.width(number: "1", label: "nvim", compact: false) > 70, "Labels make room for the name and close slot")
+    var plain = BadgeModel(number: "1")
+    precondition(Badge.width(plain) == 28, "Numbers alone stay compact")
+    plain.number = "12"
+    precondition(Badge.width(plain) == 34, "Two-digit numbers widen the pill")
+    var named = BadgeModel(number: "1")
+    named.label = "nvim"
+    named.compact = false
+    let labeled = Badge.width(named)
+    precondition(labeled > 70, "Labels make room for the name and close slot")
+    named.branch = "main"
+    precondition(Badge.width(named) > labeled + 20, "A branch widens the pill")
+    named.compact = true
+    precondition(Badge.width(named) == 28, "Compact pills drop names and branches")
     precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
     let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
                               tabWidth: 92, clockWidth: 116)!

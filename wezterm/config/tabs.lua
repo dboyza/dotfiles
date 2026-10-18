@@ -1,5 +1,5 @@
 -- Exchange per-window companion state and render native tabs, borders, and the clock.
-return function(wezterm, config, platform, protocol, palette)
+return function(wezterm, config, platform, protocol, palette, tab_info)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
   local wsl_tab_action = platform.new_tab
 
@@ -50,88 +50,6 @@ return function(wezterm, config, platform, protocol, palette)
     return protocol.fresh(reply, title, os.time())
   end
 
-  -- Section: Tab labels and activity alerts
-  -- Labels name the foreground program (or the folder for a plain shell); alerts mark background tabs.
-  local LABEL_COLUMNS = 12
-  local SHELLS = { zsh = true, bash = true, fish = true, sh = true, dash = true, nu = true, pwsh = true, powershell = true }
-
-  local function basename(path)
-    return (path or ''):match('([^/\\]+)[/\\]*$') or ''
-  end
-
-  -- Accepts WezTerm's PaneInformation-style fields from either the title event or a mux pane.
-  local function tab_label(info)
-    if type(info) ~= 'table' then return nil end
-    local process = basename(info.foreground_process_name):gsub('%.exe$', ''):lower()
-    local label = process
-    if process == '' or SHELLS[process] then
-      local cwd = info.current_working_dir
-      -- WezTerm reports directories as Url objects; older paths and fixtures may be plain strings.
-      if cwd and type(cwd) ~= 'string' then cwd = cwd.file_path end
-      label = (cwd and cwd == wezterm.home_dir) and '~' or basename(cwd)
-    end
-    label = label:gsub('%c', '')
-    if label == '' then return nil end
-    return wezterm.truncate_right(label, LABEL_COLUMNS)
-  end
-
-  local function alert_key(tab_id) return 'floating_tab_alert_' .. tostring(tab_id) end
-
-  -- Viewing a tab acknowledges its alert.
-  local function tab_alert(tab_id, active)
-    local key = alert_key(tab_id)
-    if active then
-      if wezterm.GLOBAL[key] then wezterm.GLOBAL[key] = nil end
-      return false
-    end
-    return wezterm.GLOBAL[key] == true
-  end
-
-  local function mark_background_alert(pane)
-    local ok, tab = pcall(function() return pane:tab() end)
-    if not ok or not tab then return end
-    local window = tab:window()
-    local active = window and window:active_tab()
-    if active and active:tab_id() ~= tab:tab_id() then wezterm.GLOBAL[alert_key(tab:tab_id())] = true end
-  end
-
-  -- A bell or a long-running command (the Zsh integration sets this user variable) flags a background tab.
-  wezterm.on('bell', function(_, pane) mark_background_alert(pane) end)
-  wezterm.on('user-var-changed', function(_, pane, name)
-    if name == 'dotfiles_command_done' then mark_background_alert(pane) end
-  end)
-
-  -- Labels come from one place: mux panes know their process, while title and tab-format events
-  -- often omit it. A shared cache keeps every publisher agreeing, so badges never flip between forms.
-  local function label_key(tab_id) return 'floating_tab_label_' .. tostring(tab_id) end
-
-  local function cached_label(tab_id, info)
-    return wezterm.GLOBAL[label_key(tab_id)] or tab_label(info)
-  end
-
-  -- Describe a mux tab entry; a failed lookup keeps the last known label rather than dropping it.
-  local function describe_tab(item)
-    local label
-    local ok, pane = pcall(function() return item.tab:active_pane() end)
-    if ok and pane then
-      local _, name = pcall(function() return pane:get_foreground_process_name() end)
-      local _, cwd = pcall(function() return pane:get_current_working_dir() end)
-      label = tab_label({ foreground_process_name = name, current_working_dir = cwd })
-    end
-    local id_ok, tab_id = pcall(function() return item.tab:tab_id() end)
-    if id_ok then
-      if label then
-        if wezterm.GLOBAL[label_key(tab_id)] ~= label then wezterm.GLOBAL[label_key(tab_id)] = label end
-      else
-        label = wezterm.GLOBAL[label_key(tab_id)]
-      end
-    end
-    local alert = false
-    local id_ok, id = pcall(function() return item.tab:tab_id() end)
-    if id_ok then alert = tab_alert(id, item.is_active) end
-    return label, alert
-  end
-
   -- Section: Atomic snapshots and request consumption
   local function publish_floating_tabs(window_id, tabs)
     local title = overlay_title(window_id)
@@ -164,6 +82,31 @@ return function(wezterm, config, platform, protocol, palette)
     end
   end
 
+  -- Actions on a tab run against the active tab, which the request has just activated.
+  local function run_tab_action(window, item, request)
+    local act = wezterm.action
+    local pane = window:active_pane()
+    if request.action == 'close_tab' then
+      -- Closing goes through the same confirmation as the portable close shortcut.
+      window:perform_action(act.CloseCurrentTab({ confirm = true }), pane)
+    elseif request.action == 'move_tab' then
+      window:perform_action(act.MoveTab(request.index), pane)
+    elseif request.action == 'duplicate_tab' then
+      window:perform_action(act.SpawnTab('CurrentPaneDomain'), pane)
+    elseif request.action == 'detach_tab' then
+      -- No key assignment exists for this, so move the pane through the mux API.
+      pcall(function() item.tab:active_pane():move_to_new_window() end)
+    elseif request.action == 'rename_tab' then
+      -- An empty answer clears the name so the tab goes back to its program or folder.
+      window:perform_action(act.PromptInputLine({
+        description = 'Rename tab (leave empty to reset)',
+        action = wezterm.action_callback(function(prompted, _, line)
+          if line ~= nil then prompted:active_tab():set_title(line) end
+        end),
+      }), pane)
+    end
+  end
+
   local function consume_floating_tab_request(window)
     local key = overlay_key(window:mux_window():window_id())
     local title = overlay_title(window:mux_window():window_id())
@@ -178,23 +121,22 @@ return function(wezterm, config, platform, protocol, palette)
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
       if tab.tab:tab_id() == request.tab_id then
         tab.tab:activate()
-        -- Closing goes through the same confirmation as the portable close shortcut.
-        if request.action == 'close_tab' then
-          window:perform_action(wezterm.action.CloseCurrentTab({ confirm = true }), window:active_pane())
-        end
+        run_tab_action(window, tab, request)
         return true
       end
     end
     return false
   end
 
-  local function publish_window_floating_tabs(window)
+  -- Input ticks reuse stored hints so a click answers within a frame; maintenance ticks refresh them.
+  local function publish_window_floating_tabs(window, refresh)
     -- Snapshot after handling a click, not before activating its destination.
     local tabs = {}
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      local label, alert = describe_tab(tab)
-      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active,
-        label = label, alert = alert or nil })
+      local hints = refresh and tab_info.describe(tab) or tab_info.stored(tab)
+      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active, label = hints.label,
+        alert = hints.alert, branch = hints.branch, path = hints.path,
+        progress = hints.progress, progress_state = hints.progress_state })
     end
     publish_floating_tabs(window:mux_window():window_id(), tabs)
   end
@@ -212,7 +154,7 @@ return function(wezterm, config, platform, protocol, palette)
         wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
       end
     end
-    publish_window_floating_tabs(window)
+    publish_window_floating_tabs(window, true)
     local ready = overlay_fresh(overlay_read('ready-' .. key .. '.json'), title)
     local overrides = window:get_config_overrides() or {}
     local show_native = not ready
@@ -229,8 +171,10 @@ return function(wezterm, config, platform, protocol, palette)
       if window then
         local snapshot = {}
         for _, item in ipairs(tabs) do
-          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active,
-            label = cached_label(item.tab_id, item.active_pane), alert = tab_alert(item.tab_id, item.is_active) or nil })
+          local hints = tab_info.cached(item.tab_id, item.active_pane, item.tab_title)
+          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active, label = hints.label,
+            alert = tab_info.alert(item.tab_id, item.is_active) or nil, branch = hints.branch, path = hints.path,
+            progress = hints.progress, progress_state = hints.progress_state })
         end
         publish_floating_tabs(window:window_id(), snapshot)
         return overlay_title(window:window_id())
@@ -274,7 +218,8 @@ return function(wezterm, config, platform, protocol, palette)
     if max_width < #number + 2 then
       return wezterm.truncate_right(number, math.max(0, max_width))
     end
-    local text = native_tab_text(number, cached_label(tab.tab_id, tab.active_pane), tab_alert(tab.tab_id, tab.is_active), max_width)
+    local text = native_tab_text(number, tab_info.cached(tab.tab_id, tab.active_pane, tab.tab_title).label,
+      tab_info.alert(tab.tab_id, tab.is_active), max_width)
     return capsule(text, tab.is_active and palette.deep or (hover and palette.text or palette.subtle),
       tab.is_active and palette.iris or (hover and palette.overlay or palette.base), tab.is_active)
   end)
@@ -326,8 +271,8 @@ return function(wezterm, config, platform, protocol, palette)
     local cols = cell_width > 0 and math.floor(window:get_dimensions().pixel_width / cell_width) or size.cols
     local tabs_width = 0
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      local label, alert = describe_tab(tab)
-      local text = native_tab_text(tostring(tab.index + 1), label, alert, config.tab_max_width)
+      local hints = tab_info.describe(tab)
+      local text = native_tab_text(tostring(tab.index + 1), hints.label, hints.alert, config.tab_max_width)
       tabs_width = tabs_width + wezterm.column_width(text) + 2
     end
     local clock = ' ' .. wezterm.strftime('%I:%M %p'):gsub('^0', '') .. ' '

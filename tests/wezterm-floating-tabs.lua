@@ -51,12 +51,27 @@ local selected = 0
 local window_id = 42
 -- Tab 11 runs Neovim; tab 12 is a plain shell in /work/repo.
 local programs = { [11] = '/usr/bin/nvim', [12] = '/bin/zsh' }
+-- A fixture repository on a feature branch, with a subfolder to exercise the upward search.
+local repository = home .. '/work/repo'
+os.execute('mkdir -p "' .. repository .. '/.git" "' .. repository .. '/src"')
+do
+  local head = assert(io.open(repository .. '/.git/HEAD', 'w'))
+  head:write('ref: refs/heads/feature/strip\n')
+  head:close()
+end
+local directories = { [11] = '/work/elsewhere', [12] = repository }
+local titles, detached = {}, nil
+local progress = { [11] = { Percentage = 70 }, [12] = 'Indeterminate' }
 local function tab(id, index)
   return {
     tab_id = function() return id end,
+    get_title = function() return titles[id] or '' end,
     active_pane = function() return {
       get_foreground_process_name = function() return programs[id] end,
-      get_current_working_dir = function() return { file_path = '/work/repo' } end,
+      get_current_working_dir = function() return { file_path = directories[id] } end,
+      get_domain_name = function() return 'local' end,
+      get_progress = function() return progress[id] or 'None' end,
+      move_to_new_window = function() detached = id end,
     } end,
     activate = function()
       selected = index
@@ -81,8 +96,10 @@ local window = {
   set_right_status = function() status_writes = status_writes + 1 end,
   active_pane = function() return {} end,
   perform_action = function(_, action)
-    activated = wezterm.json_encode(action)
-    selected = wezterm.json_parse(activated).ActivateTab or selected
+    -- Prompt actions carry a callback that cannot be serialized.
+    local ok, encoded = pcall(wezterm.json_encode, action)
+    activated = ok and encoded or 'PromptInputLine'
+    selected = ok and type(wezterm.json_parse(encoded)) == 'table' and wezterm.json_parse(encoded).ActivateTab or selected
   end,
 }
 local tick = assert(callbacks['update-status'])
@@ -96,6 +113,18 @@ local snapshot = read('window-' .. key .. '.json')
 assert(#snapshot.tabs == 2 and snapshot.tabs[2].id == 12)
 assert(snapshot.tabs[1].label == 'nvim' and snapshot.tabs[2].label == 'repo', 'tabs must name their program or folder')
 assert(snapshot.tabs[1].alert == nil and snapshot.tabs[2].alert == nil)
+-- Richer hints: progress from the terminal, and the git branch read from the fixture repository.
+assert(snapshot.tabs[1].progress == 70 and snapshot.tabs[1].progress_state == 'normal', 'percent progress must publish')
+assert(snapshot.tabs[2].progress == nil and snapshot.tabs[2].progress_state == 'indeterminate', 'indeterminate progress has no percent')
+assert(snapshot.tabs[1].path == '/work/elsewhere' and snapshot.tabs[1].branch == nil, 'non-repositories have a path but no branch')
+if not wezterm.target_triple:find('windows') then
+  assert(snapshot.tabs[2].branch == 'feature/strip', 'repositories report their branch')
+  assert(snapshot.tabs[2].path:find('/work/repo', 1, true), 'tabs must publish their directory for tooltips')
+  directories[12] = repository .. '/src'
+  update(window)
+  assert(read('window-' .. key .. '.json').tabs[2].branch == 'feature/strip', 'subfolders of a repository report its branch')
+  directories[12] = repository
+end
 assert(overrides.enable_tab_bar == true and overrides.font_size == 17, 'missing helper must keep native tabs')
 write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() })
 update(window)
@@ -117,6 +146,13 @@ assert(activated == nil and status_writes == previous_writes, 'idle input ticks 
 now = now - 10
 tick(window)
 assert(status_writes == previous_writes + 1, 'a wall-clock correction must not stall helper maintenance')
+-- Section: A user-set tab name wins over the program, and clears back when emptied
+titles[11] = 'my name'
+update(window)
+assert(read('window-' .. key .. '.json').tabs[1].label == 'my name', 'renamed tabs must keep their chosen name')
+titles[11] = nil
+update(window)
+assert(read('window-' .. key .. '.json').tabs[1].label == 'nvim', 'an emptied name must fall back to the program')
 -- Section: Activity alerts on background tabs
 local function pane_in(tab_id, active_id)
   return { tab = function() return {
@@ -237,6 +273,24 @@ activated = nil
 write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), action = 'close_tab', tab_id = 999 })
 update(window)
 assert(activated == nil, 'closing a tab the window does not own must do nothing')
+-- Section: Reorder, duplicate, detach, and rename requests
+local function request(fields)
+  fields.title, fields.updated = second.title, os.time()
+  write('activate-' .. second_key .. '.json', fields)
+  now = now + 0.016
+  activated = nil
+  tick(window)
+end
+request({ action = 'move_tab', tab_id = 12, index = 0 })
+assert(activated == '{"MoveTab":0}', 'move_tab must reorder through the native action: ' .. tostring(activated))
+request({ action = 'duplicate_tab', tab_id = 12 })
+assert(activated and activated:find('SpawnTab', 1, true) and activated:find('CurrentPaneDomain', 1, true), 'duplicate must open a sibling tab')
+request({ action = 'detach_tab', tab_id = 12 })
+assert(detached == 12, 'detach must move the tab to a new window')
+request({ action = 'rename_tab', tab_id = 12 })
+assert(activated and activated:find('PromptInputLine', 1, true), 'rename must prompt for a name')
+request({ action = 'move_tab', tab_id = 12 })
+assert(activated == nil, 'move without a target index must do nothing')
 for _, request in ipairs({
   { title = second.title, updated = os.time() - 10, action = 'new_tab' },
   { title = 'another window', updated = os.time(), action = 'new_tab' },

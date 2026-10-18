@@ -162,6 +162,69 @@
       "valid": false
     },
     {
+      "name": "all-hints",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"label\":\"repo\",\"branch\":\"main\",\"path\":\"~/code/repo\",\"progress\":70,\"progress_state\":\"normal\"},{\"id\":12,\"index\":1,\"active\":false,\"progress_state\":\"indeterminate\"}]}",
+      "valid": true
+    },
+    {
+      "name": "progress-at-limit",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"progress\":100},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": true
+    },
+    {
+      "name": "progress-out-of-range",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"progress\":101},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "progress-wrong-type",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"progress\":\"70\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "progress-state-unknown",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"progress_state\":\"stalled\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "branch-too-long",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"branch\":\"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "branch-wrong-type",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"branch\":1},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "path-at-limit",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"path\":\"pppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": true
+    },
+    {
+      "name": "path-too-long",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"path\":\"ppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppppp\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
       "name": "malformed-json",
       "file": "window-abc-42.json",
       "now": 1000,
@@ -214,6 +277,98 @@
         "updated": 1000,
         "action": "close_tab",
         "tab_id": "11"
+      },
+      "valid": false
+    },
+    {
+      "name": "move-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "move_tab",
+        "tab_id": 11,
+        "index": 2
+      },
+      "valid": true
+    },
+    {
+      "name": "move-tab-without-index",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "move_tab",
+        "tab_id": 11
+      },
+      "valid": false
+    },
+    {
+      "name": "move-tab-negative-index",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "move_tab",
+        "tab_id": 11,
+        "index": -1
+      },
+      "valid": false
+    },
+    {
+      "name": "rename-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "rename_tab",
+        "tab_id": 11
+      },
+      "valid": true
+    },
+    {
+      "name": "rename-tab-without-id",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "rename_tab"
+      },
+      "valid": false
+    },
+    {
+      "name": "duplicate-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "duplicate_tab",
+        "tab_id": 11
+      },
+      "valid": true
+    },
+    {
+      "name": "detach-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "detach_tab",
+        "tab_id": 11
+      },
+      "valid": true
+    },
+    {
+      "name": "activate-with-index",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "tab_id": 11,
+        "index": 1
+      },
+      "valid": false
+    },
+    {
+      "name": "close-tab-with-index",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "close_tab",
+        "tab_id": 11,
+        "index": 1
       },
       "valid": false
     },

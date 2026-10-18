@@ -19,7 +19,7 @@ for _, index in ipairs({ 0, 8, 9, 99 }) do
   for _, width in ipairs({ 1, 2, 4, 8 }) do
     for _, state in ipairs({ { active = true }, { active = false }, { hover = true } }) do
       local result = format_title({ tab_index = index, is_active = state.active,
-        tab_title = 'ignored name', active_pane = {} }, {}, {}, config, state.hover, width)
+        tab_title = '', active_pane = {} }, {}, {}, config, state.hover, width)
       local text = type(result) == 'string' and result or plain(wezterm.format(result))
       assert(wezterm.column_width(text) <= width, 'numbered tabs must fit even in crowded windows')
       if width >= #tostring(index + 1) + 2 then
@@ -44,6 +44,9 @@ labeled.is_active = true
 assert(not render(labeled, false, 16):find('•', 1, true) and wezterm.GLOBAL.floating_tab_alert_7 == nil,
   'viewing a tab must clear its alert')
 labeled.is_active = false
+labeled.tab_title = 'chosen'
+assert(render(labeled, false, 16):find('2 chosen', 1, true), 'a user-set tab name must beat the program')
+labeled.tab_title = ''
 labeled.active_pane = { foreground_process_name = '/bin/zsh', current_working_dir = '/work/my-project' }
 assert(render(labeled, false, 16):find('2 my-project', 1, true), 'a plain shell shows its folder')
 for width = 1, 16 do

@@ -274,6 +274,9 @@ The + button after the last tab creates a new tab using the same action as `Cont
 The one-pixel border dims on inactive windows, while the active tab keeps its lavender fill beside subdued inactive badges and a smaller translucent 12-hour clock with AM/PM.
 Badges are frosted-glass pills with a soft shadow; the active fill fades between tabs, and opening or closing a tab slides its neighbors.
 Each badge names its tab's program, or its folder at a plain shell (for example `2 nvim` or `3 my-project`), and drops the names for numbers alone when the window is too narrow to keep the clock.
+Each named badge also shows the folder's git branch, and a progress ring appears on a tab whose program reports progress (a percent ring, a spinner when unknown, or a rose ring on error).
+Hovering a badge shows its full path.
+Drag a badge to reorder tabs, middle-click it to close, or right-click for Rename, Duplicate, Move to New Window, and Close.
 A rose dot marks a background tab where a bell rang or a command that ran for 10 seconds or more finished; viewing the tab clears it.
 Hover a named badge to reveal an `×` that closes the tab with the usual confirmation.
 Hovering the clock swaps the time for the date, and wide windows add the weekday; the clock's colon pulses once a second.

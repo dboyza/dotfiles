@@ -72,9 +72,8 @@ return function(wezterm, config, platform, palette)
     cursor_border = palette.cursor,
     selection_fg = palette.deep,
     selection_bg = palette.love,
-    -- Pane dividers and the scrollbar follow the theme instead of WezTerm's defaults.
+    -- Pane dividers follow the theme instead of WezTerm's default.
     split = palette.overlay,
-    scrollbar_thumb = palette.overlay,
     visual_bell = palette.overlay,
     tab_bar = {
       background = palette.deep,
@@ -93,7 +92,6 @@ return function(wezterm, config, platform, palette)
   -- macOS nightly squares the window corners so the 1px border runs edge to edge.
   config.window_decorations = is_macos and 'RESIZE|MACOS_FORCE_SQUARE_CORNERS' or 'RESIZE'
   config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
-  config.enable_scroll_bar = true
   -- Windows' DWM draws its own rounded border; a client-side rectangle would square off the corners.
   local border_width = is_windows and '0px' or '1px'
   config.window_frame = {

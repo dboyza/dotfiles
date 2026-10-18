@@ -182,7 +182,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled, resolving bold, italic, and dim styles through the same fallback stack with each platform's color emoji font.
 
-- Keep Kitty graphics enabled in WezTerm (with tmux `allow-passthrough`), and style the scrollbar and pane dividers from the shared palette.
+- Keep Kitty graphics enabled in WezTerm (with tmux `allow-passthrough`) and pane dividers styled from the shared palette.
+  Leave the WezTerm scrollbar off: full-screen applications such as Claude Code have no scrollback, so it shows as a full, inert bar.
 
 - Emit WezTerm prompt (OSC 133) and directory (OSC 7) marks from Zsh only in direct WezTerm panes, not inside tmux or Herdr; prefix `[` / `]` jumps between prompts.
   Keep prefix `o` selecting the last command's output in copy mode and Option or Alt triple-click copying the output under the pointer, both from the same prompt marks.
@@ -215,7 +216,9 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Sign the helper with the persistent `dotfiles local code signing` certificate in the dedicated `dotfiles-codesign` keychain so rebuilds keep the grant, falling back to ad-hoc signing only if that fails.
   An enabled Accessibility entry can retain an old ad-hoc code signature after rebuilding; recover with a helper-only `tccutil reset Accessibility com.dboyza.wezterm-floating-tabs`, then a fresh manual grant.
   Exchange only window identities, tab IDs, freshness timestamps, optional program or folder labels and alert flags, and the explicit `new_tab` and `close_tab` actions through the private state directory.
-  Make `close_tab` activate the tab and run the confirmed close action, never close silently.
+  Make every tab action (`close_tab`, `move_tab`, `rename_tab`, `duplicate_tab`, `detach_tab`) activate the tab first, and make `close_tab` run the confirmed close action, never close silently.
+  Keep tab labels, git branches, paths, and progress described once in `wezterm/config/tab_info.lua` through a shared cache, reading branches from repository files rather than child processes.
+  Offer on macOS badges drag-to-reorder, middle-click close, a right-click menu, a path tooltip, and a progress ring; Windows gets branches, progress rings, and middle-click close.
   Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, hover close buttons, and a fade when the window is unfocused; Windows keeps the same behavior without blur, shadows, or animation.
   Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
   Consume click requests before acting so new-tab requests cannot replay.

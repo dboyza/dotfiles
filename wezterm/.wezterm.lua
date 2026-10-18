@@ -49,5 +49,6 @@ local platform = load('platform')(wezterm, config)
 load('appearance')(wezterm, config, platform, palette)
 load('keys')(wezterm, config, platform)
 load('geometry')(wezterm, platform)
-load('tabs')(wezterm, config, platform, load('protocol'), palette)
+local protocol = load('protocol')
+load('tabs')(wezterm, config, platform, protocol, palette, load('tab_info')(wezterm, protocol, platform))
 return config
