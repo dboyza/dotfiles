@@ -42,15 +42,17 @@ PLIST
 printf '%s\n' "$source_hash" >"$build_dir/app/Contents/Resources/source.sha256"
 # Section: Sign and publish with a recoverable backup
 codesign --force --sign - --identifier com.dboyza.wezterm-floating-tabs "$build_dir/app"
-# Replace only this repository's helper, retaining a recoverable previous build.
+# Replace only this repository's helper, keeping just the most recent previous build.
 if [[ -e "$app_dir" ]]; then
   identifier=$(/usr/libexec/PlistBuddy -c 'Print CFBundleIdentifier' "$app_dir/Contents/Info.plist")
   [[ "$identifier" == com.dboyza.wezterm-floating-tabs ]] || {
     printf 'Refusing to replace another app.\n' >&2
     exit 1
   }
-  backup_dir="$HOME/Applications/WezTerm Floating Tabs.previous.$(date +%s).app"
-  mv "$app_dir" "$backup_dir"
+  # Older installers left timestamped backups; remove those along with the last one.
+  rm -rf "$HOME/Applications/WezTerm Floating Tabs.previous.app" \
+    "$HOME/Applications/WezTerm Floating Tabs.previous."[0-9]*.app
+  mv "$app_dir" "$HOME/Applications/WezTerm Floating Tabs.previous.app"
 fi
 mv "$build_dir/app" "$app_dir"
 printf 'Installed %s\nEnable it in System Settings > Privacy & Security > Accessibility when prompted.\n' "$app_dir"
