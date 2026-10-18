@@ -180,7 +180,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep the WezTerm window background opacity at 0.7 on macOS and native Windows for transparency while retaining readable text.
 
-- Keep the WezTerm steady bar cursor at 150% of the font underline thickness across platforms.
+- Keep the WezTerm cursor a steady block (the terminal default rectangle) across platforms.
 
 - Keep WezTerm content padding at 36 pixels on the sides, 32 on top, and 28 on the bottom across platforms.
 

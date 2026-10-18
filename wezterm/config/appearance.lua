@@ -27,8 +27,7 @@ return function(wezterm, config, platform)
   config.adjust_window_size_when_changing_font_size = false
   config.initial_cols = 140
   config.initial_rows = 36
-  config.default_cursor_style = 'SteadyBar'
-  config.cursor_thickness = '150%'
+  config.default_cursor_style = 'SteadyBlock'
   config.audible_bell = 'Disabled'
   config.notification_handling = 'SuppressFromFocusedWindow'
   config.scrollback_lines = 20000
