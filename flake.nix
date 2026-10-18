@@ -140,7 +140,7 @@
       );
 
       packages = forAllSystems (system: {
-        hack-font = nixpkgs.legacyPackages.${system}.nerd-fonts.hack;
+        terminal-font = nixpkgs.legacyPackages.${system}.nerd-fonts.jetbrains-mono;
       });
 
       # Section: Local development tools

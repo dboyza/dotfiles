@@ -86,7 +86,7 @@ in
       ++ lib.optionals pkgs.stdenv.isLinux [
         bubblewrap
         gcc
-        nerd-fonts.hack
+        nerd-fonts.jetbrains-mono
         wl-clipboard
         xclip
         xsel

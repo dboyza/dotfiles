@@ -28,7 +28,7 @@ Run every command in this guide from the Ubuntu terminal.
    ```
 
    The preflight reports whether Nix must be installed before making changes.
-   The script installs Nix when needed, Home Manager, the configured command-line tools, Hack Nerd Font, WezTerm, and tracked configuration.
+   The script installs Nix when needed, Home Manager, the configured command-line tools, JetBrains Mono Nerd Font, WezTerm, and tracked configuration.
    It may request confirmation or your password.
 
 5. Close every Terminal window after the script prints `Bootstrap complete`.

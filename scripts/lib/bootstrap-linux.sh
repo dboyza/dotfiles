@@ -23,7 +23,7 @@ install_windows_fonts() {
 
   local font_store font_source script_source
   font_store=$(nix "${nix_options[@]}" build \
-    "$flake_ref#hack-font" \
+    "$flake_ref#terminal-font" \
     --impure \
     --no-link \
     --print-out-paths)

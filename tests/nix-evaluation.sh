@@ -56,7 +56,7 @@ import json, sys
 config = json.load(sys.stdin)
 casks = {x["name"] for x in config["casks"]}
 brews = {x["name"] for x in config["brews"]}
-assert "font-hack-nerd-font" in casks
+assert "font-jetbrains-mono-nerd-font" in casks
 assert {"mas", "neovim", "node"} <= brews
 assert not {"codex", "claude-code", "pi-coding-agent", "herdr", "opencode"} & (brews | casks)
 assert not config["onActivation"]["upgrade"]

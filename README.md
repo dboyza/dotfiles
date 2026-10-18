@@ -52,7 +52,7 @@ The shared environment includes:
 - ripgrep, fzf, bat, btop, jq, tree, curl, wget, DNS tools, and direnv.
 - Node.js, uv, pre-commit, Make, ShellCheck, and shfmt.
 - kubectl and Terraform.
-- Hack Nerd Font and WezTerm.
+- JetBrains Mono Nerd Font and WezTerm.
 - Shared coding-agent instructions, skills, and configuration.
 - Pinned tmux plugin sources.
 
