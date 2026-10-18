@@ -132,6 +132,7 @@ Reviewr's editor does not enable the dedicated workspace profile.
 Worktree creation does not automatically open Reviewr.
 Bootstrap installs missing Reviewr from the pinned 0.44.0 source commit through Herdr and preserves existing installations.
 Bootstrap also links the local layout plugin directly to this checkout.
+The layout plugin requires Herdr 0.9.3; if a server started before a Herdr update is still running, bootstrap warns instead of linking, so restart Herdr and run the command below.
 To install or relink both plugins independently:
 
 ```sh

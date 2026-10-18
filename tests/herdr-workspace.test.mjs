@@ -1,7 +1,7 @@
 // Exercise new-space layout ownership, picker choices, and plugin installation.
 import assert from 'node:assert/strict';
 import { mkdtempSync, realpathSync, rmSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -115,4 +115,26 @@ if (args[0] === 'plugin' && args[1] === 'list') console.log(JSON.stringify({resu
   assert.deepEqual(calls.find(args => args[1] === 'install'), ['plugin', 'install', 'persiyanov/herdr-reviewr', '--ref', 'c9a187ff2e701d1619be2ed22d101a6225916cd6', '--yes']);
   assert.equal(calls.at(-1)[1], 'link');
   assert.equal(calls.at(-1).at(-1), '--enabled');
+});
+
+test('plugin install warns instead of failing when the running Herdr server is outdated', { skip: process.platform === 'win32' }, t => {
+  const { directory } = fixture(t);
+  const fake = join(directory, 'herdr');
+  writeFileSync(fake, `#!/usr/bin/env node
+const args = process.argv.slice(2);
+if (args[1] === 'list') console.log(JSON.stringify({result:{plugins:[{plugin_id:'persiyanov.reviewr'}]}}));
+if (args[1] === 'link') {
+  console.error(JSON.stringify({error:{code:'plugin_requires_newer_herdr',message:'plugin requires Herdr 0.9.3 or newer'}}));
+  process.exit(1);
+}
+`, { mode: 0o755 });
+  symlinkSync(fake, join(directory, 'nvim'));
+  const env = { ...process.env, PATH: `${directory}:${process.env.PATH}`, HERDR_BIN_PATH: '' };
+  const launcher = fileURLToPath(new URL('../scripts/herdr-workspace.mjs', import.meta.url));
+  const result = spawnSync(process.execPath, [launcher, '--install-plugins'], { env, encoding: 'utf8' });
+  assert.equal(result.status, 0);
+  assert.match(result.stderr, /requires Herdr 0\.9\.3 or newer\. Restart Herdr/);
+  const launch = spawnSync(process.execPath, [launcher, directory], { env, encoding: 'utf8' });
+  assert.equal(launch.status, 1);
+  assert.match(launch.stderr, /requires Herdr 0\.9\.3 or newer/);
 });

@@ -13,14 +13,27 @@ const pluginRoot = resolve(dirname(source), '../herdr/workspace');
 const reviewrRef = 'c9a187ff2e701d1619be2ed22d101a6225916cd6'; // Reviewr 0.44.0.
 const agents = ['codex', 'claude', 'pi', 'opencode'];
 const agentPaneRatio = 3 / 7;
+class HerdrError extends Error {
+  constructor({ code, message }) { super(message); this.code = code; }
+}
 function herdr(args) {
-  const output = execFileSync(process.env.HERDR_BIN_PATH || 'herdr', args, {
+  const result = spawnSync(process.env.HERDR_BIN_PATH || 'herdr', args, {
     encoding: 'utf8', env: { ...process.env, DOTFILES_TOOL_UPDATE: '0' },
-    stdio: ['ignore', 'pipe', 'inherit'],
+    stdio: ['ignore', 'pipe', 'pipe'],
   });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    // Herdr reports command failures as a JSON line on stderr.
+    let failure;
+    try { failure = JSON.parse(result.stderr.trim().split('\n').at(-1)).error; } catch {}
+    if (failure?.code) throw new HerdrError(failure);
+    throw new Error(`herdr ${args.join(' ')} failed: ${result.stderr.trim() || `exit ${result.status}`}`);
+  }
+  process.stderr.write(result.stderr);
+  const output = result.stdout;
   if (!output.trim()) return {}; // Pane commands can acknowledge success without JSON.
   const response = JSON.parse(output);
-  if (response.error) throw new Error(JSON.stringify(response.error));
+  if (response.error) throw new HerdrError(response.error);
   if (!response.result) throw new Error('Herdr returned no result.');
   return response.result;
 }
@@ -141,7 +154,12 @@ export async function main(args) {
   if (!executable('herdr')) throw new Error('Install and launch Herdr first.');
   if (args.length === 1 && ['--install-plugins', '--install-reviewr'].includes(args[0])) {
     installReviewr();
-    return installLayout();
+    try { return installLayout(); } catch (error) {
+      // A server started before a Herdr update keeps its version until restarted.
+      if (error.code !== 'plugin_requires_newer_herdr') throw error;
+      console.warn(`herdr-workspace: ${error.message}. Restart Herdr, then run herdr-workspace --install-plugins.`);
+      return;
+    }
   }
   if (args.length > 2 || args.some(arg => arg.startsWith('--'))) throw new Error('Use herdr-workspace --help for usage.');
   for (const command of ['nvim', ...(args[1] ? [args[1]] : [])]) {
