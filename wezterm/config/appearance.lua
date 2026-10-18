@@ -78,8 +78,9 @@ return function(wezterm, config, platform)
   config.colors = {
     background = '#191724',
     foreground = '#eeecff',
-    cursor_bg = '#c4a7e7',
+    cursor_bg = '#ffffff',
     cursor_fg = '#191724',
+    cursor_border = '#ffffff',
     selection_fg = '#191724',
     selection_bg = '#eb6f92',
     tab_bar = {
