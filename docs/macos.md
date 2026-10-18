@@ -48,7 +48,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
    The preflight verifies Command Line Tools and reports whether Nix or Homebrew will be installed.
    No package update or system activation starts until that preflight succeeds.
-   The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, Hack Nerd Font, WezTerm, and tracked configuration.
+   The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, JetBrains Mono Nerd Font, WezTerm, and tracked configuration.
    It may request your macOS password.
    Desktop apps are installed only when absent; activation does not update or replace existing versions.
    The inventory includes OpenSuperWhisper, Stats, and Strafe.
@@ -77,7 +77,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 Homebrew installs the tools declared in `nix/homebrew.nix`, including Neovim, tmux, Git, Node.js, Python, and Terraform.
 Terraform uses HashiCorp's official tap.
-Homebrew also owns Zsh plugins and Hack Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
+Homebrew also owns Zsh plugins and JetBrains Mono Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
 macOS uses its built-in Zsh as the login shell so first activation does not depend on a Brew executable that has not been installed yet.
 The `zsh` command in your interactive PATH comes from Homebrew.
 Codex CLI, Claude Code, Pi, opencode, and Herdr use managed launchers in `~/.local/bin`, which takes precedence over Homebrew in Zsh.
@@ -256,11 +256,14 @@ git pull --ff-only
 ./bootstrap.sh
 ```
 
-To update only WezTerm, run:
+macOS uses WezTerm's nightly build; the last stable release dates from February 2024.
+Activation skips an existing WezTerm, so update it explicitly:
 
 ```sh
-brew upgrade --cask wezterm
+brew upgrade --cask --greedy wezterm@nightly
 ```
+
+To move an existing stable installation to nightly, run `brew uninstall --cask wezterm` and then `brew install --cask wezterm@nightly`, and restart WezTerm.
 
 See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
