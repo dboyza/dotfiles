@@ -1,110 +1,79 @@
--- Set fonts, colors, transparency, padding, and base frame styling.
-return function(wezterm, config, platform)
+-- Set fonts, colors, transparency, padding, and the native tab bar and window frame.
+return function(wezterm, config, platform, palette)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
-  -- Section: Platform font fallback
-  local function platform_font(weight)
-    local fonts = {
-      { family = 'Hack Nerd Font', weight = weight },
-    }
 
-    if is_windows then
-      table.insert(fonts, { family = 'Cascadia Mono', weight = weight })
-      table.insert(fonts, { family = 'Consolas', weight = weight })
-    elseif is_macos then
-      table.insert(fonts, { family = 'Menlo', weight = weight })
-    else
-      table.insert(fonts, { family = 'DejaVu Sans Mono', weight = weight })
-    end
-
-    return wezterm.font_with_fallback(fonts)
-  end
-  -- ui
-  -- Section: Shared appearance
-  config.color_scheme = 'rose-pine-moon'
-  config.max_fps = 120
-  config.font = platform_font('Regular')
+  -- Section: Fonts
+  -- Hack Nerd Font leads; each platform falls back to a monospace font it ships.
+  local fonts = { 'Hack Nerd Font' }
+  local fallbacks = is_windows and { 'Cascadia Mono', 'Consolas' }
+    or is_macos and { 'Menlo' }
+    or { 'DejaVu Sans Mono' }
+  for _, family in ipairs(fallbacks) do table.insert(fonts, family) end
+  config.font = wezterm.font_with_fallback(fonts)
   config.font_size = 12
-  config.adjust_window_size_when_changing_font_size = false
+
+  -- Section: Terminal behavior
+  config.max_fps = 120
   config.initial_cols = 140
   config.initial_rows = 36
-  config.default_cursor_style = 'SteadyBlock'
+  config.scrollback_lines = 20000
+  config.adjust_window_size_when_changing_font_size = false
+  config.switch_to_last_active_tab_when_closing_tab = true
   config.audible_bell = 'Disabled'
   config.notification_handling = 'SuppressFromFocusedWindow'
-  config.scrollback_lines = 20000
-  config.hide_mouse_cursor_when_typing = true
-  config.switch_to_last_active_tab_when_closing_tab = true
+  config.default_cursor_style = 'SteadyBlock'
 
-  -- Section: Native tab bar and window frame
-  config.enable_tab_bar = true
-  config.hide_tab_bar_if_only_one_tab = false
-  config.tab_bar_at_bottom = false
-  -- Cell-based tabs keep the rounded labels aligned with the terminal font.
-  config.use_fancy_tab_bar = false
-  config.show_new_tab_button_in_tab_bar = false
-  config.tab_bar_style = { new_tab = '', new_tab_hover = '' }
-  config.tab_max_width = 8
-  config.status_update_interval = is_macos and 250 or 1000
-  config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
-  config.window_decorations = 'RESIZE'
-  -- Windows' DWM border follows its rounded corners. A client-side rectangle
-  -- would sit inside that frame with square corners, even when DWM rounds it.
-  local frame_border = is_windows and '0px' or '1px'
-  config.window_frame = {
-    border_left_width = frame_border,
-    border_right_width = frame_border,
-    border_top_height = frame_border,
-    border_bottom_height = frame_border,
-    border_left_color = '#908caa',
-    border_right_color = '#908caa',
-    border_top_color = '#908caa',
-    border_bottom_color = '#908caa',
-    font = platform_font('Bold'),
-    active_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
-    inactive_titlebar_bg = 'rgba(35, 33, 54, 0.70)',
-    active_titlebar_fg = '#e0def4',
-    inactive_titlebar_fg = '#908caa',
-    button_fg = '#e0def4',
-    button_bg = 'rgba(35, 33, 54, 0.00)',
-    button_hover_fg = '#191724',
-    button_hover_bg = 'rgba(196, 167, 231, .85)',
-  }
-
-  config.inactive_pane_hsb = {
-    saturation = 0.0,
-    brightness = 0.5,
-  }
-
-  -- Section: Terminal palette
+  -- Section: Colors
+  -- The scheme supplies the ANSI palette; the overrides deepen the background and brighten text.
+  config.color_scheme = 'rose-pine-moon'
   config.colors = {
-    background = '#191724',
-    foreground = '#eeecff',
-    cursor_bg = '#ffffff',
-    cursor_fg = '#191724',
-    cursor_border = '#ffffff',
-    selection_fg = '#191724',
-    selection_bg = '#eb6f92',
+    background = palette.background,
+    foreground = palette.foreground,
+    cursor_bg = palette.cursor,
+    cursor_fg = palette.base,
+    cursor_border = palette.cursor,
+    selection_fg = palette.base,
+    selection_bg = palette.selection,
     tab_bar = {
-      background = '#191724',
-      active_tab = { bg_color = '#191724', fg_color = '#e0def4', intensity = 'Normal' },
-      inactive_tab = { bg_color = '#191724', fg_color = '#908caa' },
-      inactive_tab_hover = { bg_color = '#191724', fg_color = '#e0def4' },
-      new_tab = { bg_color = 'rgba(35, 33, 54, 0.45)', fg_color = '#908caa' },
-      new_tab_hover = { bg_color = 'rgba(57, 53, 82, 0.70)', fg_color = '#e0def4' },
-      inactive_tab_edge = '#191724',
+      background = palette.base,
+      active_tab = { bg_color = palette.base, fg_color = palette.text, intensity = 'Normal' },
+      inactive_tab = { bg_color = palette.base, fg_color = palette.muted },
+      inactive_tab_hover = { bg_color = palette.base, fg_color = palette.text },
     },
   }
+  config.inactive_pane_hsb = { saturation = 0.0, brightness = 0.5 }
+
+  -- Section: Window frame and padding
+  config.window_decorations = 'RESIZE'
+  config.window_padding = { left = 36, right = 36, top = 32, bottom = 28 }
+  -- Windows' DWM draws its own rounded border; a client-side rectangle would square off the corners.
+  local border_width = is_windows and '0px' or '1px'
+  config.window_frame = {
+    border_left_width = border_width,
+    border_right_width = border_width,
+    border_top_height = border_width,
+    border_bottom_height = border_width,
+    border_left_color = palette.muted,
+    border_right_color = palette.muted,
+    border_top_color = palette.muted,
+    border_bottom_color = palette.muted,
+  }
+
+  -- Section: Native tab bar
+  -- Tabs stay at the top, even with one tab; the companion hides this bar only when it is running.
+  config.hide_tab_bar_if_only_one_tab = false
+  config.use_fancy_tab_bar = false
+  config.show_new_tab_button_in_tab_bar = false
+  config.tab_max_width = 8
+  config.status_update_interval = is_macos and 250 or 1000
 
   -- Section: Host transparency and font sizing
   if is_windows then
     config.win32_system_backdrop = 'Acrylic'
     config.window_background_opacity = 0.7
-    config.window_frame.font_size = 10.0
-  end
-
-  if is_macos then
+  elseif is_macos then
     config.window_background_opacity = 0.7
     config.macos_window_background_blur = 50
     config.font_size = 15.0
-    config.window_frame.font_size = 13.0
   end
 end

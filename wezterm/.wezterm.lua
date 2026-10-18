@@ -11,8 +11,10 @@ assert(source, 'expected the WezTerm configuration path')
 local directory = source:match('^(.*)[/\\]') or '.'
 local probe = io.open(directory .. '/config/platform.lua', 'r')
 if probe then
+  -- Modules sit beside the loader: nothing to resolve.
   probe:close()
 elseif not wezterm.target_triple:find('windows') then
+  -- Follow home-file symlinks back to the checkout.
   local ok, resolved = wezterm.run_child_process({ '/bin/sh', '-c', [[
     source=$1
     while [ -L "$source" ]; do
@@ -35,15 +37,17 @@ else
 end
 
 -- Section: Watched module composition
+-- Each module is registered for reload, then applied in dependency order.
 local function load(name)
   local path = directory .. '/config/' .. name .. '.lua'
   if wezterm.add_to_config_reload_watch_list then wezterm.add_to_config_reload_watch_list(path) end
   return dofile(path)
 end
 
+local palette = load('palette')
 local platform = load('platform')(wezterm, config)
-load('appearance')(wezterm, config, platform)
+load('appearance')(wezterm, config, platform, palette)
 load('keys')(wezterm, config, platform)
 load('geometry')(wezterm, platform)
-load('tabs')(wezterm, config, platform, load('protocol'))
+load('tabs')(wezterm, config, platform, load('protocol'), palette)
 return config

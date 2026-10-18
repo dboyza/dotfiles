@@ -1,9 +1,10 @@
 -- Exchange per-window companion state and render native tabs, borders, and the clock.
-return function(wezterm, config, platform, protocol)
+return function(wezterm, config, platform, protocol, palette)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
   local wsl_tab_action = platform.new_tab
-  -- Native companions exchange tab IDs only, never terminal text or commands.
+
   -- Section: Companion discovery and polling cadence
+  -- Native companions exchange tab IDs only, never terminal text or commands.
   local overlay_root = (is_macos or is_windows) and wezterm.home_dir
     and (wezterm.home_dir .. '/.local/state/dotfiles/wezterm-floating-tabs/') or nil
   local overlay_app = is_macos and wezterm.home_dir
@@ -149,9 +150,9 @@ return function(wezterm, config, platform, protocol)
     return ' '
   end)
 
-  -- Native numbered tabs keep the top-left corner compact without a plugin.
   -- Section: Native tab rendering and focus border
-  local bar_background = config.colors.tab_bar.background
+  -- Numbered capsule tabs keep the top-left corner compact without a plugin.
+  local bar_background = palette.base
   local function capsule(text, foreground, background, active)
     return {
       { Attribute = { Intensity = active and 'Bold' or 'Normal' } },
@@ -173,14 +174,14 @@ return function(wezterm, config, platform, protocol)
     if max_width < #label + 2 then
       return wezterm.truncate_right(label, math.max(0, max_width))
     end
-    return capsule(label, tab.is_active and '#191724' or (hover and '#e0def4' or '#908caa'),
-      tab.is_active and '#c4a7e7' or (hover and '#393552' or '#232136'), tab.is_active)
+    return capsule(label, tab.is_active and palette.base or (hover and palette.text or palette.muted),
+      tab.is_active and palette.accent or (hover and palette.overlay or palette.surface), tab.is_active)
   end)
 
   local function update_window_border(window)
     -- The Windows companion styles the actual rounded DWM frame.
     if is_windows then return end
-    local color = window:is_focused() and '#908caa' or '#393552'
+    local color = window:is_focused() and palette.muted or palette.overlay
     local overrides = window:get_config_overrides() or {}
     local frame = overrides.window_frame or {}
     local sides = { 'border_left_color', 'border_right_color', 'border_top_color', 'border_bottom_color' }
@@ -234,7 +235,7 @@ return function(wezterm, config, platform, protocol)
       window:set_right_status('')
       return
     end
-    local items = capsule(clock, '#908caa', '#232136')
+    local items = capsule(clock, palette.muted, palette.surface)
     table.insert(items, { Text = string.rep(' ', cols - clock_start - clock_width) })
     window:set_right_status(wezterm.format(items))
   end)
