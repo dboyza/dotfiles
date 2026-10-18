@@ -55,4 +55,8 @@ if [[ -e "$app_dir" ]]; then
   mv "$app_dir" "$HOME/Applications/WezTerm Floating Tabs.previous.app"
 fi
 mv "$build_dir/app" "$app_dir"
+# A running helper keeps executing the moved backup, and WezTerm's launch would reuse it.
+if pkill -x wezterm-floating-tabs; then
+  open -g "$app_dir" || printf 'Restart WezTerm to launch the updated helper.\n' >&2
+fi
 printf 'Installed %s\nEnable it in System Settings > Privacy & Security > Accessibility when prompted.\n' "$app_dir"
