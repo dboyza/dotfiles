@@ -127,6 +127,41 @@
       "valid": true
     },
     {
+      "name": "label-and-alert",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"label\":\"nvim\"},{\"id\":12,\"index\":1,\"active\":false,\"alert\":true}]}",
+      "valid": true
+    },
+    {
+      "name": "label-at-limit",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"label\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": true
+    },
+    {
+      "name": "label-too-long",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"label\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "label-wrong-type",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true,\"label\":7},{\"id\":12,\"index\":1,\"active\":false}]}",
+      "valid": false
+    },
+    {
+      "name": "alert-wrong-type",
+      "file": "window-abc-42.json",
+      "now": 1000,
+      "payload": "{\"key\":\"abc-42\",\"title\":\"WezTerm [abc:42]\",\"updated\":1000,\"tabs\":[{\"id\":11,\"index\":0,\"active\":true},{\"id\":12,\"index\":1,\"active\":false,\"alert\":\"yes\"}]}",
+      "valid": false
+    },
+    {
       "name": "malformed-json",
       "file": "window-abc-42.json",
       "now": 1000,
@@ -154,11 +189,40 @@
       "valid": true
     },
     {
-      "name": "unknown-action",
+      "name": "close-tab",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "close_tab",
+        "tab_id": 11
+      },
+      "valid": true
+    },
+    {
+      "name": "close-tab-without-id",
       "reply": {
         "title": "WezTerm [abc:42]",
         "updated": 1000,
         "action": "close_tab"
+      },
+      "valid": false
+    },
+    {
+      "name": "close-tab-string-id",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "close_tab",
+        "tab_id": "11"
+      },
+      "valid": false
+    },
+    {
+      "name": "unknown-action",
+      "reply": {
+        "title": "WezTerm [abc:42]",
+        "updated": 1000,
+        "action": "teleport"
       },
       "valid": false
     },

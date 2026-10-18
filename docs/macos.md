@@ -272,6 +272,12 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 The native `WezTerm Floating Tabs` companion places clickable tab numbers above each visible WezTerm window, straddling its lavender border, with the clock centered above the same window.
 The + button after the last tab creates a new tab using the same action as `Control+Shift+T`.
 The one-pixel border dims on inactive windows, while the active tab keeps its lavender fill beside subdued inactive badges and a smaller translucent 12-hour clock with AM/PM.
+Badges are frosted-glass pills with a soft shadow; the active fill fades between tabs, and opening or closing a tab slides its neighbors.
+Each badge names its tab's program, or its folder at a plain shell (for example `2 nvim` or `3 my-project`), and drops the names for numbers alone when the window is too narrow to keep the clock.
+A rose dot marks a background tab where a bell rang or a command that ran for 10 seconds or more finished; viewing the tab clears it.
+Hover a named badge to reveal an `×` that closes the tab with the usual confirmation.
+Hovering the clock swaps the time for the date, and wide windows add the weekday; the clock's colon pulses once a second.
+Overlays fade back when their window is not focused.
 The badges follow window moves and resizes without taking keyboard focus.
 Focused-window overlays stay above terminal clicks; background overlays retain their window stacking order.
 Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.

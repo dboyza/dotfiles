@@ -50,6 +50,72 @@ return function(wezterm, config, platform, protocol, palette)
     return protocol.fresh(reply, title, os.time())
   end
 
+  -- Section: Tab labels and activity alerts
+  -- Labels name the foreground program (or the folder for a plain shell); alerts mark background tabs.
+  local LABEL_COLUMNS = 12
+  local SHELLS = { zsh = true, bash = true, fish = true, sh = true, dash = true, nu = true, pwsh = true, powershell = true }
+
+  local function basename(path)
+    return (path or ''):match('([^/\\]+)[/\\]*$') or ''
+  end
+
+  -- Accepts WezTerm's PaneInformation-style fields from either the title event or a mux pane.
+  local function tab_label(info)
+    if type(info) ~= 'table' then return nil end
+    local process = basename(info.foreground_process_name):gsub('%.exe$', ''):lower()
+    local label = process
+    if process == '' or SHELLS[process] then
+      local cwd = info.current_working_dir
+      -- WezTerm reports directories as Url objects; older paths and fixtures may be plain strings.
+      if cwd and type(cwd) ~= 'string' then cwd = cwd.file_path end
+      label = (cwd and cwd == wezterm.home_dir) and '~' or basename(cwd)
+    end
+    label = label:gsub('%c', '')
+    if label == '' then return nil end
+    return wezterm.truncate_right(label, LABEL_COLUMNS)
+  end
+
+  local function alert_key(tab_id) return 'floating_tab_alert_' .. tostring(tab_id) end
+
+  -- Viewing a tab acknowledges its alert.
+  local function tab_alert(tab_id, active)
+    local key = alert_key(tab_id)
+    if active then
+      if wezterm.GLOBAL[key] then wezterm.GLOBAL[key] = nil end
+      return false
+    end
+    return wezterm.GLOBAL[key] == true
+  end
+
+  local function mark_background_alert(pane)
+    local ok, tab = pcall(function() return pane:tab() end)
+    if not ok or not tab then return end
+    local window = tab:window()
+    local active = window and window:active_tab()
+    if active and active:tab_id() ~= tab:tab_id() then wezterm.GLOBAL[alert_key(tab:tab_id())] = true end
+  end
+
+  -- A bell or a long-running command (the Zsh integration sets this user variable) flags a background tab.
+  wezterm.on('bell', function(_, pane) mark_background_alert(pane) end)
+  wezterm.on('user-var-changed', function(_, pane, name)
+    if name == 'dotfiles_command_done' then mark_background_alert(pane) end
+  end)
+
+  -- Describe a mux tab entry; remote or mocked panes without process data simply have no label.
+  local function describe_tab(item)
+    local label
+    local ok, pane = pcall(function() return item.tab:active_pane() end)
+    if ok and pane then
+      local _, name = pcall(function() return pane:get_foreground_process_name() end)
+      local _, cwd = pcall(function() return pane:get_current_working_dir() end)
+      label = tab_label({ foreground_process_name = name, current_working_dir = cwd })
+    end
+    local alert = false
+    local id_ok, id = pcall(function() return item.tab:tab_id() end)
+    if id_ok then alert = tab_alert(id, item.is_active) end
+    return label, alert
+  end
+
   -- Section: Atomic snapshots and request consumption
   local function publish_floating_tabs(window_id, tabs)
     local title = overlay_title(window_id)
@@ -96,6 +162,10 @@ return function(wezterm, config, platform, protocol, palette)
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
       if tab.tab:tab_id() == request.tab_id then
         tab.tab:activate()
+        -- Closing goes through the same confirmation as the portable close shortcut.
+        if request.action == 'close_tab' then
+          window:perform_action(wezterm.action.CloseCurrentTab({ confirm = true }), window:active_pane())
+        end
         return true
       end
     end
@@ -106,7 +176,9 @@ return function(wezterm, config, platform, protocol, palette)
     -- Snapshot after handling a click, not before activating its destination.
     local tabs = {}
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
+      local label, alert = describe_tab(tab)
+      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active,
+        label = label, alert = alert or nil })
     end
     publish_floating_tabs(window:mux_window():window_id(), tabs)
   end
@@ -141,7 +213,8 @@ return function(wezterm, config, platform, protocol, palette)
       if window then
         local snapshot = {}
         for _, item in ipairs(tabs) do
-          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active })
+          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active,
+            label = tab_label(item.active_pane), alert = tab_alert(item.tab_id, item.is_active) or nil })
         end
         publish_floating_tabs(window:window_id(), snapshot)
         return overlay_title(window:window_id())
@@ -169,12 +242,24 @@ return function(wezterm, config, platform, protocol, palette)
     }
   end
 
-  wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
-    local label = tostring(tab.tab_index + 1)
-    if max_width < #label + 2 then
-      return wezterm.truncate_right(label, math.max(0, max_width))
+  -- The number always shows; the label and alert dot are added only when the capsule has room.
+  local function native_tab_text(number, label, alerted, max_width)
+    local room = max_width - 2 - #number
+    local dot = alerted and room >= 2 and ' •' or ''
+    room = room - wezterm.column_width(dot)
+    if label and room >= 4 then
+      return number .. ' ' .. wezterm.truncate_right(label, room - 1) .. dot
     end
-    return capsule(label, tab.is_active and palette.base or (hover and palette.text or palette.muted),
+    return number .. dot
+  end
+
+  wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
+    local number = tostring(tab.tab_index + 1)
+    if max_width < #number + 2 then
+      return wezterm.truncate_right(number, math.max(0, max_width))
+    end
+    local text = native_tab_text(number, tab_label(tab.active_pane), tab_alert(tab.tab_id, tab.is_active), max_width)
+    return capsule(text, tab.is_active and palette.base or (hover and palette.text or palette.muted),
       tab.is_active and palette.accent or (hover and palette.overlay or palette.surface), tab.is_active)
   end)
 
@@ -225,7 +310,9 @@ return function(wezterm, config, platform, protocol, palette)
     local cols = cell_width > 0 and math.floor(window:get_dimensions().pixel_width / cell_width) or size.cols
     local tabs_width = 0
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      tabs_width = tabs_width + #tostring(tab.index + 1) + 2
+      local label, alert = describe_tab(tab)
+      local text = native_tab_text(tostring(tab.index + 1), label, alert, config.tab_max_width)
+      tabs_width = tabs_width + wezterm.column_width(text) + 2
     end
     local clock = ' ' .. wezterm.strftime('%I:%M %p'):gsub('^0', '') .. ' '
     local clock_width = wezterm.column_width(clock) + 2

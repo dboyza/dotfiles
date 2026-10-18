@@ -49,9 +49,15 @@ local status_writes = 0
 local status_rearms = 0
 local selected = 0
 local window_id = 42
+-- Tab 11 runs Neovim; tab 12 is a plain shell in /work/repo.
+local programs = { [11] = '/usr/bin/nvim', [12] = '/bin/zsh' }
 local function tab(id, index)
   return {
     tab_id = function() return id end,
+    active_pane = function() return {
+      get_foreground_process_name = function() return programs[id] end,
+      get_current_working_dir = function() return { file_path = '/work/repo' } end,
+    } end,
     activate = function()
       selected = index
       activated = wezterm.json_encode(wezterm.action.ActivateTab(index))
@@ -88,6 +94,8 @@ update(window)
 local key = wezterm.GLOBAL.floating_tabs_token .. '-42'
 local snapshot = read('window-' .. key .. '.json')
 assert(#snapshot.tabs == 2 and snapshot.tabs[2].id == 12)
+assert(snapshot.tabs[1].label == 'nvim' and snapshot.tabs[2].label == 'repo', 'tabs must name their program or folder')
+assert(snapshot.tabs[1].alert == nil and snapshot.tabs[2].alert == nil)
 assert(overrides.enable_tab_bar == true and overrides.font_size == 17, 'missing helper must keep native tabs')
 write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() })
 update(window)
@@ -109,6 +117,32 @@ assert(activated == nil and status_writes == previous_writes, 'idle input ticks 
 now = now - 10
 tick(window)
 assert(status_writes == previous_writes + 1, 'a wall-clock correction must not stall helper maintenance')
+-- Section: Activity alerts on background tabs
+local function pane_in(tab_id, active_id)
+  return { tab = function() return {
+    tab_id = function() return tab_id end,
+    window = function() return { active_tab = function() return { tab_id = function() return active_id end } end } end,
+  } end }
+end
+callbacks['bell'](window, pane_in(11, 12))
+update(window)
+assert(read('window-' .. key .. '.json').tabs[1].alert == true, 'a bell in a background tab must flag it')
+callbacks['bell'](window, pane_in(12, 12))
+callbacks['user-var-changed'](window, pane_in(12, 12), 'dotfiles_command_done')
+callbacks['user-var-changed'](window, pane_in(12, 12), 'unrelated')
+update(window)
+assert(read('window-' .. key .. '.json').tabs[2].alert == nil, 'the visible tab never raises an alert')
+selected = 0
+update(window)
+assert(read('window-' .. key .. '.json').tabs[1].alert == nil, 'viewing a tab must clear its alert')
+callbacks['user-var-changed'](window, pane_in(11, 12), 'dotfiles_command_done')
+selected = 1
+update(window)
+assert(read('window-' .. key .. '.json').tabs[1].alert == true, 'a finished long command must flag a background tab')
+selected = 0
+update(window)
+selected = 1
+update(window)
 -- Section: Rejected requests and acknowledgment fallback
 for _, request in ipairs({
   { title = snapshot.title, updated = os.time() - 10, tab_id = 12 },
@@ -140,11 +174,15 @@ wezterm.mux.get_tab = function() return { window = function() return {
   window_id = function() return window_id end,
 } end } end
 local titles = {
-  { tab_id = 11, tab_index = 0, is_active = true },
-  { tab_id = 12, tab_index = 1, is_active = false },
+  { tab_id = 11, tab_index = 0, is_active = true,
+    active_pane = { foreground_process_name = '/opt/bin/claude', current_working_dir = '/work/repo' } },
+  { tab_id = 12, tab_index = 1, is_active = false,
+    active_pane = { foreground_process_name = '/bin/zsh', current_working_dir = wezterm.home_dir } },
 }
 callbacks['format-window-title'](titles[1], nil, titles)
 assert(read('window-' .. key .. '.json').tabs[1].active, 'title event must publish selection without waiting for polling')
+assert(read('window-' .. key .. '.json').tabs[1].label == 'claude', 'title events must publish program labels')
+assert(read('window-' .. key .. '.json').tabs[2].label == '~', 'a shell in the home directory is labeled ~')
 window_id = 99
 callbacks['format-window-title'](titles[1], nil, titles)
 assert(read('window-' .. key .. '.json').title == snapshot.title, 'background windows must not replace another snapshot')
@@ -182,10 +220,25 @@ assert(activated == new_tab_action, 'plus must create the same tab as Control+Sh
 activated = nil
 update(window)
 assert(activated == nil, 'a consumed new-tab click must never replay')
+-- Section: Close requests use the confirmed close action
+write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), action = 'close_tab', tab_id = 12 })
+window_id = 42
+update(window)
+assert(activated == nil, 'close requests must be routed to their own window')
+window_id = 99
+now = now + 0.016
+tick(window)
+assert(activated and activated:find('CloseCurrentTab', 1, true) and activated:find('"confirm":true', 1, true),
+  'close must use the confirmed tab-close action')
+activated = nil
+write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), action = 'close_tab', tab_id = 999 })
+update(window)
+assert(activated == nil, 'closing a tab the window does not own must do nothing')
 for _, request in ipairs({
   { title = second.title, updated = os.time() - 10, action = 'new_tab' },
   { title = 'another window', updated = os.time(), action = 'new_tab' },
   { title = second.title, updated = os.time(), action = 'unknown', tab_id = 12 },
+  { title = second.title, updated = os.time(), action = 'close_tab' },
 }) do
   write('activate-' .. second_key .. '.json', request)
   update(window)

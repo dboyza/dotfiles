@@ -29,6 +29,27 @@ for _, index in ipairs({ 0, 8, 9, 99 }) do
   end
 end
 
+-- Section: Program labels and alert dots in the native fallback
+local function render(tab, hover, width)
+  local result = format_title(tab, {}, {}, config, hover, width)
+  return type(result) == 'string' and result or plain(wezterm.format(result))
+end
+local labeled = { tab_index = 1, tab_id = 7, is_active = false,
+  active_pane = { foreground_process_name = '/usr/bin/nvim', current_working_dir = '/work/repo' } }
+assert(render(labeled, false, 16):find('2 nvim', 1, true), 'roomy tabs must name their program')
+assert(not render(labeled, false, 5):find('nvim', 1, true), 'cramped tabs must keep only their number')
+wezterm.GLOBAL.floating_tab_alert_7 = true
+assert(render(labeled, false, 16):find('•', 1, true), 'background alerts must show a dot')
+labeled.is_active = true
+assert(not render(labeled, false, 16):find('•', 1, true) and wezterm.GLOBAL.floating_tab_alert_7 == nil,
+  'viewing a tab must clear its alert')
+labeled.is_active = false
+labeled.active_pane = { foreground_process_name = '/bin/zsh', current_working_dir = '/work/my-project' }
+assert(render(labeled, false, 16):find('2 my-project', 1, true), 'a plain shell shows its folder')
+for width = 1, 16 do
+  assert(wezterm.column_width(render(labeled, false, width)) <= width, 'labeled tabs must fit their width')
+end
+
 assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
 for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) do
   assert(config.colors.tab_bar[style].bg_color == config.colors.tab_bar.background)

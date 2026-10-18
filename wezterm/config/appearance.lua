@@ -84,7 +84,7 @@ return function(wezterm, config, platform, palette)
   config.hide_tab_bar_if_only_one_tab = false
   config.use_fancy_tab_bar = false
   config.show_new_tab_button_in_tab_bar = false
-  config.tab_max_width = 8
+  config.tab_max_width = 16
   config.status_update_interval = is_macos and 250 or 1000
 
   -- Section: Host transparency and font sizing

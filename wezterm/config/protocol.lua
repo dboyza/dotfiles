@@ -1,5 +1,5 @@
 -- Shared behavior is specified by tests/fixtures/floating-tabs.json.
-local protocol = { freshness_seconds = 3, max_bytes = 65536, input_interval_ms = 16 }
+local protocol = { freshness_seconds = 3, max_bytes = 65536, input_interval_ms = 16, max_label_bytes = 64 }
 
 -- Section: Numeric and freshness rules
 local function integer(value)
@@ -21,16 +21,20 @@ function protocol.valid_snapshot(value, filename, now)
   for _, tab in ipairs(value.tabs) do
     if type(tab) ~= 'table' or not integer(tab.id) or not integer(tab.index) or tab.index > 2147483647
       or type(tab.active) ~= 'boolean' or ids[tab.id] or indices[tab.index] then return false end
+    -- Labels and alerts are optional display hints; wrong types or oversized labels invalidate the snapshot.
+    if tab.label ~= nil and (type(tab.label) ~= 'string' or #tab.label > protocol.max_label_bytes) then return false end
+    if tab.alert ~= nil and type(tab.alert) ~= 'boolean' then return false end
     ids[tab.id], indices[tab.index] = true, true
     if tab.active then active = active + 1 end
   end
   return active == 1
 end
 
--- Section: Accepted click actions
+-- Section: Accepted click actions (activate, new_tab, close_tab)
 function protocol.valid_request(value, title, now)
   if not protocol.fresh(value, title, now) then return false end
   if value.action == 'new_tab' then return value.tab_id == nil end
+  if value.action == 'close_tab' then return integer(value.tab_id) end
   return value.action == nil and integer(value.tab_id)
 end
 

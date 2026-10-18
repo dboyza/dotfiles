@@ -171,6 +171,9 @@ PowerShell 5.1 and 7 are supported.
 The companion follows window movement and per-monitor scaling without taking keyboard focus.
 It also applies Windows 11's native rounded, muted lavender window outline, with no competing rectangular border inside it.
 The outline dims when its window loses focus; Windows controls the square edges of maximized and fullscreen windows.
+Badges are pills that name their tab's program or folder, show a rose dot for bells and long commands finishing in a background tab, highlight on hover, and reveal an `×` that closes the tab with confirmation.
+They switch to numbers alone when names would crowd out the clock, and blend toward the dark base while their window is unfocused.
+The glass blur, shadows, and animations of the macOS companion are not available in these shaped windows.
 The floating badges remain attached when another application gains focus, following their WezTerm window behind other windows without switching to native tabs.
 Maximized or fullscreen windows, windows without room above their top edge, and windows with more badges than can fit retain the native tab bar.
 The clock is omitted when tabs would overlap it.

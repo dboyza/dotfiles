@@ -208,7 +208,9 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
   Sign the helper with the persistent `dotfiles local code signing` certificate in the dedicated `dotfiles-codesign` keychain so rebuilds keep the grant, falling back to ad-hoc signing only if that fails.
   An enabled Accessibility entry can retain an old ad-hoc code signature after rebuilding; recover with a helper-only `tccutil reset Accessibility com.dboyza.wezterm-floating-tabs`, then a fresh manual grant.
-  Exchange only window identities, tab IDs, freshness timestamps, and the explicit `new_tab` action through the private state directory.
+  Exchange only window identities, tab IDs, freshness timestamps, optional program or folder labels and alert flags, and the explicit `new_tab` and `close_tab` actions through the private state directory.
+  Make `close_tab` activate the tab and run the confirmed close action, never close silently.
+  Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, hover close buttons, and a fade when the window is unfocused; Windows keeps the same behavior without blur, shadows, or animation.
   Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
   Consume click requests before acting so new-tab requests cannot replay.
   Service helper input every 16 ms, keeping heartbeat, fallback, and clock work on the slower maintenance cadence.

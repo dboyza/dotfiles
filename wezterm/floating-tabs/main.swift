@@ -7,6 +7,9 @@ struct Tab: Codable, Equatable {
     let id: Int
     let index: Int
     let active: Bool
+    // Optional display hints: the program or folder name, and a background-activity flag.
+    var label: String? = nil
+    var alert: Bool? = nil
 }
 struct Snapshot: Codable {
     let key: String
@@ -24,6 +27,7 @@ struct Reply: Codable {
 // Keep these limits aligned with config/protocol.lua and the shared fixtures.
 let freshnessSeconds: Double = 3
 let maximumSnapshotBytes = 65536
+let maximumLabelBytes = 64
 let cleanupAfterSeconds: Double = 30
 
 func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
@@ -31,6 +35,7 @@ func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool 
     let title = "WezTerm [\(snapshot.key.replacingOccurrences(of: "-", with: ":"))]"
     let validTabs = !snapshot.tabs.isEmpty && snapshot.tabs.allSatisfy {
         $0.id >= 0 && $0.id <= 9007199254740991 && $0.index >= 0 && $0.index <= 2147483647
+            && ($0.label?.utf8.count ?? 0) <= maximumLabelBytes
     }
     return validKey && filename == "window-\(snapshot.key).json" && snapshot.title == title
         && abs(now - snapshot.updated) < freshnessSeconds && validTabs
@@ -62,6 +67,8 @@ let dark = NSColor(srgbRed: 25/255, green: 23/255, blue: 36/255, alpha: 1)
 let muted = NSColor(srgbRed: 57/255, green: 53/255, blue: 82/255, alpha: 1)
 let subtle = NSColor(srgbRed: 144/255, green: 140/255, blue: 170/255, alpha: 1)
 let surface = NSColor(srgbRed: 35/255, green: 33/255, blue: 54/255, alpha: 0.9)
+let bright = NSColor(srgbRed: 224/255, green: 222/255, blue: 244/255, alpha: 1)
+let rose = NSColor(srgbRed: 235/255, green: 111/255, blue: 146/255, alpha: 1)
 
 // Section: Native window observation and placement
 func attribute(_ element: AXUIElement, _ name: String) -> CFTypeRef? {
@@ -86,36 +93,281 @@ func windowFrame(_ window: AXUIElement) -> CGRect? {
 
 // Keep badges centered on the window edge, but fall back to native tabs when
 // fullscreen or the menu bar leaves no room for an external strip.
-func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat) -> (CGRect, CGRect?)? {
-    let height: CGFloat = 24
-    let y = frame.maxY - height / 2
-    guard y + height <= visible.maxY, frame.width >= 48 else { return nil }
-    let tabs = CGRect(x: frame.minX + 6, y: y, width: min(tabWidth, frame.width - 12), height: height)
-    let clock = CGRect(x: frame.midX - 44, y: y, width: 88, height: height)
+// Panels are taller than their 24-point pills so shadows are not clipped.
+let panelHeight: CGFloat = 30
+func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat, clockWidth: CGFloat = 88) -> (CGRect, CGRect?)? {
+    let y = frame.maxY - panelHeight / 2
+    guard y + panelHeight <= visible.maxY, frame.width >= 48 else { return nil }
+    let tabs = CGRect(x: frame.minX + 6, y: y, width: min(tabWidth, frame.width - 12), height: panelHeight)
+    let clock = CGRect(x: frame.midX - clockWidth / 2, y: y, width: clockWidth, height: panelHeight)
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
 // Section: Badge and overlay drawing
-final class Badge: NSButton {
-    var actionHandler: (() -> Void)?
-    init(label: String, active: Bool = false, clock: Bool = false, action: (() -> Void)? = nil) {
+// Pills are frosted glass under a tint; the tint, text, and dots fade between states.
+final class Badge: NSView {
+    enum Kind { case tab, plus, clock }
+    static let pillHeight: CGFloat = 24
+    static let verticalInset = (panelHeight - pillHeight) / 2
+
+    let kind: Kind
+    var onClick: (() -> Void)?
+    var onClose: (() -> Void)?
+    private(set) var hovered = false
+    private var number = "", label: String?, active = false, alert = false, compact = true
+    private let glass = NSVisualEffectView()
+    // AppKit orders subview layers itself, so the tint and text live in a view stacked above the glass.
+    private let content = NSView()
+    private let tint = CALayer()
+    private let numberLayer = CATextLayer()
+    private let labelLayer = CATextLayer()
+    private let dot = CALayer()
+    private let closeLayer = CATextLayer()
+
+    private var named: Bool { kind == .tab && !compact && label != nil }
+
+    static func font(_ size: CGFloat, bold: Bool) -> NSFont {
+        let weight = bold ? 9 : 5
+        for family in ["JetBrainsMono Nerd Font", "JetBrainsMono NF"] {
+            if let font = NSFontManager.shared.font(withFamily: family, traits: [], weight: weight, size: size) { return font }
+        }
+        return .monospacedSystemFont(ofSize: size, weight: bold ? .semibold : .medium)
+    }
+    static func textWidth(_ text: String, size: CGFloat) -> CGFloat {
+        ceil((text as NSString).size(withAttributes: [.font: font(size, bold: true)]).width)
+    }
+    // Numbers alone stay compact; a labeled tab also gets a slot for the alert dot or close button.
+    static func width(number: String, label: String?, compact: Bool) -> CGFloat {
+        if compact || label == nil { return max(28, CGFloat(number.count * 10 + 14)) }
+        let named = label.map { 6 + textWidth($0, size: 12) } ?? 0
+        return 10 + textWidth(number, size: 13) + named + 6 + 12 + 6
+    }
+
+    init(kind: Kind) {
+        self.kind = kind
         super.init(frame: .zero)
-        title = label
-        isBordered = false
         wantsLayer = true
-        layer?.cornerRadius = 8
-        layer?.backgroundColor = (clock ? dark.withAlphaComponent(0.88) : (active ? lavender : surface)).cgColor
-        layer?.borderColor = muted.withAlphaComponent(0.7).cgColor
-        layer?.borderWidth = active ? 0 : 0.5
-        font = .monospacedSystemFont(ofSize: clock ? 12 : 13, weight: active ? .semibold : .medium)
-        contentTintColor = active ? dark : subtle
-        actionHandler = action
-        target = self
-        self.action = #selector(invoke)
-        setAccessibilityLabel(action == nil ? "Current time: \(label)" : (label == "+" ? "New WezTerm tab" : "WezTerm tab \(label)"))
+        layer?.masksToBounds = false
+        layer?.shadowColor = NSColor.black.cgColor
+        layer?.shadowOpacity = kind == .clock ? 0.2 : 0.3
+        layer?.shadowRadius = 3
+        layer?.shadowOffset = CGSize(width: 0, height: -1)
+        glass.material = .hudWindow
+        glass.blendingMode = .behindWindow
+        glass.state = .active
+        glass.appearance = NSAppearance(named: .darkAqua)
+        addSubview(glass)
+        content.wantsLayer = true
+        content.layer?.masksToBounds = false
+        addSubview(content)
+        tint.cornerRadius = Badge.pillHeight / 2
+        content.layer?.addSublayer(tint)
+        let scale = NSScreen.main?.backingScaleFactor ?? 2
+        for item in [numberLayer, labelLayer, closeLayer] {
+            item.contentsScale = scale
+            item.truncationMode = .end
+            content.layer?.addSublayer(item)
+        }
+        closeLayer.string = "×"
+        closeLayer.alignmentMode = .center
+        closeLayer.opacity = 0
+        dot.backgroundColor = rose.cgColor
+        dot.cornerRadius = 3
+        dot.opacity = 0
+        content.layer?.addSublayer(dot)
+        let mask = NSImage(size: NSSize(width: Badge.pillHeight, height: Badge.pillHeight), flipped: false) { rect in
+            NSColor.black.setFill()
+            NSBezierPath(roundedRect: rect, xRadius: rect.height / 2, yRadius: rect.height / 2).fill()
+            return true
+        }
+        mask.capInsets = NSEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        mask.resizingMode = .stretch
+        glass.maskImage = mask
+        apply(number: kind == .plus ? "+" : "", label: nil, active: false, alert: false, compact: true, animated: false)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is unsupported") }
-    @objc func invoke() { actionHandler?() }
+    override var isFlipped: Bool { false }
+    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    func apply(number: String, label: String?, active: Bool, alert: Bool, compact: Bool, animated: Bool = true) {
+        guard animated == false || (number, label, active, alert, compact) != (self.number, self.label, self.active, self.alert, self.compact)
+        else { return }
+        let relayout = compact != self.compact || label != self.label || number != self.number
+        (self.number, self.label, self.active, self.alert, self.compact) = (number, label, active, alert, compact)
+        if relayout { needsLayout = true }
+        restyle(animated: animated)
+    }
+
+    // Clocks show the time dimly; hovering swaps in the date. The colon pulses once a second.
+    func setClock(_ time: String, colonVisible: Bool) {
+        let font = Badge.font(12, bold: false)
+        let style = NSMutableParagraphStyle()
+        style.alignment = .center
+        let result = NSMutableAttributedString(string: time, attributes: [
+            .font: font, .foregroundColor: subtle, .paragraphStyle: style])
+        if !colonVisible, let colon = time.firstIndex(of: ":") {
+            result.addAttribute(.foregroundColor, value: subtle.withAlphaComponent(0.3),
+                                range: NSRange(colon...colon, in: time))
+        }
+        numberLayer.alignmentMode = .center
+        numberLayer.string = result
+    }
+
+    // Section: State styling
+    private func restyle(animated: Bool) {
+        CATransaction.begin()
+        CATransaction.setDisableActions(!animated)
+        CATransaction.setAnimationDuration(0.14)
+        CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(name: .easeInEaseOut))
+        let hot = hovered && kind != .clock
+        if kind == .clock {
+            tint.backgroundColor = dark.withAlphaComponent(0.5).cgColor
+            tint.borderWidth = 0.5
+            tint.borderColor = muted.withAlphaComponent(0.5).cgColor
+        } else if active {
+            tint.backgroundColor = lavender.withAlphaComponent(0.96).cgColor
+            tint.borderWidth = 0
+        } else {
+            tint.backgroundColor = (hot ? muted.withAlphaComponent(0.85) : surface.withAlphaComponent(0.55)).cgColor
+            tint.borderWidth = 0.5
+            tint.borderColor = muted.withAlphaComponent(hot ? 0.9 : 0.7).cgColor
+        }
+        let ink = active ? dark : (hot ? bright : subtle)
+        if kind != .clock {
+            numberLayer.string = number
+            numberLayer.font = Badge.font(13, bold: active)
+            numberLayer.fontSize = 13
+            numberLayer.foregroundColor = ink.cgColor
+            numberLayer.alignmentMode = named ? .left : .center
+            labelLayer.string = label
+            labelLayer.font = Badge.font(12, bold: false)
+            labelLayer.fontSize = 12
+            labelLayer.foregroundColor = ink.withAlphaComponent(active ? 0.85 : 1).cgColor
+            labelLayer.isHidden = compact || label == nil
+        }
+        closeLayer.font = Badge.font(14, bold: true)
+        closeLayer.fontSize = 14
+        closeLayer.foregroundColor = ink.cgColor
+        let showClose = named && hovered && onClose != nil
+        closeLayer.opacity = showClose ? 1 : 0
+        dot.opacity = alert && !active && !showClose ? 1 : 0
+        CATransaction.commit()
+        setAccessibilityLabel(kind == .clock ? "Current time" : (kind == .plus ? "New WezTerm tab"
+            : "WezTerm tab \(number)\(label.map { " " + $0 } ?? "")"))
+    }
+
+    override func layout() {
+        super.layout()
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        let pill = CGRect(x: 0, y: Badge.verticalInset, width: bounds.width, height: Badge.pillHeight)
+        glass.frame = pill
+        content.frame = bounds
+        tint.frame = pill
+        layer?.shadowPath = CGPath(roundedRect: pill, cornerWidth: pill.height / 2, cornerHeight: pill.height / 2, transform: nil)
+        let line = ceil(Badge.font(13, bold: false).boundingRectForFont.height)
+        let textY = pill.minY + ((pill.height - line) / 2).rounded()
+        let numberWidth = Badge.textWidth(number, size: 13)
+        numberLayer.frame = named ? CGRect(x: 10, y: textY, width: numberWidth + 2, height: line)
+                                  : CGRect(x: 0, y: textY, width: pill.width, height: line)
+        let slotX = pill.width - 6 - 12
+        labelLayer.frame = CGRect(x: 10 + numberWidth + 6, y: textY + 0.5, width: max(0, slotX - (16 + numberWidth) - 2), height: line)
+        closeLayer.frame = CGRect(x: slotX, y: textY, width: 12, height: line)
+        dot.frame = named ? CGRect(x: slotX + 3, y: pill.midY - 3, width: 6, height: 6)
+                          : CGRect(x: pill.maxX - 10, y: pill.maxY - 10, width: 6, height: 6)
+        CATransaction.commit()
+    }
+
+    // Section: Pointer handling
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas { removeTrackingArea(area) }
+        addTrackingArea(NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+                                       owner: self, userInfo: nil))
+    }
+    func setHovered(_ value: Bool) {
+        guard value != hovered else { return }
+        hovered = value
+        restyle(animated: true)
+    }
+    override func mouseEntered(with event: NSEvent) { setHovered(true) }
+    override func mouseExited(with event: NSEvent) { setHovered(false) }
+    override func mouseDown(with event: NSEvent) {
+        let point = convert(event.locationInWindow, from: nil)
+        if named && hovered && point.x >= bounds.width - 24, let onClose { onClose() } else { onClick?() }
+    }
+}
+
+// Section: Tab strip with animated updates
+// Badges are reused by tab ID so selection fades and openings and closings slide instead of rebuilding.
+final class TabStrip: NSView {
+    private var badges: [Int: Badge] = [:]
+    private var targets: [Int: CGRect] = [:]
+    private let plus = Badge(kind: .plus)
+    func badge(for id: Int) -> Badge? { badges[id] }
+    private var activeID: Int?
+    private var populated = false
+
+    static func widths(_ tabs: [Tab], compact: Bool) -> [CGFloat] {
+        tabs.map { Badge.width(number: String($0.index + 1), label: $0.label, compact: compact) }
+    }
+    // Leave room on each side for the badges' shadows, which the scroll view would otherwise clip.
+    static let margin: CGFloat = 3
+    static func totalWidth(_ widths: [CGFloat]) -> CGFloat {
+        widths.reduce(0, +) + CGFloat(widths.count * 4) + 28 + margin * 2
+    }
+
+    func update(tabs: [Tab], compact: Bool, activate: @escaping (Tab) -> Void, close: @escaping (Tab) -> Void,
+                newTab: @escaping () -> Void) {
+        let widths = TabStrip.widths(tabs, compact: compact)
+        var x = TabStrip.margin
+        var seen = Set<Int>()
+        for (tab, width) in zip(tabs, widths) {
+            seen.insert(tab.id)
+            let target = CGRect(x: x, y: 0, width: width, height: panelHeight)
+            let badge = badges[tab.id] ?? makeBadge(tab.id, at: target)
+            badge.onClick = { activate(tab) }
+            badge.onClose = { close(tab) }
+            badge.apply(number: String(tab.index + 1), label: tab.label, active: tab.active,
+                        alert: tab.alert ?? false, compact: compact)
+            move(badge, id: tab.id, to: target)
+            x += width + 4
+        }
+        for id in badges.keys where !seen.contains(id) {
+            guard let gone = badges.removeValue(forKey: id) else { continue }
+            targets.removeValue(forKey: id)
+            NSAnimationContext.runAnimationGroup({ $0.duration = 0.12; gone.animator().alphaValue = 0 },
+                                                 completionHandler: { gone.removeFromSuperview() })
+        }
+        plus.onClick = newTab
+        if plus.superview == nil { addSubview(plus) }
+        move(plus, id: -1, to: CGRect(x: x, y: 0, width: 28, height: panelHeight))
+        frame.size = CGSize(width: x + 28 + TabStrip.margin, height: panelHeight)
+        if let active = tabs.first(where: { $0.active })?.id, active != activeID {
+            activeID = active
+            if let badge = badges[active] { scrollToVisible(badge.frame) }
+        }
+        populated = true
+    }
+
+    private func makeBadge(_ id: Int, at target: CGRect) -> Badge {
+        let badge = Badge(kind: .tab)
+        badge.frame = target
+        addSubview(badge)
+        badges[id] = badge
+        if populated {
+            badge.alphaValue = 0
+            NSAnimationContext.runAnimationGroup { $0.duration = 0.16; badge.animator().alphaValue = 1 }
+        }
+        return badge
+    }
+
+    private func move(_ badge: Badge, id: Int, to target: CGRect) {
+        guard targets[id] != target else { return }
+        targets[id] = target
+        if badge.superview == nil || !populated || badge.frame.isEmpty { badge.frame = target; return }
+        NSAnimationContext.runAnimationGroup { $0.duration = 0.16; badge.animator().frame = target }
+    }
 }
 
 func needsOrdering(panel: Int, parent: Int, order: [Int]) -> Bool {
@@ -205,7 +457,23 @@ final class WindowOverlay {
         for panel in corners + [tabsPanel, clockPanel] { panel.close() }
     }
     let tabsPanel = OverlayPanel()
-    let clockPanel = OverlayPanel()
+    let clockPanel: OverlayPanel = {
+        // The clock never takes clicks, so it stays transparent to the terminal underneath.
+        let panel = OverlayPanel()
+        panel.ignoresMouseEvents = true
+        return panel
+    }()
+    let strip = TabStrip()
+    let clockBadge = Badge(kind: .clock)
+    lazy var scroll: NSScrollView = {
+        let view = NSScrollView()
+        view.drawsBackground = false
+        view.contentView.drawsBackground = false
+        view.hasHorizontalScroller = false
+        view.hasVerticalScroller = false
+        view.documentView = strip
+        return view
+    }()
     let corners: [OverlayPanel] = (0..<4).map { corner in
         let panel = OverlayPanel()
         panel.ignoresMouseEvents = true
@@ -215,17 +483,28 @@ final class WindowOverlay {
     var observer: AXObserver?
     var observedWindow: AXUIElement?
     var observedPID: pid_t = 0
-    var currentTabs: [Tab] = []
-    var currentTitle = ""
-    var currentTime = ""
     var lastHeartbeat: TimeInterval = 0
     var heartbeatTitle = ""
-    let formatter: DateFormatter = {
+    var dimmed: Bool?
+    static func formatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.dateFormat = "h:mm a"
+        formatter.dateFormat = format
         return formatter
-    }()
+    }
+    let formatter = WindowOverlay.formatter("h:mm a")
+    let wideFormatter = WindowOverlay.formatter("EEE h:mm a")
+    let dateFormatter = WindowOverlay.formatter("EEE MMM d")
+
+    // Overlays of unfocused windows fade back so the focused terminal stays the visual anchor.
+    func fade(focused: Bool) {
+        guard dimmed != !focused else { return }
+        dimmed = !focused
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.18
+            for panel in [tabsPanel, clockPanel] { panel.animator().alphaValue = focused ? 1 : 0.62 }
+        }
+    }
 
     func write(_ reply: Reply, name: String) {
         guard let data = try? JSONEncoder().encode(reply) else { return }
@@ -287,51 +566,46 @@ final class WindowOverlay {
             if panel.frame != position { panel.setFrame(position, display: true) }
             panel.show(above: number, focused: focused, order: order)
         }
-        let widths = snapshot.tabs.map { CGFloat(max(28, String($0.index + 1).count * 10 + 14)) }
-        let width = widths.reduce(0, +) + CGFloat(widths.count * 4) + 28
-        guard let (tabFrame, clockFrame) = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width)
-        else { hideBadges(); return }
-        if currentTabs != snapshot.tabs || currentTitle != snapshot.title {
-            currentTabs = snapshot.tabs
-            currentTitle = snapshot.title
-            let scroll = NSScrollView(frame: CGRect(origin: .zero, size: tabFrame.size))
-            scroll.drawsBackground = false
-            scroll.hasHorizontalScroller = false
-            let content = NSView(frame: CGRect(x: 0, y: 0, width: width, height: 24))
-            var x: CGFloat = 0
-            for (tab, badgeWidth) in zip(snapshot.tabs, widths) {
-                let button = Badge(label: String(tab.index + 1), active: tab.active) { [weak self] in
-                    _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-                    NSRunningApplication(processIdentifier: pid)?.activate()
-                    self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id), name: "activate-\(snapshot.key).json")
-                }
-                button.frame = CGRect(x: x, y: 0, width: badgeWidth, height: 24)
-                content.addSubview(button)
-                x += badgeWidth + 4
-            }
-            let newTab = Badge(label: "+", active: false) { [weak self] in
+        // Prefer named tabs; fall back to numbers when labels would crowd out the clock.
+        let wide = frame.width >= 900
+        let clockWidth: CGFloat = wide ? 116 : 88
+        var compact = false
+        var width = TabStrip.totalWidth(TabStrip.widths(snapshot.tabs, compact: false))
+        var placed = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width, clockWidth: clockWidth)
+        if placed?.1 == nil {
+            compact = true
+            width = TabStrip.totalWidth(TabStrip.widths(snapshot.tabs, compact: true))
+            placed = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width, clockWidth: clockWidth)
+        }
+        guard let (tabFrame, clockFrame) = placed else { hideBadges(); return }
+        strip.update(tabs: snapshot.tabs, compact: compact,
+            activate: { [weak self] tab in
+                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                NSRunningApplication(processIdentifier: pid)?.activate()
+                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id), name: "activate-\(snapshot.key).json")
+            },
+            close: { [weak self] tab in
+                _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+                NSRunningApplication(processIdentifier: pid)?.activate()
+                self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: tab.id, action: "close_tab"),
+                            name: "activate-\(snapshot.key).json")
+            },
+            newTab: { [weak self] in
                 _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
                 NSRunningApplication(processIdentifier: pid)?.activate()
                 self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970,
                                   tab_id: nil, action: "new_tab"), name: "activate-\(snapshot.key).json")
-            }
-            newTab.frame = CGRect(x: x, y: 0, width: 28, height: 24)
-            content.addSubview(newTab)
-            scroll.documentView = content
-            tabsPanel.contentView = scroll
-            if let active = snapshot.tabs.firstIndex(where: { $0.active }) {
-                content.subviews[active].scrollToVisible(content.subviews[active].bounds)
-            }
-        }
+            })
+        if tabsPanel.contentView !== scroll { tabsPanel.contentView = scroll }
         if tabsPanel.frame != tabFrame { tabsPanel.setFrame(tabFrame, display: true) }
         tabsPanel.show(above: number, focused: focused, order: order)
+        fade(focused: focused)
         if let clockFrame {
-            let time = formatter.string(from: Date())
-            if time != currentTime {
-                currentTime = time
-                clockPanel.contentView = Badge(label: time, clock: true)
-                clockPanel.ignoresMouseEvents = true
-            }
+            let seconds = Calendar.current.component(.second, from: Date())
+            let date = clockPanel.frame.contains(NSEvent.mouseLocation)
+            clockBadge.setClock(date ? dateFormatter.string(from: Date()) : (wide ? wideFormatter : formatter).string(from: Date()),
+                                colonVisible: seconds % 2 == 0)
+            if clockPanel.contentView !== clockBadge { clockPanel.contentView = clockBadge }
             if clockPanel.frame != clockFrame { clockPanel.setFrame(clockFrame, display: true) }
             clockPanel.show(above: number, focused: focused, order: order)
         } else { clockPanel.orderOut(nil) }
@@ -453,8 +727,43 @@ if let argument = CommandLine.arguments.firstIndex(of: "--render-corners"),
     NSGraphicsContext.restoreGraphicsState()
     try bitmap.representation(using: .png, properties: [:])!.write(
         to: URL(fileURLWithPath: CommandLine.arguments[argument + 1]))
+} else if CommandLine.arguments.contains("--render-strip") {
+    // Draws sample tabs (without the live blur behind them) to inspect layout and typography.
+    _ = NSApplication.shared
+    let tabs = [Tab(id: 1, index: 0, active: true, label: "nvim"), Tab(id: 2, index: 1, active: false, label: "my-project"),
+                Tab(id: 3, index: 2, active: false, label: "claude", alert: true), Tab(id: 4, index: 3, active: false)]
+    let strip = TabStrip()
+    strip.update(tabs: tabs, compact: false, activate: { _ in }, close: { _ in }, newTab: {})
+    strip.badge(for: 2)?.setHovered(true)
+    let clock = Badge(kind: .clock)
+    clock.setClock("Sun 1:03 AM", colonVisible: true)
+    let host = NSView(frame: NSRect(x: 0, y: 0, width: max(strip.frame.width, 130) + 130, height: panelHeight * 2))
+    host.wantsLayer = true
+    host.layer?.backgroundColor = dark.cgColor
+    strip.frame.origin = CGPoint(x: 0, y: panelHeight)
+    clock.frame = CGRect(x: strip.frame.width + 8, y: panelHeight, width: 116, height: panelHeight)
+    host.addSubview(strip)
+    host.addSubview(clock)
+    // Show a real window so the layers and blur render as they will on screen.
+    let offscreen = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+    offscreen.backgroundColor = dark
+    offscreen.contentView = host
+    offscreen.setFrameOrigin(NSPoint(x: 40, y: 200))
+    offscreen.orderFrontRegardless()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+    // Keep the sample window up long enough for `screencapture -l <number>` to photograph it.
+    print(offscreen.windowNumber)
+    fflush(stdout)
+    RunLoop.current.run(until: Date().addingTimeInterval(4))
 } else if let argument = CommandLine.arguments.firstIndex(of: "--test") {
     try testSnapshotContract(CommandLine.arguments[argument + 1])
+    precondition(Badge.width(number: "1", label: nil, compact: true) == 28, "Numbers alone stay compact")
+    precondition(Badge.width(number: "12", label: nil, compact: true) == 34, "Two-digit numbers widen the pill")
+    precondition(Badge.width(number: "1", label: "nvim", compact: false) > 70, "Labels make room for the name and close slot")
+    precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
+    let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
+                              tabWidth: 92, clockWidth: 116)!
+    precondition(wideClock.1!.width == 116 && wideClock.1!.midX == 710.5, "Wide clocks stay centered")
     precondition(needsOrdering(panel: 2, parent: 1, order: [1, 2]), "Click-raised window needs its normal-level panel restored")
     precondition(!needsOrdering(panel: 2, parent: 1, order: [3, 2, 1]), "Correctly stacked background panels must not be reordered")
     precondition(needsOrdering(panel: 2, parent: 1, order: [1]), "Hidden panels must be restored")

@@ -18,6 +18,9 @@ internal sealed class Tab {
     public long id { get; set; }
     public int index { get; set; }
     public bool active { get; set; }
+    // Optional display hints: the program or folder name, and a background-activity flag.
+    public string label { get; set; }
+    public bool? alert { get; set; }
 }
 internal sealed class Snapshot {
     public string key { get; set; }
@@ -74,6 +77,7 @@ internal static class Bridge {
     // Keep limits aligned with config/protocol.lua and the shared fixtures.
     internal const double FreshnessSeconds = 3;
     internal const int MaximumSnapshotBytes = 65536;
+    internal const int MaximumLabelBytes = 64;
     internal const double CleanupAfterSeconds = 30;
     internal static readonly string Root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local", "state", "dotfiles", "wezterm-floating-tabs");
     internal static readonly JavaScriptSerializer Json = new JavaScriptSerializer { MaxJsonLength = MaximumSnapshotBytes };
@@ -83,7 +87,8 @@ internal static class Bridge {
             && Path.GetFileName(file) == "window-" + snapshot.key + ".json"
             && snapshot.title == "WezTerm [" + snapshot.key.Replace('-', ':') + "]"
             && Math.Abs(now - snapshot.updated) < FreshnessSeconds && snapshot.tabs != null && snapshot.tabs.Length > 0
-            && snapshot.tabs.All(tab => tab != null && tab.index >= 0 && tab.id >= 0 && tab.id <= 9007199254740991)
+            && snapshot.tabs.All(tab => tab != null && tab.index >= 0 && tab.id >= 0 && tab.id <= 9007199254740991
+                && (tab.label == null || Encoding.UTF8.GetByteCount(tab.label) <= MaximumLabelBytes))
             && snapshot.tabs.Select(tab => tab.id).Distinct().Count() == snapshot.tabs.Length
             && snapshot.tabs.Select(tab => tab.index).Distinct().Count() == snapshot.tabs.Length
             && snapshot.tabs.Count(tab => tab.active) == 1;
@@ -104,6 +109,8 @@ internal static class Bridge {
             if (tab == null || !tab.ContainsKey("id") || !Integer(tab["id"], 9007199254740991) ||
                 !tab.ContainsKey("index") || !Integer(tab["index"], Int32.MaxValue) ||
                 !tab.ContainsKey("active") || !(tab["active"] is bool)) return null;
+            if (tab.ContainsKey("label") && tab["label"] != null && !(tab["label"] is string)) return null;
+            if (tab.ContainsKey("alert") && tab["alert"] != null && !(tab["alert"] is bool)) return null;
         }
         return Json.Deserialize<Snapshot>(text);
     }
@@ -132,14 +139,31 @@ internal sealed class Layout {
     internal readonly List<Rectangle> Tabs = new List<Rectangle>();
     internal Rectangle Clock;
     internal Rectangle NewTab;
+    // Compact layouts drop labels so every tab and the clock still fit.
+    internal bool Compact;
+    internal static bool Named(Layout layout, Tab tab) {
+        return !layout.Compact && !string.IsNullOrEmpty(tab.label);
+    }
+    // Prefer named tabs; fall back to numbers when labels would crowd out the clock or overflow.
     internal static Layout Create(Rectangle frame, Rectangle work, Tab[] tabs, float scale) {
+        var named = Build(frame, work, tabs, scale, false);
+        if (named != null && !named.Clock.IsEmpty) return named;
+        return Build(frame, work, tabs, scale, true) ?? named;
+    }
+    private static Layout Build(Rectangle frame, Rectangle work, Tab[] tabs, float scale, bool compact) {
         int height = (int)Math.Round(24 * scale), gap = (int)Math.Round(4 * scale);
         int inset = (int)Math.Round(6 * scale), y = frame.Top - height / 2;
         if (y < work.Top || frame.Left < work.Left || frame.Right > work.Right || frame.Width < inset * 2) return null;
-        var result = new Layout { Bounds = new Rectangle(frame.Left, y, frame.Width, height) };
+        var result = new Layout { Bounds = new Rectangle(frame.Left, y, frame.Width, height), Compact = compact };
         int x = inset;
         foreach (var tab in tabs) {
-            int width = (int)Math.Round(Math.Max(48, (tab.index + 1).ToString().Length * 10 + 34) * scale);
+            int digits = (tab.index + 1).ToString().Length;
+            int width = (int)Math.Round(Math.Max(48, digits * 10 + 34) * scale);
+            if (!compact && !string.IsNullOrEmpty(tab.label)) {
+                // Approximate monospaced text widths: number, gap, label, then the alert and close slot.
+                int named = (int)Math.Round((12 + digits * 8 + 6 + tab.label.Length * 8 + 6 + 14 + 10) * scale);
+                width = Math.Max(width, named);
+            }
             if (x + width > frame.Width - inset) return null; // Keep all tabs accessible through the native bar.
             result.Tabs.Add(new Rectangle(x, 0, width, height));
             x += width + gap;
@@ -158,7 +182,19 @@ internal sealed class Layout {
 internal sealed class Overlay : Form {
     private static readonly Color Lavender = Color.FromArgb(196, 167, 231), Dark = Color.FromArgb(25, 23, 36);
     private static readonly Color Subtle = Color.FromArgb(144, 140, 170), Surface = Color.FromArgb(35, 33, 54);
+    private static readonly Color Muted = Color.FromArgb(57, 53, 82), Bright = Color.FromArgb(224, 222, 244), Rose = Color.FromArgb(235, 111, 146);
+    // JetBrains Mono matches the terminal when installed; GDI+ would otherwise substitute a proportional font silently.
+    private static readonly string FontName = PickFont();
+    private static string PickFont() {
+        var installed = new HashSet<string>(FontFamily.Families.Select(family => family.Name));
+        foreach (var name in new[] { "JetBrainsMono Nerd Font", "JetBrainsMono NF", "Cascadia Mono", "Consolas" }) {
+            if (installed.Contains(name)) return name;
+        }
+        return "Consolas";
+    }
     internal Snapshot Snapshot;
+    private int hover = -1;
+    private bool dimmed;
     private readonly IntPtr parent;
     private Layout layout;
     private string signature;
@@ -189,8 +225,11 @@ internal sealed class Overlay : Form {
         path.CloseFigure();
         return path;
     }
-    internal void Refresh(Snapshot snapshot, Layout placement, float dpi) {
+    internal void Refresh(Snapshot snapshot, Layout placement, float dpi, bool focused) {
         Snapshot = snapshot;
+        // Overlays of unfocused windows fade back so the focused terminal stays the visual anchor.
+        if (dimmed == focused) { dimmed = !focused; Invalidate(); }
+        if (hover >= placement.Tabs.Count) hover = -1;
         bool geometryChanged = layout == null || Bounds != placement.Bounds || scale != dpi
             || signature != Bridge.Json.Serialize(snapshot.tabs);
         layout = placement;
@@ -201,9 +240,9 @@ internal sealed class Overlay : Form {
             Bounds = layout.Bounds;
             var region = new Region();
             region.MakeEmpty();
-            foreach (var rect in layout.Tabs) using (var path = Capsule(rect, 8 * scale)) region.Union(path);
-            using (var path = Capsule(layout.NewTab, 8 * scale)) region.Union(path);
-            if (!layout.Clock.IsEmpty) using (var path = Capsule(layout.Clock, 8 * scale)) region.Union(path);
+            foreach (var rect in layout.Tabs) using (var path = Capsule(rect, 12 * scale)) region.Union(path);
+            using (var path = Capsule(layout.NewTab, 12 * scale)) region.Union(path);
+            if (!layout.Clock.IsEmpty) using (var path = Capsule(layout.Clock, 12 * scale)) region.Union(path);
             var previous = Region;
             Region = region;
             if (previous != null) previous.Dispose();
@@ -223,37 +262,97 @@ internal sealed class Overlay : Form {
         if (Snapshot != null) Bridge.Remove("ready-" + Snapshot.key + ".json");
         heartbeat = 0;
     }
+    // Blend toward the dark base while the owner window is unfocused.
+    private Color Tone(Color color) {
+        if (!dimmed) return color;
+        return Color.FromArgb((int)(color.R * 0.6 + Dark.R * 0.4), (int)(color.G * 0.6 + Dark.G * 0.4), (int)(color.B * 0.6 + Dark.B * 0.4));
+    }
     protected override void OnPaint(PaintEventArgs e) {
         if (layout == null) return;
         e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-        using (var activeFont = new Font("Consolas", 13 * scale, FontStyle.Bold, GraphicsUnit.Pixel))
-        using (var font = new Font("Consolas", 13 * scale, FontStyle.Regular, GraphicsUnit.Pixel))
-        using (var clockFont = new Font("Consolas", 12 * scale, FontStyle.Regular, GraphicsUnit.Pixel)) {
-            for (int i = 0; i < Snapshot.tabs.Length; i++) DrawBadge(e.Graphics, layout.Tabs[i], (Snapshot.tabs[i].index + 1).ToString(), Snapshot.tabs[i].active, Snapshot.tabs[i].active ? activeFont : font);
+        using (var activeFont = new Font(FontName, 13 * scale, FontStyle.Bold, GraphicsUnit.Pixel))
+        using (var font = new Font(FontName, 13 * scale, FontStyle.Regular, GraphicsUnit.Pixel))
+        using (var labelFont = new Font(FontName, 12 * scale, FontStyle.Regular, GraphicsUnit.Pixel)) {
+            for (int i = 0; i < Snapshot.tabs.Length; i++) {
+                var tab = Snapshot.tabs[i];
+                DrawTab(e.Graphics, layout.Tabs[i], tab, tab.active ? activeFont : font, labelFont, i == hover, Layout.Named(layout, tab));
+            }
             DrawBadge(e.Graphics, layout.NewTab, "+", false, font);
-            if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, false, clockFont, true);
+            if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, false, labelFont, true);
+        }
+    }
+    private void FillPill(Graphics graphics, Rectangle rect, Color fill, Color outline, bool outlined) {
+        using (var path = Capsule(rect, 12 * scale)) {
+            using (var brush = new SolidBrush(Tone(fill))) graphics.FillPath(brush, path);
+            if (!outlined) return;
+            // Inset the stroke so the overlay's rounded region cannot clip its outer half.
+            int inset = (int)Math.Ceiling(scale);
+            using (var border = Capsule(Rectangle.Inflate(rect, -inset, -inset), 12 * scale - inset))
+            using (var pen = new Pen(Tone(outline), Math.Max(1f, scale))) graphics.DrawPath(pen, border);
         }
     }
     private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font, bool isClock = false) {
-        using (var path = Capsule(rect, 8 * scale)) {
-            using (var brush = new SolidBrush(active ? Lavender : (isClock ? Dark : Surface))) graphics.FillPath(brush, path);
-            if (!active) {
-                // Inset the stroke so the overlay's rounded region cannot clip its outer half.
-                int inset = (int)Math.Ceiling(scale);
-                var outline = Rectangle.Inflate(rect, -inset, -inset);
-                using (var border = Capsule(outline, 8 * scale - inset))
-                using (var pen = new Pen(Lavender, 2 * scale)) graphics.DrawPath(pen, border);
-            }
+        FillPill(graphics, rect, isClock ? Dark : Surface, Muted, true);
+        TextRenderer.DrawText(graphics, text, font, rect, Tone(Subtle), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+    }
+    private void DrawTab(Graphics graphics, Rectangle rect, Tab tab, Font font, Font labelFont, bool hot, bool named) {
+        FillPill(graphics, rect, tab.active ? Lavender : (hot ? Muted : Surface), hot ? Subtle : Muted, !tab.active);
+        Color ink = tab.active ? Dark : (hot ? Bright : Subtle);
+        string number = (tab.index + 1).ToString();
+        const TextFormatFlags centered = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
+        bool alert = tab.alert.HasValue && tab.alert.Value && !tab.active;
+        if (!named) {
+            TextRenderer.DrawText(graphics, number, font, rect, Tone(ink), centered);
+            if (alert) FillDot(graphics, rect.Right - (int)(12 * scale), rect.Top + (int)(5 * scale));
+            return;
         }
-        TextRenderer.DrawText(graphics, text, font, rect, active ? Dark : Subtle, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+        const TextFormatFlags left = TextFormatFlags.Left | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding;
+        int numberWidth = TextRenderer.MeasureText(graphics, number, font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding).Width;
+        int textLeft = rect.Left + (int)Math.Round(12 * scale);
+        int slot = rect.Right - (int)Math.Round(24 * scale);
+        TextRenderer.DrawText(graphics, number, font, new Rectangle(textLeft, rect.Top, numberWidth + 2, rect.Height), Tone(ink), left);
+        int labelLeft = textLeft + numberWidth + (int)Math.Round(6 * scale);
+        TextRenderer.DrawText(graphics, tab.label, labelFont, new Rectangle(labelLeft, rect.Top, Math.Max(0, slot - labelLeft), rect.Height),
+            Tone(ink), left | TextFormatFlags.EndEllipsis);
+        var slotRect = new Rectangle(slot, rect.Top, (int)Math.Round(14 * scale), rect.Height);
+        if (hot) TextRenderer.DrawText(graphics, "\u00D7", font, slotRect, Tone(ink), centered);
+        else if (alert) FillDot(graphics, slotRect.Left + slotRect.Width / 2 - (int)(3 * scale), rect.Top + rect.Height / 2 - (int)(3 * scale));
+    }
+    private void FillDot(Graphics graphics, int x, int y) {
+        int size = (int)Math.Round(6 * scale);
+        using (var brush = new SolidBrush(Tone(Rose))) graphics.FillEllipse(brush, x, y, size, size);
     }
     protected override void WndProc(ref Message message) {
         if (message.Msg == 0x21) { message.Result = new IntPtr(3); return; } // MA_NOACTIVATE, retain click
         base.WndProc(ref message);
     }
+    private int TabAt(Point location) {
+        if (layout == null) return -1;
+        for (int i = 0; i < layout.Tabs.Count; i++) if (layout.Tabs[i].Contains(location)) return i;
+        return -1;
+    }
+    protected override void OnMouseMove(MouseEventArgs e) {
+        base.OnMouseMove(e);
+        int next = TabAt(e.Location);
+        if (next != hover) { hover = next; Invalidate(); }
+    }
+    protected override void OnMouseLeave(EventArgs e) {
+        base.OnMouseLeave(e);
+        if (hover != -1) { hover = -1; Invalidate(); }
+    }
     protected override void OnMouseDown(MouseEventArgs e) {
         base.OnMouseDown(e);
         if (e.Button != MouseButtons.Left || layout == null) return;
+        int hit = TabAt(e.Location);
+        // The close button appears on the hovered named tab, in the slot at its right edge.
+        if (hit >= 0 && hit == hover && Layout.Named(layout, Snapshot.tabs[hit])
+            && e.X >= layout.Tabs[hit].Right - (int)Math.Round(26 * scale)) {
+            try {
+                Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, action = "close_tab", tab_id = Snapshot.tabs[hit].id });
+                Native.SetForegroundWindow(parent);
+            } catch (IOException) { Suspend(); } catch (UnauthorizedAccessException) { Suspend(); }
+            return;
+        }
         if (layout.NewTab.Contains(e.Location)) {
             try {
                 Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, action = "new_tab" });
@@ -344,7 +443,7 @@ internal sealed class Companion : ApplicationContext {
                 Overlay overlay;
                 if (!overlays.TryGetValue(window, out overlay)) { overlay = new Overlay(window); overlays.Add(window, overlay); }
                 live.Add(window);
-                overlay.Refresh(snapshot, layout, scale);
+                overlay.Refresh(snapshot, layout, scale, window == foreground);
                 return true;
             }, IntPtr.Zero);
             foreach (var window in overlays.Keys.Where(window => !live.Contains(window)).ToArray()) {
@@ -383,6 +482,7 @@ internal static class Program {
         return 0;
     }
     private static void Require(bool value, string message) { if (!value) throw new Exception(message); }
+    private static Layout PlainLayout(Rectangle frame, Rectangle work, Tab[] tabs) { return Layout.Create(frame, work, tabs, 1f); }
     private static void TestContract(string path) {
         var fixtures = Bridge.Json.Deserialize<ContractFixtures>(File.ReadAllText(path));
         foreach (var fixture in fixtures.snapshots) {
@@ -424,6 +524,11 @@ internal static class Program {
             Require(layout.NewTab.Left > layout.Tabs.Last().Right && layout.NewTab.Right < layout.Clock.Left, "New-tab button must follow the last tab without overlapping the clock");
             Require(Math.Abs(layout.Clock.Left + layout.Clock.Width / 2 - frame.Width / 2) <= 1, "Clock must be centered");
         }
+        var labeled = new[] { new Tab { id = 1, index = 0, active = true, label = "nvim" }, new Tab { id = 2, index = 1, label = "repo", alert = true } };
+        var roomy = Layout.Create(frame, work, labeled, 1f);
+        Require(roomy != null && !roomy.Compact && roomy.Tabs[0].Width > PlainLayout(frame, work, tabs).Tabs[0].Width, "Labels must widen tabs when there is room");
+        var tight = Layout.Create(new Rectangle(50, 80, 200, 600), work, labeled, 1f);
+        Require(tight != null && tight.Compact, "Crowded windows must drop labels before giving up their badges");
         Require(Layout.Create(work, work, tabs, 1) == null, "Fullscreen must retain native tabs");
         Require(Layout.Create(new Rectangle(50, 80, 50, 600), work, tabs, 1) == null, "Overflow must retain all native tabs");
         var secondary = Layout.Create(new Rectangle(-1850, 80, 1400, 850), new Rectangle(-1920, 0, 1920, 1040), tabs, 1.5f);

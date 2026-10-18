@@ -30,12 +30,14 @@ Files live under `~/.local/state/dotfiles/wezterm-floating-tabs/` on the host, i
 
 | File | Payload and behavior |
 | --- | --- |
-| `window-<key>.json` | `key`, `title`, epoch-second `updated`, and nonempty `tabs` with unique nonnegative integer `id` and `index`, boolean `active`, and exactly one active tab |
+| `window-<key>.json` | `key`, `title`, epoch-second `updated`, and nonempty `tabs` with unique nonnegative integer `id` and `index`, boolean `active`, and exactly one active tab; optional `label` (at most 64 UTF-8 bytes) and boolean `alert` display hints |
 | `ready-<key>.json` | Matching `title` and fresh `updated`; only this acknowledgment hides native tabs |
-| `activate-<key>.json` | Matching `title`, fresh `updated`, and either `tab_id` or `action: "new_tab"`; consumed before acting |
+| `activate-<key>.json` | Matching `title`, fresh `updated`, and a `tab_id` (activate), `action: "new_tab"`, or `action: "close_tab"` with a `tab_id`; consumed before acting |
 
 Freshness is an absolute age strictly below three seconds, including future timestamps.
 Snapshots are limited to 65,536 bytes.
+`close_tab` activates the tab and then runs the same confirmed close as `Control+Shift+W`.
+Labels name the foreground program (or the folder for a plain shell); alerts come from the terminal bell and the Zsh integration's `dotfiles_command_done` user variable.
 Unknown object fields are tolerated; malformed, ambiguous, foreign, or stale requests cause no action.
 Tab IDs must belong to the target window at execution time.
 Consumption prevents a second status tick from replaying new-tab actions.
