@@ -1,6 +1,7 @@
 -- Check portable and macOS key routing, including native private-pasteboard classification.
 local config_path = assert(arg[1], 'expected the WezTerm config path')
 local clipboard_probe
+local callbacks
 
 -- Section: Portable mappings and platform aliases
 for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64-pc-windows-msvc', 'x86_64-unknown-linux-gnu' }) do
@@ -21,7 +22,8 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
     action_callback = function(callback) return callback end,
     font_with_fallback = function(fonts) return fonts end,
     default_wsl_domains = function() return {} end,
-    on = function() end,
+    default_hyperlink_rules = function() return { { regex = 'default' } } end,
+    on = function(name, callback) callbacks[name] = callback end,
     run_child_process = function(command)
       if command[1] ~= '/usr/bin/osascript' then return false, '', '' end
       clipboard_probe = command[5]
@@ -29,6 +31,7 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
       return probe_success, probe_result, ''
     end,
   }
+  callbacks = {}
   local config = assert(loadfile(config_path))(config_path)
   local function binding(key, mods)
     for _, entry in ipairs(config.keys) do
@@ -89,6 +92,34 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
         end
       end
     end
+  end
+
+  assert(binding('[', 'LEADER').name == 'ScrollToPrompt' and binding('[', 'LEADER').value == -1)
+  assert(binding(']', 'LEADER').name == 'ScrollToPrompt' and binding(']', 'LEADER').value == 1)
+  assert(config.hyperlink_rules[1].regex == 'default', 'custom links must extend the default rules')
+
+  -- Clicked file:line links open Neovim in a new tab of the same domain and directory.
+  local open_uri = assert(callbacks['open-uri'])
+  local spawned, typed
+  local editor = { send_text = function(_, text) typed = text end }
+  local link_window = { mux_window = function()
+    return { spawn_tab = function(_, spec) spawned = spec; return {}, editor end }
+  end }
+  local function link_pane(domain)
+    return {
+      get_domain_name = function() return domain end,
+      get_current_working_dir = function() return { file_path = '/work/repo' } end,
+    }
+  end
+  local domain = triple:find('windows') and 'WSL:Fixture' or 'local'
+  assert(open_uri(link_window, link_pane(domain), "dotfiles-edit:src/it's.lua:42:7") == false)
+  assert(spawned.cwd == '/work/repo' and spawned.domain.DomainName == domain)
+  assert(typed == "nvim +42 -- 'src/it'\\''s.lua'\n", typed)
+  assert(open_uri(link_window, link_pane(domain), 'https://example.com') == nil, 'other links keep default handling')
+  if triple:find('windows') then
+    spawned = nil
+    assert(open_uri(link_window, link_pane('local'), 'dotfiles-edit:a.lua:1') == false and spawned == nil,
+      'native PowerShell panes must not receive a Neovim command')
   end
 
   assert(binding('w', 'CTRL|SHIFT').name == 'CloseCurrentTab')

@@ -129,6 +129,9 @@ return function(wezterm, config, platform)
     { 'y', act.ActivateCopyMode },
     { 'f', act.Search({ CaseSensitiveString = '' }) },
     { 'q', act.QuickSelect },
+    -- Jump between shell prompts marked by the Zsh integration.
+    { '[', act.ScrollToPrompt(-1) },
+    { ']', act.ScrollToPrompt(1) },
     { 'm', act.EmitEvent('toggle-window-size') },
     { 'Space', act.ActivateCommandPalette },
     { 'Enter', act.ToggleFullScreen },
@@ -173,4 +176,33 @@ return function(wezterm, config, platform)
       action = act.Multiple({ act.ClearSelection, act.PasteFrom('Clipboard') }),
     },
   }
+
+  -- Section: Quick Select patterns and clickable links
+  -- Defaults already cover URLs, paths, Git hashes, and IPs; add compiler-style locations and issue refs.
+  local file_location = [[\b[\w./-]+\.[A-Za-z]\w*:\d+(?::\d+)?\b]]
+  local issue_reference = [[\b[\w.-]+/[\w.-]+#\d+\b]]
+  config.quick_select_patterns = { file_location, issue_reference }
+  config.hyperlink_rules = wezterm.default_hyperlink_rules()
+  table.insert(config.hyperlink_rules, { regex = file_location, format = 'dotfiles-edit:$0' })
+  table.insert(config.hyperlink_rules, {
+    regex = [[\b([\w.-]+)/([\w.-]+)#(\d+)\b]],
+    format = 'https://github.com/$1/$2/issues/$3',
+  })
+
+  -- Open a clicked file:line in Neovim in a new tab of the same domain and directory.
+  -- Typing into the new shell keeps its login PATH, which GUI-spawned commands lack on macOS.
+  wezterm.on('open-uri', function(window, pane, uri)
+    local path, line = uri:match('^dotfiles%-edit:(.-):(%d+)')
+    if not path then return end
+    -- Native Windows panes run PowerShell without the managed Neovim.
+    if is_windows and pane:get_domain_name() == 'local' then return false end
+    local cwd = pane:get_current_working_dir()
+    local _, editor = window:mux_window():spawn_tab({
+      cwd = cwd and cwd.file_path,
+      domain = { DomainName = pane:get_domain_name() },
+    })
+    local quoted = "'" .. path:gsub("'", "'\\''") .. "'"
+    editor:send_text('nvim +' .. line .. ' -- ' .. quoted .. '\n')
+    return false
+  end)
 end

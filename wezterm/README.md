@@ -8,8 +8,8 @@ New Windows loaders forward the source path; older managed loaders remain suppor
 | --- | --- |
 | `config/palette.lua` | Shared Rose Pine Moon colors for the terminal, native tabs, and window border |
 | `config/platform.lua` | Platform detection, executable probes, shell selection, and new-tab actions |
-| `config/appearance.lua` | Fonts, colors, cursor, padding, window frame, and native tab bar settings |
-| `config/keys.lua` | Keyboard and mouse routing |
+| `config/appearance.lua` | Fonts, renderer, colors, bell, command palette, padding, window frame, and native tab bar |
+| `config/keys.lua` | Keyboard and mouse routing, Quick Select patterns, and clickable links |
 | `config/geometry.lua` | Centered launch geometry and size toggling |
 | `config/tabs.lua` | Native fallback rendering, companion exchange, and status cadence |
 | `config/protocol.lua` | Snapshot and request validation, freshness, and bridge limits |

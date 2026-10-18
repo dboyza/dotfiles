@@ -62,6 +62,7 @@ local function verify_launch_geometry(
     font_with_fallback = function(fonts)
       return fonts
     end,
+    default_hyperlink_rules = function() return {} end,
     gui = {
       screens = function()
         return { active = screen, main = screen }

@@ -3,23 +3,38 @@ return function(wezterm, config, platform, palette)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
 
   -- Section: Fonts
-  -- Hack Nerd Font leads; each platform falls back to a monospace font it ships.
-  local fonts = { 'Hack Nerd Font' }
+  -- JetBrains Mono Nerd Font leads; each platform falls back to a monospace font it ships.
+  local fonts = { 'JetBrainsMono Nerd Font' }
   local fallbacks = is_windows and { 'Cascadia Mono', 'Consolas' }
     or is_macos and { 'Menlo' }
     or { 'DejaVu Sans Mono' }
   for _, family in ipairs(fallbacks) do table.insert(fonts, family) end
   config.font = wezterm.font_with_fallback(fonts)
   config.font_size = 12
+  config.line_height = 1.1
+  -- Ligatures off: operators render exactly as typed in shells, diffs, and editors.
+  config.harfbuzz_features = { 'calt=0', 'clig=0', 'liga=0' }
+
+  -- Section: Rendering
+  -- WebGpu draws through Metal and DirectX 12; Linux keeps OpenGL because driver support varies there.
+  if is_macos or is_windows then config.front_end = 'WebGpu' end
+  config.max_fps = 120
 
   -- Section: Terminal behavior
-  config.max_fps = 120
   config.initial_cols = 140
   config.initial_rows = 36
   config.scrollback_lines = 20000
   config.adjust_window_size_when_changing_font_size = false
   config.switch_to_last_active_tab_when_closing_tab = true
+  -- A terminal bell (BEL) briefly tints the background instead of making a sound.
   config.audible_bell = 'Disabled'
+  config.visual_bell = {
+    target = 'BackgroundColor',
+    fade_in_function = 'EaseIn',
+    fade_in_duration_ms = 60,
+    fade_out_function = 'EaseOut',
+    fade_out_duration_ms = 180,
+  }
   config.notification_handling = 'SuppressFromFocusedWindow'
   config.default_cursor_style = 'SteadyBlock'
 
@@ -34,6 +49,7 @@ return function(wezterm, config, platform, palette)
     cursor_border = palette.cursor,
     selection_fg = palette.base,
     selection_bg = palette.selection,
+    visual_bell = palette.overlay,
     tab_bar = {
       background = palette.base,
       active_tab = { bg_color = palette.base, fg_color = palette.text, intensity = 'Normal' },
@@ -42,6 +58,10 @@ return function(wezterm, config, platform, palette)
     },
   }
   config.inactive_pane_hsb = { saturation = 0.0, brightness = 0.5 }
+  -- Match the command palette (prefix Space) to the theme instead of WezTerm's default grey.
+  config.command_palette_bg_color = palette.surface
+  config.command_palette_fg_color = palette.text
+  config.command_palette_font_size = is_macos and 15.0 or 12.0
 
   -- Section: Window frame and padding
   config.window_decorations = 'RESIZE'

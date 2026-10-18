@@ -140,7 +140,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
 
-- Install Hack Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
+- Install JetBrains Mono Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
 
 - On macOS, Homebrew owns the remaining user command-line packages and Node.js; keep Codex, Claude Code, Pi, opencode, and Herdr out of its package lists.
   Keep Homebrew activation install-only with no cleanup, resolve paths from `homebrew.prefix`, and use Brew's `mas` for App Store installation.
@@ -171,6 +171,16 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Loaders must forward the source path and watch each module; preserve legacy Windows loaders and Unix symlink chains, including paths containing spaces.
 
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
+
+- Install WezTerm nightly on macOS through the `wezterm@nightly` cask; Windows stays on stable `wez.wezterm` because Winget has no nightly package, and Linux uses the nixpkgs build.
+  Keep the configuration valid on stable 20240203 so the Windows install keeps working.
+
+- Use the WebGpu front end on macOS and Windows; keep Linux on the default OpenGL front end because GPU driver support varies.
+
+- Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled.
+
+- Emit WezTerm prompt (OSC 133) and directory (OSC 7) marks from Zsh only in direct WezTerm panes, not inside tmux or Herdr; prefix `[` / `]` jumps between prompts.
+  Keep clicked `file:line` links opening Neovim in a new tab of the same domain and directory, typed into the new shell so it keeps the login PATH.
 
 - Launch WezTerm centered on macOS at 94% of the active screen width and 88% of its height, without maximizing.
   Preserve the bounded proportional launch geometry on Windows and Linux/WSL.

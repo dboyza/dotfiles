@@ -35,6 +35,8 @@ Use Home instead of relying on shell `Control+A` while inside Herdr.
 | `r` | Use `Control+Shift+R` | Reload configuration | Reload configuration |
 
 WezTerm also has prefix `P` for PowerShell, `f` for terminal search, `q` for Quick Select, `Space` for its command palette, and `Enter` for fullscreen.
+Prefix `[` and `]` jump to the previous and next shell prompt in direct WezTerm shells; tmux and Herdr have their own scrollback.
+Quick Select also offers `file:line` locations and `owner/repo#123` references; clicking a `file:line` opens it in Neovim in a new tab, and clicking a reference opens it on GitHub.
 Use prefix `m` to toggle between the large launch size and a smaller centered window; macOS also supports `Command+Shift+M`.
 The smaller size is 55% of the active screen's width and height, capped at 70% of the large size on very large displays.
 Leave fullscreen before using the size toggle; Linux window positioning depends on the window manager and is unavailable under Wayland.
