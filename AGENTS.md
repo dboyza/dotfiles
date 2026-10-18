@@ -176,6 +176,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep the configuration valid on stable 20240203 so the Windows install keeps working.
 
 - Use the WebGpu front end on macOS and Windows; keep Linux on the default OpenGL front end because GPU driver support varies.
+  Renderer and binary changes apply only after fully quitting and relaunching WezTerm; a live reload keeps the old front end.
 
 - Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled.
 

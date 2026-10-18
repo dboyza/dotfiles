@@ -19,6 +19,8 @@ return function(wezterm, config, platform, palette)
   -- WebGpu draws through Metal and DirectX 12; Linux keeps OpenGL because driver support varies there.
   if is_macos or is_windows then config.front_end = 'WebGpu' end
   config.max_fps = 120
+  -- Easing effects (the visual bell fade) default to 10 fps; match the display rate.
+  config.animation_fps = 120
 
   -- Section: Terminal behavior
   config.initial_cols = 140

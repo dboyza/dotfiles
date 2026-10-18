@@ -174,15 +174,18 @@ wezterm.mux.get_tab = function() return { window = function() return {
   window_id = function() return window_id end,
 } end } end
 local titles = {
-  { tab_id = 11, tab_index = 0, is_active = true,
-    active_pane = { foreground_process_name = '/opt/bin/claude', current_working_dir = '/work/repo' } },
-  { tab_id = 12, tab_index = 1, is_active = false,
-    active_pane = { foreground_process_name = '/bin/zsh', current_working_dir = wezterm.home_dir } },
+  { tab_id = 11, tab_index = 0, is_active = true, active_pane = { title = 'no process data here' } },
+  { tab_id = 12, tab_index = 1, is_active = false, active_pane = {} },
 }
 callbacks['format-window-title'](titles[1], nil, titles)
 assert(read('window-' .. key .. '.json').tabs[1].active, 'title event must publish selection without waiting for polling')
-assert(read('window-' .. key .. '.json').tabs[1].label == 'claude', 'title events must publish program labels')
-assert(read('window-' .. key .. '.json').tabs[2].label == '~', 'a shell in the home directory is labeled ~')
+-- Title events often lack process data; they must reuse the labels the mux path found, never drop them.
+assert(read('window-' .. key .. '.json').tabs[1].label == 'nvim', 'title events must not flip labels off')
+assert(read('window-' .. key .. '.json').tabs[2].label == 'repo', 'title events must not flip labels off')
+local fresh_titles = { { tab_id = 77, tab_index = 0, is_active = true,
+  active_pane = { foreground_process_name = '/opt/bin/claude', current_working_dir = '/work/repo' } } }
+callbacks['format-window-title'](fresh_titles[1], nil, fresh_titles)
+assert(read('window-' .. key .. '.json').tabs[1].label == 'claude', 'new tabs fall back to the pane information')
 window_id = 99
 callbacks['format-window-title'](titles[1], nil, titles)
 assert(read('window-' .. key .. '.json').title == snapshot.title, 'background windows must not replace another snapshot')

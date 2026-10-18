@@ -101,7 +101,15 @@ return function(wezterm, config, platform, protocol, palette)
     if name == 'dotfiles_command_done' then mark_background_alert(pane) end
   end)
 
-  -- Describe a mux tab entry; remote or mocked panes without process data simply have no label.
+  -- Labels come from one place: mux panes know their process, while title and tab-format events
+  -- often omit it. A shared cache keeps every publisher agreeing, so badges never flip between forms.
+  local function label_key(tab_id) return 'floating_tab_label_' .. tostring(tab_id) end
+
+  local function cached_label(tab_id, info)
+    return wezterm.GLOBAL[label_key(tab_id)] or tab_label(info)
+  end
+
+  -- Describe a mux tab entry; a failed lookup keeps the last known label rather than dropping it.
   local function describe_tab(item)
     local label
     local ok, pane = pcall(function() return item.tab:active_pane() end)
@@ -109,6 +117,14 @@ return function(wezterm, config, platform, protocol, palette)
       local _, name = pcall(function() return pane:get_foreground_process_name() end)
       local _, cwd = pcall(function() return pane:get_current_working_dir() end)
       label = tab_label({ foreground_process_name = name, current_working_dir = cwd })
+    end
+    local id_ok, tab_id = pcall(function() return item.tab:tab_id() end)
+    if id_ok then
+      if label then
+        if wezterm.GLOBAL[label_key(tab_id)] ~= label then wezterm.GLOBAL[label_key(tab_id)] = label end
+      else
+        label = wezterm.GLOBAL[label_key(tab_id)]
+      end
     end
     local alert = false
     local id_ok, id = pcall(function() return item.tab:tab_id() end)
@@ -214,7 +230,7 @@ return function(wezterm, config, platform, protocol, palette)
         local snapshot = {}
         for _, item in ipairs(tabs) do
           table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active,
-            label = tab_label(item.active_pane), alert = tab_alert(item.tab_id, item.is_active) or nil })
+            label = cached_label(item.tab_id, item.active_pane), alert = tab_alert(item.tab_id, item.is_active) or nil })
         end
         publish_floating_tabs(window:window_id(), snapshot)
         return overlay_title(window:window_id())
@@ -258,7 +274,7 @@ return function(wezterm, config, platform, protocol, palette)
     if max_width < #number + 2 then
       return wezterm.truncate_right(number, math.max(0, max_width))
     end
-    local text = native_tab_text(number, tab_label(tab.active_pane), tab_alert(tab.tab_id, tab.is_active), max_width)
+    local text = native_tab_text(number, cached_label(tab.tab_id, tab.active_pane), tab_alert(tab.tab_id, tab.is_active), max_width)
     return capsule(text, tab.is_active and palette.base or (hover and palette.text or palette.muted),
       tab.is_active and palette.accent or (hover and palette.overlay or palette.surface), tab.is_active)
   end)
