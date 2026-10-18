@@ -585,7 +585,7 @@ final class TabStrip: NSView {
 
     // Section: Drag to reorder
     // The dragged pill follows the pointer while its neighbors slide apart to show where it will land.
-    private func drag(_ id: Int, _ phase: DragPhase, _ origin: CGFloat) {
+    func drag(_ id: Int, _ phase: DragPhase, _ origin: CGFloat) {
         guard let badge = badges[id], let from = shown.firstIndex(where: { $0.id == id }) else { return }
         switch phase {
         case .began:
@@ -963,6 +963,24 @@ if CommandLine.arguments.contains("--render-strip") {
     precondition(Badge.width(named) > labeled + 20, "A branch widens the pill")
     named.compact = true
     precondition(Badge.width(named) == 28, "Compact pills drop names and branches")
+    // Dragging the first of three tabs past the last one's midpoint must request a move to index 2.
+    _ = NSApplication.shared
+    var moves: [(Int, Int)] = []
+    let strip = TabStrip()
+    let three = (0..<3).map { Tab(id: $0 + 10, index: $0, active: $0 == 0) }
+    let handlers = TabStrip.Handlers(activate: { _ in }, close: { _ in }, move: { moves.append(($0.id, $1)) },
+                                     action: { _, _ in }, newTab: {})
+    strip.update(tabs: three, compact: true, handlers: handlers)
+    strip.drag(10, .began, 0)
+    strip.drag(10, .moved, 70)
+    strip.drag(10, .ended, 0)
+    precondition(moves.count == 1 && moves[0] == (10, 2), "Dragging past the last tab must move it to index 2")
+    strip.update(tabs: three, compact: true, handlers: handlers)
+    moves.removeAll()
+    strip.drag(11, .began, 0)
+    strip.drag(11, .moved, 3)
+    strip.drag(11, .ended, 0)
+    precondition(moves.isEmpty || moves[0].1 != 1, "Dropping a tab where it started must not request a move")
     precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
     let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
                               tabWidth: 92, clockWidth: 116)!
