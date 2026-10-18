@@ -289,7 +289,8 @@ Allow **WezTerm Floating Tabs** in **System Settings > Privacy & Security > Acce
 The helper needs this permission to identify and follow WezTerm windows.
 It does not need Screen Recording permission and does not read terminal text.
 After installing, reload the WezTerm configuration or restart WezTerm; subsequent GUI sessions start the helper automatically.
-Rebuilding a locally signed app may require granting Accessibility access again.
+The installer signs the helper with a persistent self-signed certificate in its own `dotfiles-codesign` keychain, so rebuilds keep the Accessibility grant.
+If that signing fails, it falls back to an ad-hoc signature that needs a fresh grant after every rebuild.
 An enabled switch can still refer to an older build's code signature; toggling it may not replace that stale record.
 Quit the helper in Activity Monitor, reset only its permission, and relaunch it:
 
