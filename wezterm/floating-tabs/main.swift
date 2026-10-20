@@ -312,8 +312,9 @@ final class Badge: NSView {
         let hot = hovered && kind != .clock
         if kind == .clock {
             tint.backgroundColor = dark.withAlphaComponent(0.5).cgColor
-            tint.borderWidth = 0.5
-            tint.borderColor = muted.withAlphaComponent(0.5).cgColor
+            // Outline the clock in the window border's lavender so the two read as one frame.
+            tint.borderWidth = 1
+            tint.borderColor = subtle.cgColor
         } else if model.active {
             tint.backgroundColor = lavender.withAlphaComponent(0.96).cgColor
             tint.borderWidth = 0

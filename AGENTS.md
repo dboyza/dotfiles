@@ -234,6 +234,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
   Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
+  Outline the companion clocks in the window border's `subtle` lavender.
   Square the macOS window corners with WezTerm nightly's `MACOS_FORCE_SQUARE_CORNERS` so the one-pixel border runs edge to edge; the helper draws no corner arcs, which would otherwise track the system corner radius.
 
 - On Windows, build the native floating-tab companion from `wezterm/floating-tabs/windows.cs` with the inbox .NET Framework compiler through `scripts/install-wezterm-floating-tabs.ps1`.

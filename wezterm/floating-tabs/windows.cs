@@ -332,7 +332,7 @@ internal sealed class Overlay : Form {
         }
     }
     private void DrawBadge(Graphics graphics, Rectangle rect, string text, bool active, Font font, bool isClock = false) {
-        FillPill(graphics, rect, isClock ? Dark : Surface, Muted, true);
+        FillPill(graphics, rect, isClock ? Dark : Surface, isClock ? Subtle : Muted, true);
         TextRenderer.DrawText(graphics, text, font, rect, Tone(Subtle), TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
     }
     private void DrawTab(Graphics graphics, Rectangle rect, Tab tab, Font font, Font labelFont, bool hot, bool named) {
