@@ -229,7 +229,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails or there is no room above the window.
   Keep macOS overlays and acknowledgments active when another application gains focus, following their window's stacking order instead of switching to native tabs.
   Keep each overlay while its CoreGraphics window exists and its snapshot is fresh: Accessibility times out during focus changes and lists no windows on other Spaces.
-  Park off-screen windows (other Spaces, hidden, minimized) with panels hidden but acknowledgments kept, and remove visible windows only after a lasting mismatch.
+  Park off-screen or system-displaced windows (other Spaces, hidden, minimized, Show Desktop) with panels hidden but acknowledgments kept; only a lasting AX failure removes a visible window's overlay.
+  Keep panels bound to their window's Space rather than joining all Spaces, so desktop switches slide them with the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
