@@ -5,11 +5,24 @@ return function(wezterm, config)
   local is_macos = target_triple:find('darwin') ~= nil
 
   -- Section: Executable discovery
+  -- WezTerm re-evaluates the config for every window override, so child-process probes run once per
+  -- GUI process. A nil result (such as WSL not answering yet) is retried on the next evaluation.
+  local function remembered(key, probe)
+    local value = wezterm.GLOBAL[key]
+    if value == nil then
+      value = probe()
+      wezterm.GLOBAL[key] = value
+    end
+    return value
+  end
+
   local function command_exists(program)
-    local probe = is_windows and { 'where.exe', program }
-      or { '/bin/sh', '-c', 'command -v "$1" >/dev/null 2>&1', 'sh', program }
-    local called, found = pcall(wezterm.run_child_process, probe)
-    return called and found
+    return remembered('dotfiles_command_exists:' .. program, function()
+      local probe = is_windows and { 'where.exe', program }
+        or { '/bin/sh', '-c', 'command -v "$1" >/dev/null 2>&1', 'sh', program }
+      local called, found = pcall(wezterm.run_child_process, probe)
+      return called and found
+    end)
   end
 
   -- Section: WSL domain and working-directory selection
@@ -17,12 +30,14 @@ return function(wezterm, config)
   local PREFERRED_WSL_DOMAIN = 'WSL:Ubuntu-24.04'
 
   local function resolve_wsl_home(distribution)
-    local called, success, stdout = pcall(wezterm.run_child_process, {
-      'wsl.exe', '--distribution', distribution, '--exec', 'printenv', 'HOME',
-    })
-    if not called or not success then return nil end
-    local home = stdout:match('^%s*(.-)%s*$')
-    return home:sub(1, 1) == '/' and home or nil
+    return remembered('dotfiles_wsl_home:' .. distribution, function()
+      local called, success, stdout = pcall(wezterm.run_child_process, {
+        'wsl.exe', '--distribution', distribution, '--exec', 'printenv', 'HOME',
+      })
+      if not called or not success then return nil end
+      local home = stdout:match('^%s*(.-)%s*$')
+      return home:sub(1, 1) == '/' and home or nil
+    end)
   end
 
   -- Returns the WSL domain name and its home directory, or nil when WSL is unavailable.

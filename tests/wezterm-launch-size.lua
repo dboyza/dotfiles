@@ -81,6 +81,7 @@ local function verify_launch_geometry(
       return false, '', ''
     end,
     target_triple = target_triple,
+    GLOBAL = {},
   }
 
   package.loaded.wezterm = nil

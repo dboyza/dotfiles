@@ -15,6 +15,7 @@ for _, triple in ipairs({ 'aarch64-apple-darwin', 'x86_64-apple-darwin', 'x86_64
   })
   package.loaded.wezterm = {
     target_triple = triple,
+    GLOBAL = {},
     plugin = { require = function() return { setup = function() end } end },
     config_builder = function() return {} end,
     mux = {},

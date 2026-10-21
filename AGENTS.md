@@ -173,6 +173,9 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
 
+- WezTerm re-evaluates the whole configuration for every `set_config_overrides` call, including the focus border and tab bar fallback, so keep evaluation cheap.
+  Build the configuration as a plain table (each `config_builder` assignment costs about 2 ms of validation; the tests still validate strictly) and remember child-process probes in `wezterm.GLOBAL`.
+
 - Install WezTerm nightly on macOS through the `wezterm@nightly` cask; Windows stays on stable `wez.wezterm` because Winget has no nightly package, and Linux uses the nixpkgs build.
   Keep the configuration valid on stable 20240203 so the Windows install keeps working.
 
