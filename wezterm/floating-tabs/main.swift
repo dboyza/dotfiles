@@ -642,6 +642,11 @@ func needsOrdering(panel: Int, parent: Int, order: [Int]) -> Bool {
     return panelIndex > parentIndex
 }
 
+// Overlays outlive unreadable AX polls until their snapshot expires, so focus changes never tear them down.
+func keepsOverlay(key: String, pid: pid_t, matched: Set<String>, unreadable: Set<pid_t>, fresh: Set<String>) -> Bool {
+    matched.contains(key) || (unreadable.contains(pid) && fresh.contains(key))
+}
+
 final class OverlayPanel: NSPanel {
     init() {
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
@@ -653,6 +658,8 @@ final class OverlayPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .ignoresCycle]
         isMovable = false
         isReleasedWhenClosed = false
+        // The system zoom-fade would make every reorder or level change look like a flicker.
+        animationBehavior = .none
     }
     // Clicks raise a native window within the normal level. Its focused overlay
     // must live above that level, otherwise it disappears until the next tick.
@@ -775,12 +782,13 @@ final class WindowOverlay {
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(newObserver), .commonModes)
     }
 
-    func refresh(snapshot: Snapshot, window: AXUIElement, pid: pid_t, number: Int, focused: Bool, order: [Int]) {
+    // An unreadable focus state (nil) keeps the previous one rather than dimming the overlay.
+    func refresh(snapshot: Snapshot, window: AXUIElement, frame: CGRect, pid: pid_t, number: Int, focused: Bool?, order: [Int]) {
         guard attribute(window, "AXFullScreen") as? Bool != true,
               attribute(window, kAXMinimizedAttribute) as? Bool != true,
-              let frame = windowFrame(window),
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
         else { hide(); return }
+        let focused = focused ?? (dimmed == false)
         observe(pid: pid, window: window)
         // Prefer named tabs; fall back to numbers when labels would crowd out the clock.
         let wide = frame.width >= 900
@@ -886,16 +894,23 @@ final class Companion: NSObject, NSApplicationDelegate {
             as? [[String: Any]] ?? []
         let order = visible.compactMap { $0[kCGWindowNumber as String] as? Int }
         var live = Set<String>()
+        var unreadable = Set<pid_t>()
         for app in NSWorkspace.shared.runningApplications where identifiers.contains(app.bundleIdentifier ?? "") {
-            let application = AXUIElementCreateApplication(app.processIdentifier)
+            let pid = app.processIdentifier
+            let application = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(application, 0.1)
-            guard let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement] else { continue }
+            // WezTerm is busiest while focus changes, so a timed-out read means unknown, not closed.
+            guard let windows = attribute(application, kAXWindowsAttribute) as? [AXUIElement] else {
+                unreadable.insert(pid)
+                continue
+            }
             let focusedWindow = attribute(application, kAXFocusedWindowAttribute)
             for window in windows {
-                guard let title = attribute(window, kAXTitleAttribute) as? String,
-                      let snapshot = snapshots[title], let frame = windowFrame(window),
-                      let entry = visible.first(where: { info in
-                          guard (info[kCGWindowOwnerPID as String] as? Int) == Int(app.processIdentifier),
+                guard let title = attribute(window, kAXTitleAttribute) as? String else { unreadable.insert(pid); continue }
+                guard let snapshot = snapshots[title] else { continue }
+                guard let frame = windowFrame(window) else { unreadable.insert(pid); continue }
+                guard let entry = visible.first(where: { info in
+                          guard (info[kCGWindowOwnerPID as String] as? Int) == Int(pid),
                                 (info[kCGWindowLayer as String] as? Int) == 0,
                                 let bounds = info[kCGWindowBounds as String] as? [String: Any],
                                 let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary) else { return false }
@@ -906,13 +921,16 @@ final class Companion: NSObject, NSApplicationDelegate {
                 live.insert(snapshot.key)
                 let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
                 overlays[snapshot.key] = overlay
-                let focused = app.processIdentifier == frontPID
-                    && focusedWindow.map { CFEqual($0, window) } == true
-                overlay.refresh(snapshot: snapshot, window: window, pid: app.processIdentifier,
+                let focused = pid == frontPID ? focusedWindow.map { CFEqual($0, window) } : false
+                overlay.refresh(snapshot: snapshot, window: window, frame: frame, pid: pid,
                     number: number, focused: focused, order: order)
             }
         }
-        for key in Array(overlays.keys) where !live.contains(key) { overlays.removeValue(forKey: key) }
+        let fresh = Set(snapshots.values.map { $0.key })
+        for (key, overlay) in overlays where !keepsOverlay(key: key, pid: overlay.observedPID, matched: live,
+                                                           unreadable: unreadable, fresh: fresh) {
+            overlays.removeValue(forKey: key)
+        }
     }
 }
 
@@ -1000,6 +1018,11 @@ if CommandLine.arguments.contains("--render-strip") {
     precondition(needsOrdering(panel: 2, parent: 1, order: [1, 2]), "Click-raised window needs its normal-level panel restored")
     precondition(!needsOrdering(panel: 2, parent: 1, order: [3, 2, 1]), "Correctly stacked background panels must not be reordered")
     precondition(needsOrdering(panel: 2, parent: 1, order: [1]), "Hidden panels must be restored")
+    precondition(keepsOverlay(key: "a-0", pid: 7, matched: [], unreadable: [7], fresh: ["a-0"]),
+                 "A timed-out AX read must keep the overlay up")
+    precondition(!keepsOverlay(key: "a-0", pid: 7, matched: [], unreadable: [7], fresh: []), "Expired snapshots remove overlays")
+    precondition(!keepsOverlay(key: "a-0", pid: 7, matched: [], unreadable: [8], fresh: ["a-0"]),
+                 "Another process's failure must not keep a closed window's overlay")
     let screen = CGRect(x: 0, y: 0, width: 1512, height: 944)
     let frame = CGRect(x: 45, y: 60, width: 1421, height: 864)
     let normal = placement(frame: frame, visible: screen, tabWidth: 92)!

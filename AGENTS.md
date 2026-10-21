@@ -228,6 +228,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails or there is no room above the window.
   Keep macOS overlays and acknowledgments active when another application gains focus, following their window's stacking order instead of switching to native tabs.
+  WezTerm often times out Accessibility reads while focus changes; treat failed reads as unknown and keep existing overlays until their snapshot expires.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
