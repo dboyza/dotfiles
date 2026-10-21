@@ -168,5 +168,4 @@ Store personal data and secrets in a separate encrypted backup.
 ## License
 
 These dotfiles are available under the [MIT License](LICENSE).
-The archived Calm extension keeps its own [MIT license](pi/archive/extensions/calm/LICENSE) from its original author.
 The reference screenshots in `agents/skills/readme-creation/.lavish/wezterm-inspiration/` belong to their creators, listed in its `sources.json`, and are not covered by this license.

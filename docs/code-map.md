@@ -55,8 +55,7 @@ Preserve these outputs and edit their inputs or use their owning tool.
 | `pi/archive/extensions/herdr-agent-state.ts` | Herdr's Pi integration installer; reinstall/update through Herdr if explicitly reactivating it, and put custom hooks beside its generated file. |
 | Installed Windows loaders and launcher shims | The tracked PowerShell installers; edit those installers and regenerate the installed files. |
 
-Preserve bundled license and attribution notices, including [Calm's license](../pi/archive/extensions/calm/LICENSE).
-Its longer adapter and lifecycle notes live in [the Calm guide](../pi/archive/extensions/calm/README.md).
+Preserve bundled license and attribution notices.
 
 ```sh
 uv pip compile pi/archive/computer-use/requirements.in --universal --python-version 3.12 \

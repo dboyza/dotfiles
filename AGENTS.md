@@ -337,8 +337,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Earlier factory-reset descriptions are historical and do not override application-written preferences or later user choices.
   Keep `pi/archive/` customizations out of managed deployment links unless explicitly requested, and preserve credentials, sessions, and shared instructions during resets.
 
-- Preserve the archived Pi Calm extension's bundled license and never manage or track its runtime preference file.
-  Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
+- Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 
 - When adding or updating third-party Pi packages, pin them to immutable npm versions or Git commits in `pi/settings.json`.
   Existing package entries are not evidence that their versions or compatibility have been reviewed.
