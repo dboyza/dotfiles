@@ -97,47 +97,20 @@ Inspect and save any affected buffers after a rename.
 ## Platform validation
 
 The editor configuration supports native Windows, macOS, and Linux/WSL.
-The IDE workflows have been exercised on macOS, and the dedicated agent workspace has been checked in WSL; native Windows still needs runtime verification.
+The IDE workflows have been exercised on macOS; native Windows and WSL still need runtime verification.
 Tree-sitter parser compilation requires an available C compiler on each platform.
 
-## Agent workspace
+## Reviewr
 
-Run `herdr` in a macOS or Linux/WSL terminal, then run the launcher from a shell pane:
-
-```sh
-herdr-workspace ~/code/my-project
-herdr-workspace ~/code/my-project pi
-```
-
-The left pane asks you to choose Codex, Claude Code, Pi, or opencode each time.
-Enter a number or agent name; `q` or `Control+C` leaves that pane at a shell.
-An explicit agent argument skips the picker for that invocation.
-Each invocation creates a fresh workspace in the current Herdr session, with a 3:4 agent/editor split (about 42.86% and 57.14%).
-Herdr's normal New Space action creates the same layout and picker through the local `dotfiles.workspace` plugin.
-Existing spaces and restored sessions are not rearranged; new worktree spaces use the layout too.
-Herdr keeps the project sidebar at 18 columns; Neovim contains the file editor and a persistent, 20-column Neo-tree on its right.
-`Space e` switches between the tree and editor, and opening a file keeps this tree visible.
-Normal Neovim launches retain the left-hand explorer that closes after file selection.
-Quitting the last editor window still closes Neo-tree.
-
-The layout hook sets `g:dotfiles_workspace` only for the new editor process.
-That profile checks for external changes every 1.5 seconds in Normal mode and refreshes unmodified buffers.
-Unsaved buffers are preserved so you can resolve competing edits yourself.
-If automatic setup fails, the space is preserved; inspect `herdr plugin log --plugin dotfiles.workspace` for its ID and the error.
-Run `herdr-workspace --help` for usage.
-
-Reviewr is available with `Control+A`, then `v`; toggle it again to recover the editor's screen space.
+Inside a macOS or Linux/WSL Herdr session, press `Control+A`, then `v` to open or close the Reviewr pane.
 Its navigator sits on the right, `2` selects All files, and `e` opens the selected file in Neovim temporarily.
-Reviewr's editor does not enable the dedicated workspace profile.
 Worktree creation does not automatically open Reviewr.
 Bootstrap installs missing Reviewr from the pinned 0.44.0 source commit through Herdr and preserves existing installations.
-Bootstrap also links the local layout plugin directly to this checkout.
-The layout plugin requires Herdr 0.9.3; if a server started before a Herdr update is still running, bootstrap warns instead of linking, so restart Herdr and run the command below.
-To install or relink both plugins independently:
+It also unlinks the retired `dotfiles.workspace` plugin, so Herdr's New Space action keeps its default single shell pane.
+To run this step independently from the checkout:
 
 ```sh
-herdr-workspace --install-plugins
+node scripts/install-herdr-plugins.mjs
 ```
 
-Both the launcher and Reviewr run inside WSL on Windows; native Windows Herdr remains available separately.
-This layout does not embed a graphical chat interface: the agent keeps its own terminal UI.
+On Windows, Reviewr runs inside WSL; native Windows Herdr remains available separately.

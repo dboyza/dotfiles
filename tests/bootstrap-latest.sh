@@ -122,7 +122,7 @@ EOF
 
 cat >"$fake_bin/node" <<'EOF'
 #!/usr/bin/env bash
-if [[ "$#" == 2 && "$1" == "$DOTFILES_REPO/scripts/herdr-workspace.mjs" && "$2" == --install-plugins ]]; then
+if [[ "$#" == 1 && "$1" == "$DOTFILES_REPO/scripts/install-herdr-plugins.mjs" ]]; then
   test -e "$BOOTSTRAP_TEST_ACTIVATED" || exit 1
   touch "$BOOTSTRAP_TEST_REVIEWR"
   exit 0

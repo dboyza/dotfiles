@@ -283,15 +283,13 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
-  Install missing Reviewr through Herdr during bootstrap on macOS or Linux/WSL, using the reviewed commit in `scripts/herdr-workspace.mjs`; preserve existing installations.
+  Install missing Reviewr through Herdr during bootstrap on macOS or Linux/WSL, using the reviewed commit in `scripts/install-herdr-plugins.mjs`; preserve existing installations.
   Keep Reviewr opt-in rather than automatically opening it for worktrees.
   Verify upstream support and native behavior before extending this repository's plugin deployment to Windows.
 
-- Keep `herdr-workspace` as the project layout launcher for macOS and Linux/WSL, with an interactive agent picker and an explicit agent override.
-  Use the local `herdr/workspace` plugin as the single layout owner for `workspace.created` events, including spaces created through Herdr's UI.
-  Target only the event's new workspace, skip occupied or already split panes, and leave existing or restored workspaces intact.
-  Keep the agent picker beside a larger Neovim pane; do not reuse a previous space's agent choice implicitly.
-  Use a 3:4 agent/editor split, an 18-column Herdr sidebar, and a 20-column workspace Neo-tree.
+- Leave new Herdr spaces at Herdr's default layout; do not hook `workspace.created` to open Neovim, a file tree, or an agent picker.
+  Bootstrap unlinks the retired `dotfiles.workspace` plugin from earlier checkouts.
+  Keep the Herdr sidebar fixed at 18 columns.
 
 ## Neovim
 
@@ -304,10 +302,6 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Close Neo-tree after opening a file from it; expanding a directory should leave the explorer open.
 
 - Open Neo-tree only on request through `Space e` or `:Neotree`, not automatically at startup, in new tabs, or when opening directories.
-
-- The dedicated `herdr-workspace` profile is the explicit exception: start with a persistent right-hand Neo-tree and retain it after opening files.
-  Scope this behavior through Neovim's `g:dotfiles_workspace`, keeping normal sessions unchanged.
-  Refresh external file changes only in unmodified buffers outside editing modes; never discard unsaved edits.
 
 - Let Neo-tree close when the last editor window in its tab closes so normal quit commands do not require a second quit for the sidebar.
 
