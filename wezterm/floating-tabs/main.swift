@@ -38,6 +38,8 @@ let maximumBranchBytes = 64
 let maximumPathBytes = 256
 let progressStates: Set<String> = ["normal", "error", "indeterminate"]
 let cleanupAfterSeconds: Double = 30
+// How long after an app activation or Space change to watch for windows the system slides away.
+let motionWatchSeconds: Double = 0.6
 
 func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
     let validKey = snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil
@@ -642,13 +644,31 @@ func needsOrdering(panel: Int, parent: Int, order: [Int]) -> Bool {
     return panelIndex > parentIndex
 }
 
+// CoreGraphics bounds (top-left origin) of each listed window, by window number.
+func windowBounds(_ windows: [[String: Any]]) -> [Int: CGRect] {
+    var result: [Int: CGRect] = [:]
+    for info in windows {
+        guard let number = info[kCGWindowNumber as String] as? Int,
+              let bounds = info[kCGWindowBounds as String] as? [String: Any],
+              let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary) else { continue }
+        result[number] = rect
+    }
+    return result
+}
+
+// Show Desktop and Mission Control move windows on screen while AX still reports the old frame.
+func displaced(_ matched: CGRect?, _ current: CGRect?) -> Bool {
+    guard let matched, let current else { return false }
+    return abs(matched.minX - current.minX) >= 2 || abs(matched.minY - current.minY) >= 2
+        || abs(matched.width - current.width) >= 2 || abs(matched.height - current.height) >= 2
+}
+
 // An unmatched overlay lasts as long as its window and snapshot, so focus and Space changes never tear it down.
-// Windows that are off screen or displaced (Show Desktop, Mission Control) park; unreadable ones keep a grace period.
+// Off-screen or system-moved windows park; a visible window whose AX reads time out keeps a grace period.
 enum OverlayFate { case keep, park, remove }
-func overlayFate(fresh: Bool, window: Int?, onScreen: Set<Int>, existing: Set<Int>, unreadable: Bool,
-                 unseenFor: Double) -> OverlayFate {
-    guard fresh, let window, existing.contains(window) else { return .remove }
-    guard onScreen.contains(window) && unreadable else { return .park }
+func overlayFate(fresh: Bool, exists: Bool, onScreen: Bool, moved: Bool, unreadable: Bool, unseenFor: Double) -> OverlayFate {
+    guard fresh, exists else { return .remove }
+    guard onScreen && !moved && unreadable else { return .park }
     // AX times out while WezTerm changes focus; only a lasting failure falls back to native tabs.
     return unseenFor < freshnessSeconds ? .keep : .remove
 }
@@ -729,6 +749,7 @@ final class WindowOverlay {
     var observedWindow: AXUIElement?
     var observedPID: pid_t = 0
     var windowNumber: Int?
+    var windowBounds: CGRect?
     // When the window was last matched on screen or confirmed off screen.
     var lastSeen: TimeInterval = 0
     var lastHeartbeat: TimeInterval = 0
@@ -801,7 +822,6 @@ final class WindowOverlay {
               let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
         else { hide(); return }
         let focused = focused ?? (dimmed == false)
-        windowNumber = number
         lastSeen = Date().timeIntervalSince1970
         observe(pid: pid, window: window)
         // Prefer named tabs; fall back to numbers when labels would crowd out the clock.
@@ -871,6 +891,7 @@ final class Companion: NSObject, NSApplicationDelegate {
     var overlays: [String: WindowOverlay] = [:]
     var timer: Timer?
     var stateWatcher: DispatchSourceFileSystemObject?
+    var motionTimer: Timer?
     var refreshing = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -889,10 +910,26 @@ final class Companion: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) { overlays.removeAll() }
 
-    // Show Desktop and Space switches start animating just after the activation; look again once they have.
+    // Clicking the wallpaper activates Finder, then Show Desktop slides windows away without AX notice.
+    // Check on-screen bounds every frame meanwhile so the badges hide as soon as the slide starts.
     @objc func workspaceChanged() {
         refresh()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) { [weak self] in self?.refresh() }
+        motionTimer?.invalidate()
+        let until = Date().addingTimeInterval(motionWatchSeconds)
+        motionTimer = Timer.scheduledTimer(withTimeInterval: 1.0 / 60, repeats: true) { [weak self] timer in
+            guard let self, Date() < until else { timer.invalidate(); return }
+            self.parkDisplaced()
+        }
+    }
+
+    func parkDisplaced() {
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let bounds = windowBounds(CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] ?? [])
+        // A frontmost WezTerm window that moves is being dragged, which AX notifications already follow.
+        for overlay in overlays.values where overlay.observedPID != frontPID && overlay.tabsPanel.isVisible {
+            if let number = overlay.windowNumber, displaced(overlay.windowBounds, bounds[number]) { overlay.park() }
+        }
     }
 
     @objc func refresh() {
@@ -925,6 +962,7 @@ final class Companion: NSObject, NSApplicationDelegate {
         let visible = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
             as? [[String: Any]] ?? []
         let order = visible.compactMap { $0[kCGWindowNumber as String] as? Int }
+        let bounds = windowBounds(visible)
         var live = Set<String>()
         // Processes whose AX reads timed out, as WezTerm's often do while focus changes.
         var unreadable = Set<pid_t>()
@@ -945,8 +983,7 @@ final class Companion: NSObject, NSApplicationDelegate {
                 guard let entry = visible.first(where: { info in
                           guard (info[kCGWindowOwnerPID as String] as? Int) == Int(pid),
                                 (info[kCGWindowLayer as String] as? Int) == 0,
-                                let bounds = info[kCGWindowBounds as String] as? [String: Any],
-                                let rect = CGRect(dictionaryRepresentation: bounds as CFDictionary) else { return false }
+                                let number = info[kCGWindowNumber as String] as? Int, let rect = bounds[number] else { return false }
                           let top = NSScreen.screens.first?.frame.maxY ?? 0
                           return abs(rect.minX - frame.minX) < 2 && abs(top - rect.maxY - frame.minY) < 2
                               && abs(rect.width - frame.width) < 2 && abs(rect.height - frame.height) < 2
@@ -954,6 +991,8 @@ final class Companion: NSObject, NSApplicationDelegate {
                 live.insert(snapshot.key)
                 let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
                 overlays[snapshot.key] = overlay
+                overlay.windowNumber = number
+                overlay.windowBounds = bounds[number]
                 let focused = pid == frontPID ? focusedWindow.map { CFEqual($0, window) } : false
                 overlay.refresh(snapshot: snapshot, window: window, frame: frame, pid: pid,
                     number: number, focused: focused, order: order)
@@ -964,9 +1003,10 @@ final class Companion: NSObject, NSApplicationDelegate {
         let existing = Set((CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? [])
             .compactMap { $0[kCGWindowNumber as String] as? Int })
         let fresh = Set(snapshots.values.map { $0.key })
-        let onScreen = Set(order)
         for (key, overlay) in overlays where !live.contains(key) {
-            switch overlayFate(fresh: fresh.contains(key), window: overlay.windowNumber, onScreen: onScreen, existing: existing,
+            let current = overlay.windowNumber.flatMap { bounds[$0] }
+            switch overlayFate(fresh: fresh.contains(key), exists: overlay.windowNumber.map(existing.contains) ?? false,
+                               onScreen: current != nil, moved: displaced(overlay.windowBounds, current),
                                unreadable: unreadable.contains(overlay.observedPID), unseenFor: now - overlay.lastSeen) {
             case .keep: break
             case .park: overlay.park()
@@ -1060,18 +1100,24 @@ if CommandLine.arguments.contains("--render-strip") {
     precondition(needsOrdering(panel: 2, parent: 1, order: [1, 2]), "Click-raised window needs its normal-level panel restored")
     precondition(!needsOrdering(panel: 2, parent: 1, order: [3, 2, 1]), "Correctly stacked background panels must not be reordered")
     precondition(needsOrdering(panel: 2, parent: 1, order: [1]), "Hidden panels must be restored")
-    precondition(overlayFate(fresh: true, window: 5, onScreen: [5], existing: [5], unreadable: true, unseenFor: 0.3) == .keep,
+    precondition(overlayFate(fresh: true, exists: true, onScreen: true, moved: false, unreadable: true, unseenFor: 0.3) == .keep,
                  "A brief AX timeout must keep a visible window's overlay up")
-    precondition(overlayFate(fresh: true, window: 5, onScreen: [5], existing: [5], unreadable: true, unseenFor: 5) == .remove,
+    precondition(overlayFate(fresh: true, exists: true, onScreen: true, moved: false, unreadable: true, unseenFor: 5) == .remove,
                  "A lasting AX failure falls back to native tabs")
-    precondition(overlayFate(fresh: true, window: 5, onScreen: [], existing: [5], unreadable: false, unseenFor: 60) == .park,
+    precondition(overlayFate(fresh: true, exists: true, onScreen: false, moved: false, unreadable: false, unseenFor: 60) == .park,
                  "A window on another Space parks its overlay")
-    precondition(overlayFate(fresh: true, window: 5, onScreen: [5], existing: [5], unreadable: false, unseenFor: 0) == .park,
-                 "A window displaced by Show Desktop hides its overlay at once")
-    precondition(overlayFate(fresh: false, window: 5, onScreen: [], existing: [5], unreadable: false, unseenFor: 0) == .remove,
+    precondition(overlayFate(fresh: true, exists: true, onScreen: true, moved: true, unreadable: true, unseenFor: 0) == .park,
+                 "A window that Show Desktop slides away parks even while AX times out")
+    precondition(overlayFate(fresh: true, exists: true, onScreen: true, moved: false, unreadable: false, unseenFor: 0) == .park,
+                 "A readable window that AX no longer matches parks")
+    precondition(overlayFate(fresh: false, exists: true, onScreen: false, moved: false, unreadable: false, unseenFor: 0) == .remove,
                  "Expired snapshots remove overlays")
-    precondition(overlayFate(fresh: true, window: 5, onScreen: [], existing: [], unreadable: true, unseenFor: 0) == .remove,
+    precondition(overlayFate(fresh: true, exists: false, onScreen: false, moved: false, unreadable: true, unseenFor: 0) == .remove,
                  "Closed windows remove overlays")
+    let matched = CGRect(x: 54, y: 70, width: 1692, height: 1029)
+    precondition(!displaced(matched, matched.offsetBy(dx: 1, dy: 0)) && !displaced(matched, nil),
+                 "Sub-point jitter and off-screen windows are not displacement")
+    precondition(displaced(matched, matched.offsetBy(dx: 0, dy: -112)), "Show Desktop's slide is displacement")
     let screen = CGRect(x: 0, y: 0, width: 1512, height: 944)
     let frame = CGRect(x: 45, y: 60, width: 1421, height: 864)
     let normal = placement(frame: frame, visible: screen, tabWidth: 92)!
