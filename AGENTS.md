@@ -90,7 +90,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Keep normal `./bootstrap.sh` activation update-first for Nix inputs and Windows Winget packages; macOS desktop apps are install-only.
   Preserve `./bootstrap.sh --check` as a non-mutating build of the currently pinned configuration, requiring an existing Nix installation instead of installing prerequisites.
 
-- Keep bootstrap flake checks on `--all-systems` so every exported system is evaluated before activation.
+- Keep bootstrap flake checks on the host system only; `tests/run.sh` owns cross-platform evaluation through `tests/nix-evaluation.sh`.
 
 - Keep the bootstrap managed-target inventory centralized so backup and verification always operate on the same paths.
   Evaluate enabled Home Manager `home.file` targets once before backup; do not maintain a second list in shell scripts.

@@ -211,7 +211,10 @@ grep -Fq 'original example' "$HOME/.config/example app/config"
 
 grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"
 grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
-grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
+if grep -Fq -- '--all-systems' "$BOOTSTRAP_TEST_NIX_LOG"; then
+  printf 'bootstrap test: flake check evaluated systems other than the host\n' >&2
+  exit 1
+fi
 test -e "$BOOTSTRAP_TEST_ACTIVATED"
 test -e "$BOOTSTRAP_TEST_REVIEWR"
 grep -Fq 'keep this prompt' "$HOME/.pi/agent/prompts/custom.md"
@@ -230,7 +233,10 @@ if grep -Fq 'flake update --flake' "$BOOTSTRAP_TEST_NIX_LOG"; then
   exit 1
 fi
 grep -Fq 'flake check path:' "$BOOTSTRAP_TEST_NIX_LOG"
-grep -Fq -- '--impure --all-systems' "$BOOTSTRAP_TEST_NIX_LOG"
+if grep -Fq -- '--all-systems' "$BOOTSTRAP_TEST_NIX_LOG"; then
+  printf 'bootstrap test: flake check evaluated systems other than the host\n' >&2
+  exit 1
+fi
 test ! -e "$BOOTSTRAP_TEST_ACTIVATED"
 test ! -e "$BOOTSTRAP_TEST_REVIEWR"
 

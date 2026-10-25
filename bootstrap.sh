@@ -99,7 +99,8 @@ if ! $check_only; then
 fi
 
 printf 'Checking %s configuration...\n' "$profile"
-nix "${nix_options[@]}" flake check "$flake_ref" --impure --all-systems
+# Other platforms are evaluated by tests/run.sh; checking them here only reloads nixpkgs per system.
+nix "${nix_options[@]}" flake check "$flake_ref" --impure
 
 if $check_only; then
   build_configuration
