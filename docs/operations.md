@@ -50,7 +50,7 @@ Resurrect, assistant session restoration, and continuum remain enabled; TPM and 
 
 ## Update macOS packages
 
-Homebrew owns macOS command-line dependencies, Zsh plugins, and Hack Nerd Font.
+Homebrew owns macOS command-line dependencies, Zsh plugins, and JetBrains Mono Nerd Font.
 Their declarations live in `nix/homebrew.nix`; GUI app declarations remain in `nix/macos-apps.json` so existing installations can be preserved.
 Bootstrap installs missing packages without upgrading existing installations or removing unlisted packages.
 Update a Brew package explicitly with `brew update` followed by `brew upgrade <formula>`.

@@ -90,6 +90,8 @@ def main():
         # Copy the configuration so reload checks never edit the live checkout.
         checkout = fixture / "checkout with spaces"
         shutil.copytree(args.config.resolve().parent, checkout)
+        # The shared palette sits beside the wezterm directory in a real checkout.
+        shutil.copytree(REPO / "theme", fixture / "theme")
         source_path = checkout / args.config.name
         config = fixture / "test.lua"
         config.write_text("""local w = require 'wezterm'

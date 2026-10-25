@@ -86,7 +86,7 @@ in
       ++ lib.optionals pkgs.stdenv.isLinux [
         bubblewrap
         gcc
-        nerd-fonts.hack
+        nerd-fonts.jetbrains-mono
         wl-clipboard
         xclip
         xsel
@@ -126,7 +126,6 @@ in
     ".config/starship.toml" = live "starship/starship.toml";
     ".local/bin/dotfiles-clipboard" = live "scripts/dotfiles-clipboard";
     ".local/bin/dotfiles-tool.mjs" = live "scripts/dotfiles-tool.mjs";
-    ".local/bin/herdr-workspace" = live "scripts/herdr-workspace.mjs";
 
     ".codex/AGENTS.md" = live "agents/global/AGENTS.md";
     ".claude/CLAUDE.md" = live "agents/global/AGENTS.md";

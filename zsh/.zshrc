@@ -170,6 +170,35 @@ if command -v starship >/dev/null 2>&1; then
   eval "$(starship init zsh)"
 fi
 
+# Section: WezTerm shell integration
+# Mark prompts and command output (OSC 133) and report the directory (OSC 7) for prompt jumps and new tabs.
+# tmux and Herdr inherit WEZTERM_PANE but redraw the screen themselves, so stay quiet there.
+if [[ -n $WEZTERM_PANE && -z $TMUX && -z $HERDR_PANE_ID ]]; then
+  # Commands slower than this flag their tab (via a user variable) when they finish in the background.
+  typeset -gi _wezterm_alert_after=10
+  _wezterm_precmd() {
+    local exit_status=$?
+    if (( ${+_wezterm_command_running} )); then
+      printf '\e]133;D;%s\a' "$exit_status"
+      if (( SECONDS - _wezterm_command_started >= _wezterm_alert_after )); then
+        printf '\e]1337;SetUserVar=dotfiles_command_done=%s\a' "$(printf '%s %s' "$exit_status" "$SECONDS" | base64)"
+      fi
+    fi
+    unset _wezterm_command_running
+    printf '\e]7;file://%s%s\e\\' "$HOST" "${PWD// /%20}"
+    # Later prompt hooks, including Starship's, still see the command's exit status.
+    return $exit_status
+  }
+  _wezterm_preexec() {
+    _wezterm_command_running=1
+    _wezterm_command_started=$SECONDS
+    printf '\e]133;C\a'
+  }
+  precmd_functions=(_wezterm_precmd $precmd_functions)
+  preexec_functions+=(_wezterm_preexec)
+  PROMPT=$'%{\e]133;A\a%}'"$PROMPT"$'%{\e]133;B\a%}'
+fi
+
 # Directory jumping (z and zi), initialized after completion setup.
 if command -v zoxide >/dev/null 2>&1; then
   eval "$(zoxide init zsh)"

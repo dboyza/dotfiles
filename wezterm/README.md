@@ -6,12 +6,16 @@ New Windows loaders forward the source path; older managed loaders remain suppor
 
 | Module | Responsibility |
 | --- | --- |
+| `config/palette.lua` | Shared Rose Pine Moon colors for the terminal, native tabs, and window border |
 | `config/platform.lua` | Platform detection, executable probes, shell selection, and new-tab actions |
-| `config/appearance.lua` | Fonts, colors, padding, cursor, and base frame settings |
-| `config/keys.lua` | Keyboard and mouse routing |
+| `config/appearance.lua` | Fonts, renderer, colors, bell, command palette, padding, window frame, and native tab bar |
+| `config/keys.lua` | Keyboard and mouse routing, Quick Select patterns, and clickable links |
+| `config/tab_info.lua` | Per-tab label, git branch, path, progress, and alert hints shared by every publisher |
 | `config/geometry.lua` | Centered launch geometry and size toggling |
 | `config/tabs.lua` | Native fallback rendering, companion exchange, and status cadence |
 | `config/protocol.lua` | Snapshot and request validation, freshness, and bridge limits |
+
+Bindings that match WezTerm's defaults are not repeated in `keys.lua`: `Control+Shift+R` reload, `Control+Shift+K` clear scrollback, `Control+/Shift+Insert` copy/paste, and `Command+C`.
 
 ## Companion contract
 
@@ -27,12 +31,15 @@ Files live under `~/.local/state/dotfiles/wezterm-floating-tabs/` on the host, i
 
 | File | Payload and behavior |
 | --- | --- |
-| `window-<key>.json` | `key`, `title`, epoch-second `updated`, and nonempty `tabs` with unique nonnegative integer `id` and `index`, boolean `active`, and exactly one active tab |
+| `window-<key>.json` | `key`, `title`, epoch-second `updated`, and nonempty `tabs` with unique nonnegative integer `id` and `index`, boolean `active`, and exactly one active tab; optional display hints: `label` and `branch` (at most 64 UTF-8 bytes each), `path` (at most 256), boolean `alert`, `progress` (0 to 100), and `progress_state` (`normal`, `error`, or `indeterminate`) |
 | `ready-<key>.json` | Matching `title` and fresh `updated`; only this acknowledgment hides native tabs |
-| `activate-<key>.json` | Matching `title`, fresh `updated`, and either `tab_id` or `action: "new_tab"`; consumed before acting |
+| `activate-<key>.json` | Matching `title`, fresh `updated`, and a `tab_id` (activate), `action: "new_tab"`, `"move_tab"` with a `tab_id` and target `index`, or `"close_tab"`, `"rename_tab"`, `"duplicate_tab"`, or `"detach_tab"` with a `tab_id`; consumed before acting |
 
 Freshness is an absolute age strictly below three seconds, including future timestamps.
 Snapshots are limited to 65,536 bytes.
+Every tab action activates the tab first. `close_tab` then runs the same confirmed close as `Control+Shift+W`, `move_tab` reorders it, `duplicate_tab` opens a sibling in the same directory, `detach_tab` moves it to a new window, and `rename_tab` prompts for a name (empty resets it).
+Labels name the tab's custom title first, then its program; branches are read from repository files with no child processes, and progress comes from programs that report it through the terminal (OSC 9;4).
+Labels name the foreground program (or the folder for a plain shell); alerts come from the terminal bell and the Zsh integration's `dotfiles_command_done` user variable.
 Unknown object fields are tolerated; malformed, ambiguous, foreign, or stale requests cause no action.
 Tab IDs must belong to the target window at execution time.
 Consumption prevents a second status tick from replaying new-tab actions.

@@ -52,7 +52,7 @@ The shared environment includes:
 - ripgrep, fzf, bat, btop, jq, tree, curl, wget, DNS tools, and direnv.
 - Node.js, uv, pre-commit, Make, ShellCheck, and shfmt.
 - kubectl and Terraform.
-- Hack Nerd Font and WezTerm.
+- JetBrains Mono Nerd Font and WezTerm.
 - Shared coding-agent instructions, skills, and configuration.
 - Pinned tmux plugin sources.
 
@@ -164,3 +164,8 @@ This repository manages intentional packages and configuration, not personal dat
 It does not copy SSH keys, cloud credentials, browser profiles, project files, Apple ID data, or other secrets.
 Pi authentication, trust decisions, package state, and session transcripts under `~/.pi/agent` remain untracked.
 Store personal data and secrets in a separate encrypted backup.
+
+## License
+
+These dotfiles are available under the [MIT License](LICENSE).
+The reference screenshots in `agents/skills/readme-creation/.lavish/wezterm-inspiration/` belong to their creators, listed in its `sources.json`, and are not covered by this license.

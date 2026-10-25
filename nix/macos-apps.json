@@ -17,7 +17,7 @@
   {
     "bundle": "WezTerm.app",
     "id": "com.github.wez.wezterm",
-    "cask": "wezterm"
+    "cask": "wezterm@nightly"
   },
   {
     "bundle": "Wallper.app",

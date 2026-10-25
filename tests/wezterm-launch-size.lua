@@ -62,6 +62,8 @@ local function verify_launch_geometry(
     font_with_fallback = function(fonts)
       return fonts
     end,
+    default_hyperlink_rules = function() return {} end,
+    json_parse = vim.json.decode,
     gui = {
       screens = function()
         return { active = screen, main = screen }
@@ -79,6 +81,7 @@ local function verify_launch_geometry(
       return false, '', ''
     end,
     target_triple = target_triple,
+    GLOBAL = {},
   }
 
   package.loaded.wezterm = nil

@@ -35,6 +35,9 @@ Use Home instead of relying on shell `Control+A` while inside Herdr.
 | `r` | Use `Control+Shift+R` | Reload configuration | Reload configuration |
 
 WezTerm also has prefix `P` for PowerShell, `f` for terminal search, `q` for Quick Select, `Space` for its command palette, and `Enter` for fullscreen.
+Prefix `[` and `]` jump to the previous and next shell prompt in direct WezTerm shells; tmux and Herdr have their own scrollback.
+Prefix `o` selects the last command's output in copy mode (press `y` to copy it), and Option or Alt triple-click copies the output under the pointer; both rely on the same prompt marks.
+Quick Select also offers `file:line` locations and `owner/repo#123` references; clicking a `file:line` opens it in Neovim in a new tab, and clicking a reference opens it on GitHub.
 Use prefix `m` to toggle between the large launch size and a smaller centered window; macOS also supports `Command+Shift+M`.
 The smaller size is 55% of the active screen's width and height, capped at 70% of the large size on very large displays.
 Leave fullscreen before using the size toggle; Linux window positioning depends on the window manager and is unavailable under Wayland.
@@ -53,10 +56,7 @@ On macOS and Windows, it remains the fallback in fullscreen and whenever the com
 See [macOS floating tabs](macos.md#floating-wezterm-tabs) for the one-time Accessibility setup and [Windows floating tabs](windows-wsl.md#floating-wezterm-tabs-and-clock) for Windows installation.
 Herdr prefix `v` toggles Reviewr, `d` detaches, and `?` shows its full shortcut list.
 Herdr also has a native Windows launcher; its Reviewr plugin is supported here only on macOS and Linux/WSL.
-Use `herdr-workspace ~/code/project` from a Herdr shell pane for an agent picker beside Neovim with a persistent right-hand file tree.
-Herdr's normal New Space action opens the same layout and picker.
-In this dedicated layout, `Space e` switches tree/editor focus without hiding the tree after file selection.
-See the [agent workspace guide](neovim.md#agent-workspace) for agent selection, file refresh, and Reviewr installation.
+See the [Reviewr guide](neovim.md#reviewr) for its navigator and installation.
 
 In Neovim Normal mode, `Alt+h/j/k/l` focuses an editor window first, then the nearest enclosing Herdr pane, or tmux when outside Herdr.
 Use left Option for these Alt shortcuts on macOS; right Option remains available for composed characters.

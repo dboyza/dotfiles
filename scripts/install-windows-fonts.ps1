@@ -81,4 +81,4 @@ $result = [IntPtr]::Zero
     [ref] $result
 ) | Out-Null
 
-Write-Host "Installed $($installedFonts.Count) Hack Nerd Font files for the current Windows user."
+Write-Host "Installed $($installedFonts.Count) JetBrains Mono Nerd Font files for the current Windows user."

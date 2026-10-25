@@ -7,5 +7,5 @@ Run the archived unit checks with `./tests/run.sh --archive` from the repository
 The optional TUI smoke checks in `tests/pi-*-smoke.mjs` require an explicit Pi CLI path and their documented platform dependencies.
 A passing unit check does not establish compatibility with the current Pi runtime.
 
-Preserve the Calm license and the generated computer-use dependency lock.
+Preserve the generated computer-use dependency lock.
 Before reactivating packages, review [the package notes](PACKAGE-REVIEW.md) and confirm their pins and runtime behavior.

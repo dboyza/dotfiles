@@ -48,7 +48,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
    The preflight verifies Command Line Tools and reports whether Nix or Homebrew will be installed.
    No package update or system activation starts until that preflight succeeds.
-   The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, Hack Nerd Font, WezTerm, and tracked configuration.
+   The script installs Nix, Homebrew when needed, nix-darwin, Home Manager, command-line tools, JetBrains Mono Nerd Font, WezTerm, and tracked configuration.
    It may request your macOS password.
    Desktop apps are installed only when absent; activation does not update or replace existing versions.
    The inventory includes OpenSuperWhisper, Stats, and Strafe.
@@ -77,7 +77,7 @@ Apple's Command Line Tools are required, but the full Xcode application is not.
 
 Homebrew installs the tools declared in `nix/homebrew.nix`, including Neovim, tmux, Git, Node.js, Python, and Terraform.
 Terraform uses HashiCorp's official tap.
-Homebrew also owns Zsh plugins and Hack Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
+Homebrew also owns Zsh plugins and JetBrains Mono Nerd Font; Nix retains the system configuration, activation dependencies, and tmux plugins.
 macOS uses its built-in Zsh as the login shell so first activation does not depend on a Brew executable that has not been installed yet.
 The `zsh` command in your interactive PATH comes from Homebrew.
 Codex CLI, Claude Code, Pi, opencode, and Herdr use managed launchers in `~/.local/bin`, which takes precedence over Homebrew in Zsh.
@@ -256,11 +256,14 @@ git pull --ff-only
 ./bootstrap.sh
 ```
 
-To update only WezTerm, run:
+macOS uses WezTerm's nightly build; the last stable release dates from February 2024.
+Activation skips an existing WezTerm, so update it explicitly:
 
 ```sh
-brew upgrade --cask wezterm
+brew upgrade --cask --greedy wezterm@nightly
 ```
+
+To move an existing stable installation to nightly, run `brew uninstall --cask wezterm` and then `brew install --cask wezterm@nightly`, and restart WezTerm.
 
 See [operations](operations.md) for non-mutating checks, testing, and recovery.
 
@@ -269,9 +272,19 @@ See [operations](operations.md) for non-mutating checks, testing, and recovery.
 The native `WezTerm Floating Tabs` companion places clickable tab numbers above each visible WezTerm window, straddling its lavender border, with the clock centered above the same window.
 The + button after the last tab creates a new tab using the same action as `Control+Shift+T`.
 The one-pixel border dims on inactive windows, while the active tab keeps its lavender fill beside subdued inactive badges and a smaller translucent 12-hour clock with AM/PM.
+The clock's outline uses the same lavender as the window border.
+Badges are frosted-glass pills with a soft shadow; the active fill fades between tabs, and opening or closing a tab slides its neighbors.
+Each badge names its tab's program, or its folder at a plain shell (for example `2 nvim` or `3 my-project`), and drops the names for numbers alone when the window is too narrow to keep the clock.
+Each named badge also shows the folder's git branch, and a progress ring appears on a tab whose program reports progress (a percent ring, a spinner when unknown, or a rose ring on error).
+Hovering a badge shows its full path.
+Drag a badge to reorder tabs, middle-click it to close, or right-click for Rename, Duplicate, Move to New Window, and Close.
+A rose dot marks a background tab where a bell rang or a command that ran for 10 seconds or more finished; viewing the tab clears it.
+Hover a named badge to reveal an `×` that closes the tab with the usual confirmation.
+Hovering the clock swaps the time for the date, and wide windows add the weekday; the clock's colon pulses once a second.
+Overlays fade back when their window is not focused.
 The badges follow window moves and resizes without taking keyboard focus.
 Focused-window overlays stay above terminal clicks; background overlays retain their window stacking order.
-Small click-through corner overlays complete the lavender outline where macOS clips WezTerm’s rectangular border.
+WezTerm's window corners are square on macOS, so the lavender outline runs edge to edge.
 Other applications do not get overlays.
 
 macOS activation builds the helper from `wezterm/floating-tabs/main.swift` using Apple's Command Line Tools and installs it into `~/Applications/WezTerm Floating Tabs.app`.
@@ -286,7 +299,8 @@ Allow **WezTerm Floating Tabs** in **System Settings > Privacy & Security > Acce
 The helper needs this permission to identify and follow WezTerm windows.
 It does not need Screen Recording permission and does not read terminal text.
 After installing, reload the WezTerm configuration or restart WezTerm; subsequent GUI sessions start the helper automatically.
-Rebuilding a locally signed app may require granting Accessibility access again.
+The installer signs the helper with a persistent self-signed certificate in its own `dotfiles-codesign` keychain, so rebuilds keep the Accessibility grant.
+If that signing fails, it falls back to an ad-hoc signature that needs a fresh grant after every rebuild.
 An enabled switch can still refer to an older build's code signature; toggling it may not replace that stale record.
 Quit the helper in Activity Monitor, reset only its permission, and relaunch it:
 
@@ -303,7 +317,8 @@ WezTerm launches the installed helper once when the first window in a new GUI pr
 Click a number to focus its window and switch tabs, or keep using the existing terminal shortcuts.
 Click requests are checked every 16 ms; the clock, heartbeat, and native-tab fallback retain their slower maintenance cadence.
 The clock hides when tabs need its space; crowded tab strips can scroll horizontally.
-The helper uses the native tab bar when another application is focused, a window enters fullscreen, or it sits too close to the menu bar for external badges.
+The badges stay attached when another application is focused, following their WezTerm window behind other windows.
+The helper uses the native tab bar when a window enters fullscreen or sits too close to the menu bar for external badges.
 If the helper quits or permission is revoked, the native tab bar returns within a few seconds.
 To stop the helper for the current WezTerm session, quit `wezterm-floating-tabs` in Activity Monitor.
 Windows has a [native companion](windows-wsl.md#floating-wezterm-tabs-and-clock), including when displaying WSL sessions.

@@ -1,9 +1,10 @@
 -- Exchange per-window companion state and render native tabs, borders, and the clock.
-return function(wezterm, config, platform, protocol)
+return function(wezterm, config, platform, protocol, palette, tab_info)
   local is_windows, is_macos = platform.is_windows, platform.is_macos
   local wsl_tab_action = platform.new_tab
-  -- Native companions exchange tab IDs only, never terminal text or commands.
+
   -- Section: Companion discovery and polling cadence
+  -- Native companions exchange tab IDs only, never terminal text or commands.
   local overlay_root = (is_macos or is_windows) and wezterm.home_dir
     and (wezterm.home_dir .. '/.local/state/dotfiles/wezterm-floating-tabs/') or nil
   local overlay_app = is_macos and wezterm.home_dir
@@ -81,6 +82,31 @@ return function(wezterm, config, platform, protocol)
     end
   end
 
+  -- Actions on a tab run against the active tab, which the request has just activated.
+  local function run_tab_action(window, item, request)
+    local act = wezterm.action
+    local pane = window:active_pane()
+    if request.action == 'close_tab' then
+      -- Closing goes through the same confirmation as the portable close shortcut.
+      window:perform_action(act.CloseCurrentTab({ confirm = true }), pane)
+    elseif request.action == 'move_tab' then
+      window:perform_action(act.MoveTab(request.index), pane)
+    elseif request.action == 'duplicate_tab' then
+      window:perform_action(act.SpawnTab('CurrentPaneDomain'), pane)
+    elseif request.action == 'detach_tab' then
+      -- No key assignment exists for this, so move the pane through the mux API.
+      pcall(function() item.tab:active_pane():move_to_new_window() end)
+    elseif request.action == 'rename_tab' then
+      -- An empty answer clears the name so the tab goes back to its program or folder.
+      window:perform_action(act.PromptInputLine({
+        description = 'Rename tab (leave empty to reset)',
+        action = wezterm.action_callback(function(prompted, _, line)
+          if line ~= nil then prompted:active_tab():set_title(line) end
+        end),
+      }), pane)
+    end
+  end
+
   local function consume_floating_tab_request(window)
     local key = overlay_key(window:mux_window():window_id())
     local title = overlay_title(window:mux_window():window_id())
@@ -95,17 +121,22 @@ return function(wezterm, config, platform, protocol)
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
       if tab.tab:tab_id() == request.tab_id then
         tab.tab:activate()
+        run_tab_action(window, tab, request)
         return true
       end
     end
     return false
   end
 
-  local function publish_window_floating_tabs(window)
+  -- Input ticks reuse stored hints so a click answers within a frame; maintenance ticks refresh them.
+  local function publish_window_floating_tabs(window, refresh)
     -- Snapshot after handling a click, not before activating its destination.
     local tabs = {}
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active })
+      local hints = refresh and tab_info.describe(tab) or tab_info.stored(tab)
+      table.insert(tabs, { id = tab.tab:tab_id(), index = tab.index, active = tab.is_active, label = hints.label,
+        alert = hints.alert, branch = hints.branch, path = hints.path,
+        progress = hints.progress, progress_state = hints.progress_state })
     end
     publish_floating_tabs(window:mux_window():window_id(), tabs)
   end
@@ -123,7 +154,7 @@ return function(wezterm, config, platform, protocol)
         wezterm.background_child_process({ '/usr/bin/open', '-g', overlay_app })
       end
     end
-    publish_window_floating_tabs(window)
+    publish_window_floating_tabs(window, true)
     local ready = overlay_fresh(overlay_read('ready-' .. key .. '.json'), title)
     local overrides = window:get_config_overrides() or {}
     local show_native = not ready
@@ -140,7 +171,10 @@ return function(wezterm, config, platform, protocol)
       if window then
         local snapshot = {}
         for _, item in ipairs(tabs) do
-          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active })
+          local hints = tab_info.cached(item.tab_id, item.active_pane, item.tab_title)
+          table.insert(snapshot, { id = item.tab_id, index = item.tab_index, active = item.is_active, label = hints.label,
+            alert = tab_info.alert(item.tab_id, item.is_active) or nil, branch = hints.branch, path = hints.path,
+            progress = hints.progress, progress_state = hints.progress_state })
         end
         publish_floating_tabs(window:window_id(), snapshot)
         return overlay_title(window:window_id())
@@ -149,9 +183,9 @@ return function(wezterm, config, platform, protocol)
     return ' '
   end)
 
-  -- Native numbered tabs keep the top-left corner compact without a plugin.
   -- Section: Native tab rendering and focus border
-  local bar_background = config.colors.tab_bar.background
+  -- Numbered capsule tabs keep the top-left corner compact without a plugin.
+  local bar_background = palette.deep
   local function capsule(text, foreground, background, active)
     return {
       { Attribute = { Intensity = active and 'Bold' or 'Normal' } },
@@ -168,19 +202,32 @@ return function(wezterm, config, platform, protocol)
     }
   end
 
-  wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
-    local label = tostring(tab.tab_index + 1)
-    if max_width < #label + 2 then
-      return wezterm.truncate_right(label, math.max(0, max_width))
+  -- The number always shows; the label and alert dot are added only when the capsule has room.
+  local function native_tab_text(number, label, alerted, max_width)
+    local room = max_width - 2 - #number
+    local dot = alerted and room >= 2 and ' •' or ''
+    room = room - wezterm.column_width(dot)
+    if label and room >= 4 then
+      return number .. ' ' .. wezterm.truncate_right(label, room - 1) .. dot
     end
-    return capsule(label, tab.is_active and '#191724' or (hover and '#e0def4' or '#908caa'),
-      tab.is_active and '#c4a7e7' or (hover and '#393552' or '#232136'), tab.is_active)
+    return number .. dot
+  end
+
+  wezterm.on('format-tab-title', function(tab, _, _, _, hover, max_width)
+    local number = tostring(tab.tab_index + 1)
+    if max_width < #number + 2 then
+      return wezterm.truncate_right(number, math.max(0, max_width))
+    end
+    local text = native_tab_text(number, tab_info.cached(tab.tab_id, tab.active_pane, tab.tab_title).label,
+      tab_info.alert(tab.tab_id, tab.is_active), max_width)
+    return capsule(text, tab.is_active and palette.deep or (hover and palette.text or palette.subtle),
+      tab.is_active and palette.iris or (hover and palette.overlay or palette.base), tab.is_active)
   end)
 
   local function update_window_border(window)
     -- The Windows companion styles the actual rounded DWM frame.
     if is_windows then return end
-    local color = window:is_focused() and '#908caa' or '#393552'
+    local color = window:is_focused() and palette.subtle or palette.overlay
     local overrides = window:get_config_overrides() or {}
     local frame = overrides.window_frame or {}
     local sides = { 'border_left_color', 'border_right_color', 'border_top_color', 'border_bottom_color' }
@@ -224,7 +271,9 @@ return function(wezterm, config, platform, protocol)
     local cols = cell_width > 0 and math.floor(window:get_dimensions().pixel_width / cell_width) or size.cols
     local tabs_width = 0
     for _, tab in ipairs(window:mux_window():tabs_with_info()) do
-      tabs_width = tabs_width + #tostring(tab.index + 1) + 2
+      local hints = tab_info.describe(tab)
+      local text = native_tab_text(tostring(tab.index + 1), hints.label, hints.alert, config.tab_max_width)
+      tabs_width = tabs_width + wezterm.column_width(text) + 2
     end
     local clock = ' ' .. wezterm.strftime('%I:%M %p'):gsub('^0', '') .. ' '
     local clock_width = wezterm.column_width(clock) + 2
@@ -234,7 +283,7 @@ return function(wezterm, config, platform, protocol)
       window:set_right_status('')
       return
     end
-    local items = capsule(clock, '#908caa', '#232136')
+    local items = capsule(clock, palette.subtle, palette.base)
     table.insert(items, { Text = string.rep(' ', cols - clock_start - clock_width) })
     window:set_right_status(wezterm.format(items))
   end)

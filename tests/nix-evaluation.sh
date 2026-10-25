@@ -23,7 +23,6 @@ source "$repo_dir/scripts/lib/bootstrap-common.sh"
 verify_tool_targets() {
   local tool
   managed_targets | grep -Fx "$HOME/.local/bin/dotfiles-tool.mjs" >/dev/null
-  managed_targets | grep -Fx "$HOME/.local/bin/herdr-workspace" >/dev/null
   while IFS= read -r tool; do
     managed_targets | grep -Fx "$HOME/.local/bin/$tool" >/dev/null
   done < <(python3 -c 'import json,sys; print("\n".join(json.load(open(sys.argv[1]))))' "$repo_dir/scripts/managed-tools.json")
@@ -56,7 +55,7 @@ import json, sys
 config = json.load(sys.stdin)
 casks = {x["name"] for x in config["casks"]}
 brews = {x["name"] for x in config["brews"]}
-assert "font-hack-nerd-font" in casks
+assert "font-jetbrains-mono-nerd-font" in casks
 assert {"mas", "neovim", "node"} <= brews
 assert not {"codex", "claude-code", "pi-coding-agent", "herdr", "opencode"} & (brews | casks)
 assert not config["onActivation"]["upgrade"]

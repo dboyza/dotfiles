@@ -140,7 +140,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
 
-- Install Hack Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
+- Install JetBrains Mono Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
 
 - On macOS, Homebrew owns the remaining user command-line packages and Node.js; keep Codex, Claude Code, Pi, opencode, and Herdr out of its package lists.
   Keep Homebrew activation install-only with no cleanup, resolve paths from `homebrew.prefix`, and use Brew's `mas` for App Store installation.
@@ -163,6 +163,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 ## WezTerm and floating tabs
 
 - Preserve Rosé Pine Moon's palette with a deeper `#191724` default background and brighter `#eeecff` default foreground.
+  Keep `theme/palette.json` as the only place colors are defined: WezTerm and Neovim read it at startup, and `scripts/sync-palette.py` regenerates the marked blocks in Starship, tmux, and both floating-tab helpers (`--check` runs in the compatibility tests).
 
 - Keep tmux windows in a single bottom status row and WezTerm's native tab bar at the top, including with one tab.
   Native tabs are the default and fallback; hide them only while a fresh matching companion acknowledgment permits it.
@@ -172,6 +173,25 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep WezTerm platform detection based on `wezterm.target_triple`, and avoid hard-coded usernames, home directories, or WSL shell paths.
 
+- WezTerm re-evaluates the whole configuration for every `set_config_overrides` call, including the focus border and tab bar fallback, so keep evaluation cheap.
+  Build the configuration as a plain table (each `config_builder` assignment costs about 2 ms of validation; the tests still validate strictly) and remember child-process probes in `wezterm.GLOBAL`.
+
+- Install WezTerm nightly on macOS through the `wezterm@nightly` cask; Windows stays on stable `wez.wezterm` because Winget has no nightly package, and Linux uses the nixpkgs build.
+  Keep the configuration valid on stable 20240203 so the Windows install keeps working.
+
+- Use the WebGpu front end on macOS and Windows; keep Linux on the default OpenGL front end because GPU driver support varies.
+  Keep `max_fps` above the display rate (240): WezTerm's own frame timer at exactly 120 misses vsync and presents at 60 on ProMotion displays.
+  Renderer and binary changes apply only after fully quitting and relaunching WezTerm; a live reload keeps the old front end.
+
+- Use JetBrains Mono Nerd Font at 1.1 line height with ligatures disabled, resolving bold, italic, and dim styles through the same fallback stack with each platform's color emoji font.
+
+- Keep Kitty graphics enabled in WezTerm (with tmux `allow-passthrough`) and pane dividers styled from the shared palette.
+  Leave the WezTerm scrollbar off: full-screen applications such as Claude Code have no scrollback, so it shows as a full, inert bar.
+
+- Emit WezTerm prompt (OSC 133) and directory (OSC 7) marks from Zsh only in direct WezTerm panes, not inside tmux or Herdr; prefix `[` / `]` jumps between prompts.
+  Keep prefix `o` selecting the last command's output in copy mode and Option or Alt triple-click copying the output under the pointer, both from the same prompt marks.
+  Keep clicked `file:line` links opening Neovim in a new tab of the same domain and directory, typed into the new shell so it keeps the login PATH.
+
 - Launch WezTerm centered on macOS at 94% of the active screen width and 88% of its height, without maximizing.
   Preserve the bounded proportional launch geometry on Windows and Linux/WSL.
   Keep prefix `m` and macOS `Command+Shift+M` toggling between that large geometry and a smaller centered window, leaving native fullscreen untouched.
@@ -180,7 +200,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep the WezTerm window background opacity at 0.7 on macOS and native Windows for transparency while retaining readable text.
 
-- Keep the WezTerm steady bar cursor at 150% of the font underline thickness across platforms.
+- Keep the WezTerm cursor a white steady block (the terminal default rectangle) across platforms.
 
 - Keep WezTerm content padding at 36 pixels on the sides, 32 on top, and 28 on the bottom across platforms.
 
@@ -196,8 +216,13 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - On macOS, use the repository's native `WezTerm Floating Tabs` companion to place clickable numbered badges and a clock across each visible window's upper edge.
   Keep its Accessibility grant interactive; never request Screen Recording or read terminal contents.
+  Sign the helper with the persistent `dotfiles local code signing` certificate in the dedicated `dotfiles-codesign` keychain so rebuilds keep the grant, falling back to ad-hoc signing only if that fails.
   An enabled Accessibility entry can retain an old ad-hoc code signature after rebuilding; recover with a helper-only `tccutil reset Accessibility com.dboyza.wezterm-floating-tabs`, then a fresh manual grant.
-  Exchange only window identities, tab IDs, freshness timestamps, and the explicit `new_tab` action through the private state directory.
+  Exchange only window identities, tab IDs, freshness timestamps, optional program or folder labels and alert flags, and the explicit `new_tab` and `close_tab` actions through the private state directory.
+  Make every tab action (`close_tab`, `move_tab`, `rename_tab`, `duplicate_tab`, `detach_tab`) activate the tab first, and make `close_tab` run the confirmed close action, never close silently.
+  Keep tab labels, git branches, paths, and progress described once in `wezterm/config/tab_info.lua` through a shared cache, reading branches from repository files rather than child processes.
+  Offer on macOS badges drag-to-reorder, middle-click close, a right-click menu, a path tooltip, and a progress ring; Windows gets branches, progress rings, and middle-click close.
+  Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, hover close buttons, and a fade when the window is unfocused; Windows keeps the same behavior without blur, shadows, or animation.
   Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
   Consume click requests before acting so new-tab requests cannot replay.
   Service helper input every 16 ms, keeping heartbeat, fallback, and clock work on the slower maintenance cadence.
@@ -205,14 +230,18 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Validate latency and reloads with `tests/wezterm-floating-tabs.sh --e2e` in disposable macOS GUI windows, and require an explicit Lua test verdict because WezTerm can exit successfully after falling back from a configuration error.
   Publish tab changes from the window-title event and watch the state directory for atomic replacements so badge highlighting does not wait for status polling.
   Hide native tabs only after a fresh acknowledgment for the same window; restore them if the helper fails or there is no room above the window.
-  On macOS, also restore native tabs when another application gains focus.
+  Keep macOS overlays and acknowledgments active when another application gains focus, following their window's stacking order instead of switching to native tabs.
+  Keep each overlay while its CoreGraphics window exists and its snapshot is fresh: Accessibility times out during focus changes and lists no windows on other Spaces.
+  Park off-screen or system-displaced windows (other Spaces, hidden, minimized, Show Desktop) with panels hidden but acknowledgments kept; only a lasting AX failure removes a visible window's overlay.
+  Keep panels bound to their window's Space rather than joining all Spaces, so desktop switches slide them with the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
   Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
-  Complete macOS border corners with small click-through arcs that match focus and screen pixel density; native rectangular borders are clipped at the window radius.
+  Outline the companion clocks in the window border's `subtle` lavender.
+  Square the macOS window corners with WezTerm nightly's `MACOS_FORCE_SQUARE_CORNERS` so the one-pixel border runs edge to edge; the helper draws no corner arcs, which would otherwise track the system corner radius.
 
 - On Windows, build the native floating-tab companion from `wezterm/floating-tabs/windows.cs` with the inbox .NET Framework compiler through `scripts/install-wezterm-floating-tabs.ps1`.
   Install it on the Windows host, including for WSL sessions; keep its bridge under the Windows user profile with a user/SYSTEM-only ACL.
@@ -254,15 +283,13 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Inspect complete tmux key tables and filter by table and key when checking bindings; the Brew tmux 3.7 positional key filter can return empty output even for existing bindings.
 
 - Keep Reviewr preferences in `herdr/reviewr.toml` and use Herdr `Control+A`, then `v` to toggle its review pane.
-  Install missing Reviewr through Herdr during bootstrap on macOS or Linux/WSL, using the reviewed commit in `scripts/herdr-workspace.mjs`; preserve existing installations.
+  Install missing Reviewr through Herdr during bootstrap on macOS or Linux/WSL, using the reviewed commit in `scripts/install-herdr-plugins.mjs`; preserve existing installations.
   Keep Reviewr opt-in rather than automatically opening it for worktrees.
   Verify upstream support and native behavior before extending this repository's plugin deployment to Windows.
 
-- Keep `herdr-workspace` as the project layout launcher for macOS and Linux/WSL, with an interactive agent picker and an explicit agent override.
-  Use the local `herdr/workspace` plugin as the single layout owner for `workspace.created` events, including spaces created through Herdr's UI.
-  Target only the event's new workspace, skip occupied or already split panes, and leave existing or restored workspaces intact.
-  Keep the agent picker beside a larger Neovim pane; do not reuse a previous space's agent choice implicitly.
-  Use a 3:4 agent/editor split, an 18-column Herdr sidebar, and a 20-column workspace Neo-tree.
+- Leave new Herdr spaces at Herdr's default layout; do not hook `workspace.created` to open Neovim, a file tree, or an agent picker.
+  Bootstrap unlinks the retired `dotfiles.workspace` plugin from earlier checkouts.
+  Keep the Herdr sidebar fixed at 18 columns.
 
 ## Neovim
 
@@ -278,10 +305,6 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Close Neo-tree after opening a file from it; expanding a directory should leave the explorer open.
 
 - Open Neo-tree only on request through `Space e` or `:Neotree`, not automatically at startup, in new tabs, or when opening directories.
-
-- The dedicated `herdr-workspace` profile is the explicit exception: start with a persistent right-hand Neo-tree and retain it after opening files.
-  Scope this behavior through Neovim's `g:dotfiles_workspace`, keeping normal sessions unchanged.
-  Refresh external file changes only in unmodified buffers outside editing modes; never discard unsaved edits.
 
 - Let Neo-tree close when the last editor window in its tab closes so normal quit commands do not require a second quit for the sidebar.
 
@@ -315,8 +338,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Earlier factory-reset descriptions are historical and do not override application-written preferences or later user choices.
   Keep `pi/archive/` customizations out of managed deployment links unless explicitly requested, and preserve credentials, sessions, and shared instructions during resets.
 
-- Preserve the archived Pi Calm extension's bundled license and never manage or track its runtime preference file.
-  Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
+- Pi updates independently, so treat extension compatibility as a runtime check rather than pinning the whole application.
 
 - When adding or updating third-party Pi packages, pin them to immutable npm versions or Git commits in `pi/settings.json`.
   Existing package entries are not evidence that their versions or compatibility have been reviewed.
