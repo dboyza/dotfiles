@@ -29,8 +29,9 @@ install_windows_fonts() {
     --print-out-paths)
   font_source=$(wslpath -w "$font_store/share/fonts")
   script_source=$(wslpath -w "$repo_dir/scripts/install-windows-fonts.ps1")
+  # WezTerm uses only the standard family; skipping Mono, Propo, and NL avoids 80 extra files.
   powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass \
-    -File "$script_source" -Source "$font_source"
+    -File "$script_source" -Source "$font_source" -Filter 'JetBrainsMonoNerdFont-*.ttf'
 }
 
 install_windows_wezterm() {

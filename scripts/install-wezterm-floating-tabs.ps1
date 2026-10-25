@@ -45,6 +45,16 @@ try {
     $sourceHash = [BitConverter]::ToString($hasher.ComputeHash(
         [System.Text.Encoding]::UTF8.GetBytes(($hashes -join "`n")))).Replace("-", "").ToLowerInvariant()
 } finally { $hasher.Dispose() }
+$target = Join-Path $installRoot "wezterm-floating-tabs.exe"
+$stamp = Join-Path $installRoot "source.sha256"
+$current = (Test-Path -LiteralPath $target) -and (Test-Path -LiteralPath $stamp) -and
+    ([System.IO.File]::ReadAllText($stamp).Trim() -eq $sourceHash)
+# An unchanged installed build skips compilation; the helper's mutex makes relaunching a no-op.
+if ($current -and -not $Check) {
+    Start-Process -FilePath $target
+    Write-Host "Windows floating tabs at $target are current."
+    return
+}
 $build = Join-Path ([System.IO.Path]::GetTempPath()) "wezterm-floating-tabs-$([Guid]::NewGuid().ToString('N'))"
 [void] [System.IO.Directory]::CreateDirectory($build)
 try {
@@ -68,25 +78,19 @@ try {
     [void] [System.IO.Directory]::CreateDirectory($installRoot)
     [void] [System.IO.Directory]::CreateDirectory($stateRoot)
     Protect-FloatingTabsState -Directory $stateRoot
-    $target = Join-Path $installRoot "wezterm-floating-tabs.exe"
-    $stamp = Join-Path $installRoot "source.sha256"
-    $current = (Test-Path -LiteralPath $target) -and (Test-Path -LiteralPath $stamp) -and
-        ([System.IO.File]::ReadAllText($stamp).Trim() -eq $sourceHash)
-    if (-not $current) {
-        # Stop only the installed helper, retaining unrelated same-name processes.
-        Get-Process -Name "wezterm-floating-tabs" -ErrorAction SilentlyContinue | ForEach-Object {
-            if ($_.Path -eq $target) { Stop-Process -Id $_.Id -Force; $_.WaitForExit() }
-        }
-        # Stage beside the destination so replacement also works across volumes.
-        $staged = Join-Path $installRoot "wezterm-floating-tabs.new.exe"
-        Copy-Item -LiteralPath $executable -Destination $staged -Force
-        if (Test-Path -LiteralPath $target) {
-            $backup = "$target.previous"
-            if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Force }
-            [System.IO.File]::Replace($staged, $target, $backup)
-        } else { [System.IO.File]::Move($staged, $target) }
-        [System.IO.File]::WriteAllText($stamp, $sourceHash, [System.Text.UTF8Encoding]::new($false))
+    # Stop only the installed helper, retaining unrelated same-name processes.
+    Get-Process -Name "wezterm-floating-tabs" -ErrorAction SilentlyContinue | ForEach-Object {
+        if ($_.Path -eq $target) { Stop-Process -Id $_.Id -Force; $_.WaitForExit() }
     }
+    # Stage beside the destination so replacement also works across volumes.
+    $staged = Join-Path $installRoot "wezterm-floating-tabs.new.exe"
+    Copy-Item -LiteralPath $executable -Destination $staged -Force
+    if (Test-Path -LiteralPath $target) {
+        $backup = "$target.previous"
+        if (Test-Path -LiteralPath $backup) { Remove-Item -LiteralPath $backup -Force }
+        [System.IO.File]::Replace($staged, $target, $backup)
+    } else { [System.IO.File]::Move($staged, $target) }
+    [System.IO.File]::WriteAllText($stamp, $sourceHash, [System.Text.UTF8Encoding]::new($false))
     Start-Process -FilePath $target
     Write-Host "Installed Windows floating tabs at $target. Reload WezTerm with Ctrl+Shift+R."
 } finally {

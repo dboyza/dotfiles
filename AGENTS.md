@@ -109,6 +109,10 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 
 - Keep WSL host integration in explicit helpers rather than embedding PowerShell or Windows paths in portable Nix modules.
 
+- From WSL, install only the standard `JetBrainsMonoNerdFont-*` family for the Windows user, and skip font loading and the `WM_FONTCHANGE` broadcast when every registration is current.
+  Never run `New-Item -Force` on an existing registry key: it deletes all of the key's values, including unrelated per-user font registrations.
+  Skip the Windows floating-tabs compile when the installed helper's source stamp matches; `-Check` always builds and tests.
+
 - Keep managed tool names and GitHub release owners in `scripts/managed-tools.json`, consumed by JavaScript, Nix, and PowerShell.
   Preserve thin launchers and verify deployment against this inventory.
 

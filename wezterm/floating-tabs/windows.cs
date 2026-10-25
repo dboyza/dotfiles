@@ -174,27 +174,27 @@ internal static class Bridge {
     }
 }
 // Section: DPI-aware geometry
-internal sealed class Layout {
+internal sealed class TabLayout {
     internal Rectangle Bounds;
     internal readonly List<Rectangle> Tabs = new List<Rectangle>();
     internal Rectangle Clock;
     internal Rectangle NewTab;
     // Compact layouts drop labels so every tab and the clock still fit.
     internal bool Compact;
-    internal static bool Named(Layout layout, Tab tab) {
+    internal static bool Named(TabLayout layout, Tab tab) {
         return !layout.Compact && !string.IsNullOrEmpty(tab.label);
     }
     // Prefer named tabs; fall back to numbers when labels would crowd out the clock or overflow.
-    internal static Layout Create(Rectangle frame, Rectangle work, Tab[] tabs, float scale) {
+    internal static TabLayout Create(Rectangle frame, Rectangle work, Tab[] tabs, float scale) {
         var named = Build(frame, work, tabs, scale, false);
         if (named != null && !named.Clock.IsEmpty) return named;
         return Build(frame, work, tabs, scale, true) ?? named;
     }
-    private static Layout Build(Rectangle frame, Rectangle work, Tab[] tabs, float scale, bool compact) {
+    private static TabLayout Build(Rectangle frame, Rectangle work, Tab[] tabs, float scale, bool compact) {
         int height = (int)Math.Round(24 * scale), gap = (int)Math.Round(4 * scale);
         int inset = (int)Math.Round(6 * scale), y = frame.Top - height / 2;
         if (y < work.Top || frame.Left < work.Left || frame.Right > work.Right || frame.Width < inset * 2) return null;
-        var result = new Layout { Bounds = new Rectangle(frame.Left, y, frame.Width, height), Compact = compact };
+        var result = new TabLayout { Bounds = new Rectangle(frame.Left, y, frame.Width, height), Compact = compact };
         int x = inset;
         foreach (var tab in tabs) {
             int digits = (tab.index + 1).ToString().Length;
@@ -236,7 +236,7 @@ internal sealed class Overlay : Form {
     private int hover = -1;
     private bool dimmed;
     private readonly IntPtr parent;
-    private Layout layout;
+    private TabLayout layout;
     private string signature;
     private string clock;
     private float scale;
@@ -265,7 +265,7 @@ internal sealed class Overlay : Form {
         path.CloseFigure();
         return path;
     }
-    internal void Refresh(Snapshot snapshot, Layout placement, float dpi, bool focused) {
+    internal void Refresh(Snapshot snapshot, TabLayout placement, float dpi, bool focused) {
         Snapshot = snapshot;
         // Overlays of unfocused windows fade back so the focused terminal stays the visual anchor.
         if (dimmed == focused) { dimmed = !focused; Invalidate(); }
@@ -315,7 +315,7 @@ internal sealed class Overlay : Form {
         using (var labelFont = new Font(FontName, 12 * scale, FontStyle.Regular, GraphicsUnit.Pixel)) {
             for (int i = 0; i < Snapshot.tabs.Length; i++) {
                 var tab = Snapshot.tabs[i];
-                DrawTab(e.Graphics, layout.Tabs[i], tab, tab.active ? activeFont : font, labelFont, i == hover, Layout.Named(layout, tab));
+                DrawTab(e.Graphics, layout.Tabs[i], tab, tab.active ? activeFont : font, labelFont, i == hover, TabLayout.Named(layout, tab));
             }
             DrawBadge(e.Graphics, layout.NewTab, "+", false, font);
             if (!layout.Clock.IsEmpty) DrawBadge(e.Graphics, layout.Clock, clock, false, labelFont, true);
@@ -416,7 +416,7 @@ internal sealed class Overlay : Form {
             return;
         }
         // The close button appears on the hovered named tab, in the slot at its right edge.
-        if (hit >= 0 && hit == hover && Layout.Named(layout, Snapshot.tabs[hit])
+        if (hit >= 0 && hit == hover && TabLayout.Named(layout, Snapshot.tabs[hit])
             && e.X >= layout.Tabs[hit].Right - (int)Math.Round(26 * scale)) {
             try {
                 Bridge.Write(Bridge.Root, "activate-" + Snapshot.key + ".json", new { title = Snapshot.title, updated = Bridge.Now, action = "close_tab", tab_id = Snapshot.tabs[hit].id });
@@ -509,7 +509,7 @@ internal sealed class Companion : ApplicationContext {
                 if (Native.Frame(window, 9, out rect, Marshal.SizeOf(typeof(Native.Rect))) != 0 && !Native.GetWindowRect(window, out rect)) return true;
                 var frame = Rectangle.FromLTRB(rect.left, rect.top, rect.right, rect.bottom);
                 float scale = Math.Max(96, Native.GetDpiForWindow(window)) / 96f;
-                var layout = Layout.Create(frame, Screen.FromHandle(window).WorkingArea, snapshot.tabs, scale);
+                var layout = TabLayout.Create(frame, Screen.FromHandle(window).WorkingArea, snapshot.tabs, scale);
                 if (layout == null) return true;
                 Overlay overlay;
                 if (!overlays.TryGetValue(window, out overlay)) { overlay = new Overlay(window); overlays.Add(window, overlay); }
@@ -553,7 +553,7 @@ internal static class Program {
         return 0;
     }
     private static void Require(bool value, string message) { if (!value) throw new Exception(message); }
-    private static Layout PlainLayout(Rectangle frame, Rectangle work, Tab[] tabs) { return Layout.Create(frame, work, tabs, 1f); }
+    private static TabLayout PlainLayout(Rectangle frame, Rectangle work, Tab[] tabs) { return TabLayout.Create(frame, work, tabs, 1f); }
     private static void TestContract(string path) {
         var fixtures = Bridge.Json.Deserialize<ContractFixtures>(File.ReadAllText(path));
         foreach (var fixture in fixtures.snapshots) {
@@ -590,19 +590,19 @@ internal static class Program {
         var frame = new Rectangle(50, 80, 1400, 850);
         var work = new Rectangle(0, 0, 1920, 1040);
         foreach (float scale in new[] { 1f, 1.5f, 2f }) {
-            var layout = Layout.Create(frame, work, tabs, scale);
+            var layout = TabLayout.Create(frame, work, tabs, scale);
             Require(layout != null && layout.Bounds.Top < frame.Top && layout.Bounds.Bottom > frame.Top, "Badges must straddle the top border");
             Require(layout.NewTab.Left > layout.Tabs.Last().Right && layout.NewTab.Right < layout.Clock.Left, "New-tab button must follow the last tab without overlapping the clock");
             Require(Math.Abs(layout.Clock.Left + layout.Clock.Width / 2 - frame.Width / 2) <= 1, "Clock must be centered");
         }
         var labeled = new[] { new Tab { id = 1, index = 0, active = true, label = "nvim" }, new Tab { id = 2, index = 1, label = "repo", alert = true } };
-        var roomy = Layout.Create(frame, work, labeled, 1f);
+        var roomy = TabLayout.Create(frame, work, labeled, 1f);
         Require(roomy != null && !roomy.Compact && roomy.Tabs[0].Width > PlainLayout(frame, work, tabs).Tabs[0].Width, "Labels must widen tabs when there is room");
-        var tight = Layout.Create(new Rectangle(50, 80, 200, 600), work, labeled, 1f);
+        var tight = TabLayout.Create(new Rectangle(50, 80, 200, 600), work, labeled, 1f);
         Require(tight != null && tight.Compact, "Crowded windows must drop labels before giving up their badges");
-        Require(Layout.Create(work, work, tabs, 1) == null, "Fullscreen must retain native tabs");
-        Require(Layout.Create(new Rectangle(50, 80, 50, 600), work, tabs, 1) == null, "Overflow must retain all native tabs");
-        var secondary = Layout.Create(new Rectangle(-1850, 80, 1400, 850), new Rectangle(-1920, 0, 1920, 1040), tabs, 1.5f);
+        Require(TabLayout.Create(work, work, tabs, 1) == null, "Fullscreen must retain native tabs");
+        Require(TabLayout.Create(new Rectangle(50, 80, 50, 600), work, tabs, 1) == null, "Overflow must retain all native tabs");
+        var secondary = TabLayout.Create(new Rectangle(-1850, 80, 1400, 850), new Rectangle(-1920, 0, 1920, 1040), tabs, 1.5f);
         Require(secondary != null && secondary.Bounds.Left == -1850, "Negative monitor coordinates must work");
         var snapshot = new Snapshot { key = "abc-42", title = "WezTerm [abc:42]", updated = Bridge.Now, tabs = tabs };
         Require(Bridge.Valid(snapshot, "window-abc-42.json", Bridge.Now), "Valid snapshot rejected");

@@ -60,6 +60,7 @@ Windows PowerShell and the Ubuntu terminal are different environments, so each s
    The preflight verifies Windows interoperability before package updates begin.
    The script installs Nix and the configured Linux tools inside Ubuntu.
    It uses Winget to install or upgrade Windows WezTerm, installs JetBrains Mono Nerd Font for the Windows user, and installs a WezTerm loader in the Windows profile that reads the live checkout.
+   Repeat runs leave already-registered fonts untouched; when fonts are newly installed, fully quit and reopen any running WezTerm because it reads fonts only at startup.
 
 4. Close the original Ubuntu window after the script prints `Bootstrap complete`.
 
