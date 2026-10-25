@@ -600,11 +600,14 @@ final class TabStrip: NSView {
             guard let current = drag else { return }
             let limit = (targets[-1]?.minX ?? bounds.width) - badge.frame.width - 4
             badge.frame.origin.x = min(max(TabStrip.margin, origin), max(TabStrip.margin, limit))
+            // Compare the pill's leading edge, not its center, so a wide pill can still pass a narrow end tab.
+            let home = slots(shown)[id]?.minX ?? badge.frame.minX
+            let edge = badge.frame.minX < home ? badge.frame.minX : badge.frame.minX > home ? badge.frame.maxX : badge.frame.midX
             let others = shown.filter { $0.id != id }
             var cursor = TabStrip.margin
             var drop = 0
             for width in TabStrip.widths(others, compact: compact) {
-                if badge.frame.midX > cursor + width / 2 { drop += 1 }
+                if edge > cursor + width / 2 { drop += 1 }
                 cursor += width + 4
             }
             if drop != current.drop {
@@ -1093,6 +1096,14 @@ if CommandLine.arguments.contains("--render-strip") {
     precondition(strip.badge(for: 12)!.frame.minX == 20, "A dragged pill follows the pointer")
     strip.drag(12, .ended, 0)
     precondition(strip.slotTarget(12) != nil && strip.slotTarget(12)!.minX != 20, "A short drag must snap the pill back to its slot")
+    // A wide second tab dragged past the left edge must still move ahead of a narrow first tab.
+    let mixed = [Tab(id: 20, index: 0, active: true), Tab(id: 21, index: 1, active: false, label: "a-much-longer-label")]
+    strip.update(tabs: mixed, compact: false, handlers: handlers)
+    moves.removeAll()
+    strip.drag(21, .began, 0)
+    strip.drag(21, .moved, -40)
+    strip.drag(21, .ended, 0)
+    precondition(moves.count == 1 && moves[0] == (21, 0), "A wide tab must be able to move in front of a narrow one")
     precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
     let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
                               tabWidth: 92, clockWidth: 116)!
