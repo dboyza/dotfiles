@@ -183,7 +183,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Install WezTerm nightly on macOS through the `wezterm@nightly` cask; Windows stays on stable `wez.wezterm` because Winget has no nightly package, and Linux uses the nixpkgs build.
   Keep the configuration valid on stable 20240203 so the Windows install keeps working.
 
-- Use the WebGpu front end on macOS and Windows; keep Linux on the default OpenGL front end because GPU driver support varies.
+- Use the WebGpu front end on macOS only; keep Windows and Linux on the default OpenGL front end.
+  Windows stable 20240203 WebGpu draws a gray surface covering only part of the transparent window, and Linux GPU driver support varies.
   Keep `max_fps` above the display rate (240): WezTerm's own frame timer at exactly 120 misses vsync and presents at 60 on ProMotion displays.
   Renderer and binary changes apply only after fully quitting and relaunching WezTerm; a live reload keeps the old front end.
 
