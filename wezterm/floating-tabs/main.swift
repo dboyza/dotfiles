@@ -453,7 +453,8 @@ final class Badge: NSView {
     }
     override func mouseUp(with event: NSEvent) {
         defer { pressed = false; dragging = false }
-        if dragging { onDrag?(.ended, 0) } else if pressed { onClick?() }
+        // Like a button, releasing outside the pill cancels the click.
+        if dragging { onDrag?(.ended, 0) } else if pressed && bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
     }
     // Middle-click closes a tab with the usual confirmation.
     override func otherMouseUp(with event: NSEvent) {
@@ -496,7 +497,7 @@ final class TabStrip: NSView {
     private var compact = false
     private var handlers: Handlers?
     // While a drag runs the strip lays itself out; afterward the dropped order holds until the snapshot catches up.
-    private var drag: (id: Int, from: Int, drop: Int)?
+    private var drag: (id: Int, drop: Int)?
     private var pendingOrder: [Int]?
     private var pendingUntil = Date.distantPast
 
@@ -524,7 +525,10 @@ final class TabStrip: NSView {
     func update(tabs: [Tab], compact: Bool, handlers: Handlers) {
         self.compact = compact
         self.handlers = handlers
+        // Display follows tab indices even if a snapshot lists them out of order.
+        let tabs = tabs.sorted { $0.index < $1.index }
         var ordered = tabs
+        if let current = drag, !tabs.contains(where: { $0.id == current.id }) { drag = nil }
         if let pending = pendingOrder {
             let ids = tabs.map { $0.id }
             if ids == pending || Date() >= pendingUntil || Set(ids) != Set(pending) {
@@ -591,19 +595,25 @@ final class TabStrip: NSView {
     // The dragged pill follows the pointer while its neighbors slide apart to show where it will land.
     func drag(_ id: Int, _ phase: DragPhase, _ origin: CGFloat) {
         guard let badge = badges[id], let from = shown.firstIndex(where: { $0.id == id }) else { return }
+        // Snapshots can open or close tabs mid-drag, so the order is rebuilt from the current tabs every time.
+        let others = shown.filter { $0.id != id }
+        let dropping = { (drop: Int) -> [Tab] in
+            var order = others
+            order.insert(self.shown[from], at: min(drop, others.count))
+            return order
+        }
         switch phase {
         case .began:
-            drag = (id, from, from)
+            drag = (id, from)
             addSubview(badge, positioned: .above, relativeTo: nil)
             badge.alphaValue = 0.92
         case .moved:
-            guard let current = drag else { return }
+            guard let current = drag, current.id == id else { return }
             let limit = (targets[-1]?.minX ?? bounds.width) - badge.frame.width - 4
             badge.frame.origin.x = min(max(TabStrip.margin, origin), max(TabStrip.margin, limit))
             // Compare the pill's leading edge, not its center, so a wide pill can still pass a narrow end tab.
             let home = slots(shown)[id]?.minX ?? badge.frame.minX
             let edge = badge.frame.minX < home ? badge.frame.minX : badge.frame.minX > home ? badge.frame.maxX : badge.frame.midX
-            let others = shown.filter { $0.id != id }
             var cursor = TabStrip.margin
             var drop = 0
             for width in TabStrip.widths(others, compact: compact) {
@@ -611,33 +621,44 @@ final class TabStrip: NSView {
                 cursor += width + 4
             }
             if drop != current.drop {
-                drag = (id, current.from, drop)
-                var reordered = others
-                reordered.insert(shown[current.from], at: drop)
-                let layout = slots(reordered)
-                for (key, target) in layout where key != id {
+                drag = (id, drop)
+                for (key, target) in slots(dropping(drop)) where key != id {
                     if let other = key == -1 ? plus : badges[key] { move(other, id: key, to: target) }
                 }
             }
         case .ended:
-            guard let current = drag else { return }
-            var reordered = shown.filter { $0.id != id }
-            reordered.insert(shown[current.from], at: current.drop)
-            let layout = slots(reordered)
-            // The pill was dragged by hand, so its recorded slot is stale: always glide it back into place.
-            if let target = layout[id] {
-                targets[id] = nil
-                move(badge, id: id, to: target)
-            }
-            badge.alphaValue = 1
+            guard let current = drag, current.id == id else { return }
             drag = nil
-            if current.drop != current.from {
+            badge.alphaValue = 1
+            let drop = min(current.drop, others.count)
+            let reordered = dropping(drop)
+            // The pill was dragged by hand, so its recorded slot is stale: always glide it back into place.
+            targets[id] = nil
+            layOut(reordered)
+            if drop != from {
                 // Hold the dropped order until WezTerm publishes it, so the strip does not snap back first.
                 pendingOrder = reordered.map { $0.id }
                 pendingUntil = Date().addingTimeInterval(1.5)
                 shown = reordered
-                handlers?.move(shown[current.drop], current.drop)
+                handlers?.move(shown[drop], drop)
             }
+        }
+    }
+
+    // Hidden panels miss pointer exits and releases, so forget hover and any drag in progress.
+    func resetPointer() {
+        for badge in badges.values { badge.setHovered(false) }
+        plus.setHovered(false)
+        guard let current = drag else { return }
+        drag = nil
+        badges[current.id]?.alphaValue = 1
+        targets[current.id] = nil
+        layOut(shown)
+    }
+
+    private func layOut(_ order: [Tab]) {
+        for (key, target) in slots(order) {
+            if let view = key == -1 ? plus : badges[key] { move(view, id: key, to: target) }
         }
     }
 }
@@ -657,6 +678,15 @@ func windowBounds(_ windows: [[String: Any]]) -> [Int: CGRect] {
         result[number] = rect
     }
     return result
+}
+
+// The first unclaimed CoreGraphics window (top-left origin) whose bounds match an AX frame (bottom-left origin).
+func matchWindow(frame: CGRect, candidates: [(Int, CGRect)], claimed: Set<Int>,
+                 top: CGFloat = NSScreen.screens.first?.frame.maxY ?? 0) -> Int? {
+    candidates.first { number, rect in
+        !claimed.contains(number) && abs(rect.minX - frame.minX) < 2 && abs(top - rect.maxY - frame.minY) < 2
+            && abs(rect.width - frame.width) < 2 && abs(rect.height - frame.height) < 2
+    }?.0
 }
 
 // Show Desktop and Mission Control move windows on screen while AX still reports the old frame.
@@ -788,6 +818,7 @@ final class WindowOverlay {
     }
 
     func hideBadges() {
+        strip.resetPointer()
         tabsPanel.orderOut(nil)
         clockPanel.orderOut(nil)
         if !heartbeatTitle.isEmpty {
@@ -880,6 +911,7 @@ final class WindowOverlay {
     // switch to native tabs that would flash on return. Windows that already fell back stay native.
     func park() {
         lastSeen = Date().timeIntervalSince1970
+        strip.resetPointer()
         // Panels on another Space are already out of sight there and slide back in with their window.
         for panel in [tabsPanel, clockPanel] where panel.isOnActiveSpace { panel.orderOut(nil) }
         if !heartbeatTitle.isEmpty { heartbeat(heartbeatTitle) }
@@ -978,19 +1010,20 @@ final class Companion: NSObject, NSApplicationDelegate {
                 continue
             }
             let focusedWindow = attribute(application, kAXFocusedWindowAttribute)
+            let candidates = visible.compactMap { info -> (Int, CGRect)? in
+                guard (info[kCGWindowOwnerPID as String] as? Int) == Int(pid), (info[kCGWindowLayer as String] as? Int) == 0,
+                      let number = info[kCGWindowNumber as String] as? Int, let rect = bounds[number] else { return nil }
+                return (number, rect)
+            }
+            var claimed = Set<Int>()
             for window in windows {
                 guard let title = attribute(window, kAXTitleAttribute) as? String else { unreadable.insert(pid); continue }
-                guard let snapshot = snapshots[title] else { continue }
                 guard let frame = windowFrame(window) else { unreadable.insert(pid); continue }
+                // Both lists run front to back, so same-sized windows stacked exactly claim distinct numbers in order.
                 // A readable window whose on-screen bounds differ was moved by the system and parks below.
-                guard let entry = visible.first(where: { info in
-                          guard (info[kCGWindowOwnerPID as String] as? Int) == Int(pid),
-                                (info[kCGWindowLayer as String] as? Int) == 0,
-                                let number = info[kCGWindowNumber as String] as? Int, let rect = bounds[number] else { return false }
-                          let top = NSScreen.screens.first?.frame.maxY ?? 0
-                          return abs(rect.minX - frame.minX) < 2 && abs(top - rect.maxY - frame.minY) < 2
-                              && abs(rect.width - frame.width) < 2 && abs(rect.height - frame.height) < 2
-                      }), let number = entry[kCGWindowNumber as String] as? Int else { continue }
+                guard let number = matchWindow(frame: frame, candidates: candidates, claimed: claimed) else { continue }
+                claimed.insert(number)
+                guard let snapshot = snapshots[title] else { continue }
                 live.insert(snapshot.key)
                 let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
                 overlays[snapshot.key] = overlay
@@ -1104,6 +1137,55 @@ if CommandLine.arguments.contains("--render-strip") {
     strip.drag(21, .moved, -40)
     strip.drag(21, .ended, 0)
     precondition(moves.count == 1 && moves[0] == (21, 0), "A wide tab must be able to move in front of a narrow one")
+    // Snapshots listed out of index order still display by index.
+    let shuffled = [Tab(id: 32, index: 2, active: false), Tab(id: 30, index: 0, active: true), Tab(id: 31, index: 1, active: false)]
+    strip.update(tabs: shuffled, compact: true, handlers: handlers)
+    precondition(strip.slotTarget(30)!.minX < strip.slotTarget(31)!.minX && strip.slotTarget(31)!.minX < strip.slotTarget(32)!.minX,
+                 "Tabs must display in index order")
+    // A neighbor closing mid-drag must not crash or request an index past the end.
+    moves.removeAll()
+    strip.drag(30, .began, 0)
+    strip.drag(30, .moved, 200)
+    strip.update(tabs: [Tab(id: 30, index: 0, active: true), Tab(id: 31, index: 1, active: false)], compact: true, handlers: handlers)
+    strip.drag(30, .ended, 0)
+    precondition(moves.count == 1 && moves[0] == (30, 1), "A drop past a closed tab must clamp to the last index")
+    // The dragged tab closing mid-drag must release the strip so later snapshots lay out again.
+    let pair = [Tab(id: 40, index: 0, active: true), Tab(id: 41, index: 1, active: false)]
+    strip.update(tabs: pair, compact: true, handlers: handlers)
+    strip.drag(41, .began, 0)
+    strip.drag(41, .moved, 3)
+    strip.update(tabs: [Tab(id: 40, index: 0, active: true)], compact: true, handlers: handlers)
+    strip.update(tabs: pair, compact: true, handlers: handlers)
+    precondition(strip.slotTarget(41)!.minX > strip.slotTarget(40)!.minX, "A drag of a closed tab must not freeze the layout")
+    // Hiding the panel mid-drag abandons the gesture, and a late release requests nothing.
+    moves.removeAll()
+    strip.drag(40, .began, 0)
+    strip.drag(40, .moved, 200)
+    strip.resetPointer()
+    strip.drag(40, .ended, 0)
+    precondition(moves.isEmpty && strip.slotTarget(40)!.minX == TabStrip.margin, "A cancelled drag must not move the tab")
+    // Releasing outside a pill cancels its click.
+    var clicks = 0
+    let button = Badge(kind: .plus)
+    button.frame = CGRect(x: 0, y: 0, width: 28, height: panelHeight)
+    button.onClick = { clicks += 1 }
+    for x in [10.0, 80.0] {
+        let point = NSPoint(x: x, y: 10)
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = NSEvent.mouseEvent(with: type, location: point, modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                           context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+            if type == .leftMouseDown { button.mouseDown(with: event) } else { button.mouseUp(with: event) }
+        }
+    }
+    precondition(clicks == 1, "Only a release inside the pill clicks it")
+    // Exactly stacked same-sized windows must map to distinct CoreGraphics windows.
+    let stacked = [(7, CGRect(x: 10, y: 20, width: 800, height: 600)), (8, CGRect(x: 10, y: 20, width: 800, height: 600))]
+    let axFrame = CGRect(x: 10, y: 1000 - 20 - 600, width: 800, height: 600)
+    let first = matchWindow(frame: axFrame, candidates: stacked, claimed: [], top: 1000)
+    precondition(first == 7 && matchWindow(frame: axFrame, candidates: stacked, claimed: [7], top: 1000) == 8,
+                 "Stacked windows must claim distinct numbers")
+    precondition(matchWindow(frame: axFrame.offsetBy(dx: 50, dy: 0), candidates: stacked, claimed: [], top: 1000) == nil,
+                 "Displaced windows must not match")
     precondition(TabStrip.totalWidth([28, 28]) == 28 * 2 + 8 + 28 + TabStrip.margin * 2, "Strip width includes gaps, plus, and margins")
     let wideClock = placement(frame: CGRect(x: 0, y: 60, width: 1421, height: 864), visible: CGRect(x: 0, y: 0, width: 1512, height: 944),
                               tabWidth: 92, clockWidth: 116)!

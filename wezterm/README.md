@@ -33,7 +33,7 @@ Files live under `~/.local/state/dotfiles/wezterm-floating-tabs/` on the host, i
 | --- | --- |
 | `window-<key>.json` | `key`, `title`, epoch-second `updated`, and nonempty `tabs` with unique nonnegative integer `id` and `index`, boolean `active`, and exactly one active tab; optional display hints: `label` and `branch` (at most 64 UTF-8 bytes each), `path` (at most 256), boolean `alert`, `progress` (0 to 100), and `progress_state` (`normal`, `error`, or `indeterminate`) |
 | `ready-<key>.json` | Matching `title` and fresh `updated`; only this acknowledgment hides native tabs |
-| `activate-<key>.json` | Matching `title`, fresh `updated`, and a `tab_id` (activate), `action: "new_tab"`, `"move_tab"` with a `tab_id` and target `index`, or `"close_tab"`, `"rename_tab"`, `"duplicate_tab"`, or `"detach_tab"` with a `tab_id`; consumed before acting |
+| `activate-<key>.json` | Matching `title`, fresh `updated`, and a `tab_id` (activate), `action: "new_tab"`, `"move_tab"` with a `tab_id` and target `index`, or `"close_tab"`, `"rename_tab"`, `"duplicate_tab"`, or `"detach_tab"` with a `tab_id`; WezTerm claims it by renaming to `activate-<key>.claimed`, then reads and removes it before acting |
 
 Freshness is an absolute age strictly below three seconds, including future timestamps.
 Snapshots are limited to 65,536 bytes.

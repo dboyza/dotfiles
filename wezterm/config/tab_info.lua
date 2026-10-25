@@ -24,21 +24,22 @@ return function(wezterm, protocol, platform)
     return cwd
   end
 
-  local function clean(text, columns)
-    text = (text or ''):gsub('%c', '')
-    if text == '' then return nil end
-    return wezterm.truncate_right(text, columns)
+  -- Columns alone cannot bound bytes (zero-width marks, emoji sequences), and oversized hints invalidate snapshots.
+  local function clean(text, columns, bytes)
+    text = wezterm.truncate_right(((text or ''):gsub('%c', '')), columns)
+    while #text > bytes do text = text:sub(1, utf8.offset(text, -1) - 1) end
+    return text ~= '' and text or nil
   end
 
   -- A user-set tab title always wins; otherwise name the foreground program, or the folder for a plain shell.
   local function tab_label(pane_info, custom_title)
-    local custom = clean(custom_title, LABEL_COLUMNS)
+    local custom = clean(custom_title, LABEL_COLUMNS, protocol.max_label_bytes)
     if custom then return custom end
     if type(pane_info) ~= 'table' then return nil end
     local process = basename(pane_info.foreground_process_name):gsub('%.exe$', ''):lower()
-    if process ~= '' and not SHELLS[process] then return clean(process, LABEL_COLUMNS) end
+    if process ~= '' and not SHELLS[process] then return clean(process, LABEL_COLUMNS, protocol.max_label_bytes) end
     local cwd = directory_of(pane_info.current_working_dir)
-    return clean((cwd and cwd == wezterm.home_dir) and '~' or basename(cwd), LABEL_COLUMNS)
+    return clean((cwd and cwd == wezterm.home_dir) and '~' or basename(cwd), LABEL_COLUMNS, protocol.max_label_bytes)
   end
 
   -- Section: Git branch from repository files, cached briefly (no child processes)
@@ -76,9 +77,11 @@ return function(wezterm, protocol, platform)
       if now - entry.at < GIT_CACHE_SECONDS then return entry.branch end
     end
     local head = git_head(directory)
-    local branch = head and (head:match('^ref: refs/heads/(.+)$') or head:sub(1, 7)) or nil
+    -- Cache the shortened name so cache hits publish the same hint as the first read.
+    local branch = head and clean(head:match('^ref: refs/heads/(.+)$') or head:sub(1, 7), BRANCH_COLUMNS,
+      protocol.max_branch_bytes)
     wezterm.GLOBAL[key] = wezterm.json_encode({ at = now, branch = branch })
-    return clean(branch, BRANCH_COLUMNS)
+    return branch
   end
 
   -- Display path for the tooltip, with the home directory abbreviated.
@@ -142,7 +145,7 @@ return function(wezterm, protocol, platform)
     local stored = wezterm.GLOBAL[hints_key(tab_id)]
     local hints = stored and wezterm.json_parse(stored) or {}
     -- A just-set title reaches the title event before the next mux poll.
-    local custom = clean(custom_title, LABEL_COLUMNS)
+    local custom = clean(custom_title, LABEL_COLUMNS, protocol.max_label_bytes)
     if custom then hints.label = custom elseif not hints.label then hints.label = tab_label(pane_info) end
     return hints
   end

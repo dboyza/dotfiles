@@ -110,10 +110,14 @@ return function(wezterm, config, platform, protocol, palette, tab_info)
   local function consume_floating_tab_request(window)
     local key = overlay_key(window:mux_window():window_id())
     local title = overlay_title(window:mux_window():window_id())
-    local request = overlay_read('activate-' .. key .. '.json')
-    -- Consume even malformed or foreign requests before considering an action.
-    local consumed = os.remove(overlay_root .. 'activate-' .. key .. '.json')
-    if not consumed or not protocol.valid_request(request, title, os.time()) then return false end
+    -- Claim by renaming before reading, so a click written meanwhile waits for the next tick instead of being
+    -- deleted unread. Consume even malformed or foreign requests before considering an action.
+    local claimed = 'activate-' .. key .. '.claimed'
+    os.remove(overlay_root .. claimed)
+    if not os.rename(overlay_root .. 'activate-' .. key .. '.json', overlay_root .. claimed) then return false end
+    local request = overlay_read(claimed)
+    os.remove(overlay_root .. claimed)
+    if not protocol.valid_request(request, title, os.time()) then return false end
     if request.action == 'new_tab' then
       window:perform_action(wsl_tab_action(), window:active_pane())
       return true

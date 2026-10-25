@@ -124,7 +124,29 @@ if not wezterm.target_triple:find('windows') then
   update(window)
   assert(read('window-' .. key .. '.json').tabs[2].branch == 'feature/strip', 'subfolders of a repository report its branch')
   directories[12] = repository
+  -- Long branches publish the same shortened name on cache hits as on the first read.
+  local long_repository = home .. '/work/long'
+  os.execute('mkdir -p "' .. long_repository .. '/.git"')
+  local head = assert(io.open(long_repository .. '/.git/HEAD', 'w'))
+  head:write('ref: refs/heads/feature/' .. string.rep('very-long-branch-', 6) .. '\n')
+  head:close()
+  directories[12] = long_repository
+  update(window)
+  local first_branch = read('window-' .. key .. '.json').tabs[2].branch
+  titles[11] = 'probe'
+  update(window)
+  local cached = read('window-' .. key .. '.json').tabs
+  assert(first_branch and cached[1].label == 'probe' and cached[2].branch == first_branch,
+    'cached branches must stay shortened and publishable: ' .. tostring(first_branch))
+  titles[11] = nil
+  directories[12] = repository
 end
+-- Zero-width marks pass column truncation, so labels must also respect the byte limit.
+titles[11] = 'a' .. string.rep('\u{301}', 60)
+update(window)
+local marked = read('window-' .. key .. '.json').tabs[1].label
+assert(marked and #marked <= protocol.max_label_bytes and marked:sub(1, 1) == 'a', 'labels must fit the byte limit')
+titles[11] = nil
 assert(overrides.enable_tab_bar == true and overrides.font_size == 17, 'missing helper must keep native tabs')
 write('ready-' .. key .. '.json', { title = snapshot.title, updated = os.time() })
 update(window)
@@ -259,6 +281,7 @@ assert(activated == new_tab_action, 'plus must create the same tab as Control+Sh
 activated = nil
 update(window)
 assert(activated == nil, 'a consumed new-tab click must never replay')
+assert(not io.open(root .. 'activate-' .. second_key .. '.claimed', 'r'), 'claimed requests must be removed')
 -- Section: Close requests use the confirmed close action
 write('activate-' .. second_key .. '.json', { title = second.title, updated = os.time(), action = 'close_tab', tab_id = 12 })
 window_id = 42
