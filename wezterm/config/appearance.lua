@@ -33,9 +33,8 @@ return function(wezterm, config, platform, palette)
   config.harfbuzz_features = { 'calt=0', 'clig=0', 'liga=0' }
 
   -- Section: Rendering
-  -- WebGpu draws through Metal on macOS. Windows stable 20240203 WebGpu paints a gray, undersized
-  -- surface with the transparent backdrop, and Linux driver support varies, so both keep OpenGL.
-  if is_macos then config.front_end = 'WebGpu' end
+  -- Every platform keeps the default OpenGL front end. On macOS 27, WebGpu renders at double scale and
+  -- crops the window; Windows stable 20240203 WebGpu paints a gray, undersized transparent surface.
   -- WezTerm paces frames on its own timer; a cap equal to the 120 Hz refresh misses vsync and halves to 60.
   -- A higher cap lets every refresh present (measured with the Metal HUD); the display still limits the rate.
   config.max_fps = 240
