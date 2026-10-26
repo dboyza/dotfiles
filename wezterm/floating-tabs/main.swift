@@ -40,6 +40,8 @@ let progressStates: Set<String> = ["normal", "error", "indeterminate"]
 let cleanupAfterSeconds: Double = 30
 // How long after an app activation or Space change to watch for windows the system slides away.
 let motionWatchSeconds: Double = 0.6
+// How long live following continues after a window's on-screen bounds stop changing.
+let followSeconds: Double = 0.3
 
 func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
     let validKey = snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil
@@ -185,6 +187,8 @@ final class Badge: NSView {
     var onClick: (() -> Void)?
     var onClose: (() -> Void)?
     var onDrag: ((DragPhase, CGFloat) -> Void)?
+    // The clock drags its terminal window, reporting the pointer in screen coordinates.
+    var onWindowDrag: ((DragPhase, CGPoint) -> Void)?
     var menuItems: (() -> [(String, () -> Void)])?
     private(set) var hovered = false
     private var model = BadgeModel(number: "")
@@ -429,8 +433,14 @@ final class Badge: NSView {
         hovered = value
         restyle(animated: true)
     }
-    override func mouseEntered(with event: NSEvent) { setHovered(true) }
-    override func mouseExited(with event: NSEvent) { setHovered(false) }
+    override func mouseEntered(with event: NSEvent) {
+        setHovered(true)
+        if kind == .clock && !dragging { NSCursor.openHand.set() }
+    }
+    override func mouseExited(with event: NSEvent) {
+        setHovered(false)
+        if kind == .clock && !dragging { NSCursor.arrow.set() }
+    }
 
     // A press activates on release, so dragging a tab to reorder it does not also switch to it.
     override func mouseDown(with event: NSEvent) {
@@ -442,6 +452,15 @@ final class Badge: NSView {
         pressOrigin = event.locationInWindow
     }
     override func mouseDragged(with event: NSEvent) {
+        if pressed, kind == .clock, let onWindowDrag {
+            if !dragging {
+                dragging = true
+                NSCursor.closedHand.set()
+                onWindowDrag(.began, NSEvent.mouseLocation)
+            }
+            onWindowDrag(.moved, NSEvent.mouseLocation)
+            return
+        }
         guard pressed, kind == .tab, let onDrag else { return }
         if !dragging {
             guard abs(event.locationInWindow.x - pressOrigin.x) > 4 else { return }
@@ -454,7 +473,10 @@ final class Badge: NSView {
     override func mouseUp(with event: NSEvent) {
         defer { pressed = false; dragging = false }
         // Like a button, releasing outside the pill cancels the click.
-        if dragging { onDrag?(.ended, 0) } else if pressed && bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
+        if dragging && kind == .clock {
+            onWindowDrag?(.ended, NSEvent.mouseLocation)
+            (bounds.contains(convert(event.locationInWindow, from: nil)) ? NSCursor.openHand : NSCursor.arrow).set()
+        } else if dragging { onDrag?(.ended, 0) } else if pressed && bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
     }
     // Middle-click closes a tab with the usual confirmation.
     override func otherMouseUp(with event: NSEvent) {
@@ -753,20 +775,17 @@ func watchDirectory(_ directory: URL, onChange: @escaping () -> Void) -> Dispatc
 // Section: Per-window rendering and click requests
 final class WindowOverlay {
     let key: String
-    let onChange: () -> Void
-    init(key: String, onChange: @escaping () -> Void) { self.key = key; self.onChange = onChange }
+    // Called with true when the window moved or resized, which live following handles.
+    let onChange: (Bool) -> Void
+    init(key: String, onChange: @escaping (Bool) -> Void) { self.key = key; self.onChange = onChange }
     deinit {
         if let observer { CFRunLoopRemoveSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(observer), .commonModes) }
         hide()
         for panel in [tabsPanel, clockPanel] { panel.close() }
     }
     let tabsPanel = OverlayPanel()
-    let clockPanel: OverlayPanel = {
-        // The clock never takes clicks, so it stays transparent to the terminal underneath.
-        let panel = OverlayPanel()
-        panel.ignoresMouseEvents = true
-        return panel
-    }()
+    // Clicking the clock focuses its window and dragging it moves the window.
+    let clockPanel = OverlayPanel()
     let strip = TabStrip()
     let clockBadge = Badge(kind: .clock)
     lazy var scroll: NSScrollView = {
@@ -788,6 +807,11 @@ final class WindowOverlay {
     var lastHeartbeat: TimeInterval = 0
     var heartbeatTitle = ""
     var dimmed: Bool?
+    // What the last refresh placed, so live following can lay out again without Accessibility reads.
+    var snapshot: Snapshot?
+    var handlers: TabStrip.Handlers?
+    var shownClock = ""
+    var dragOrigin: (mouse: CGPoint, position: CGPoint)?
     static func formatter(_ format: String) -> DateFormatter {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
@@ -833,9 +857,11 @@ final class WindowOverlay {
         observedPID = pid
         observedWindow = window
         var newObserver: AXObserver?
-        let callback: AXObserverCallback = { _, _, _, context in
+        let callback: AXObserverCallback = { _, _, notification, context in
             guard let context else { return }
-            Unmanaged<WindowOverlay>.fromOpaque(context).takeUnretainedValue().onChange()
+            let name = notification as String
+            Unmanaged<WindowOverlay>.fromOpaque(context).takeUnretainedValue()
+                .onChange(name == kAXMovedNotification || name == kAXResizedNotification)
         }
         guard AXObserverCreate(pid, callback, &newObserver) == .success, let newObserver else { return }
         observer = newObserver
@@ -852,12 +878,43 @@ final class WindowOverlay {
     // An unreadable focus state (nil) keeps the previous one rather than dimming the overlay.
     func refresh(snapshot: Snapshot, window: AXUIElement, frame: CGRect, pid: pid_t, number: Int, focused: Bool?, order: [Int]) {
         guard attribute(window, "AXFullScreen") as? Bool != true,
-              attribute(window, kAXMinimizedAttribute) as? Bool != true,
-              let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
+              attribute(window, kAXMinimizedAttribute) as? Bool != true
         else { hide(); return }
         let focused = focused ?? (dimmed == false)
         lastSeen = Date().timeIntervalSince1970
         observe(pid: pid, window: window)
+        self.snapshot = snapshot
+        let raise = {
+            _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+            NSRunningApplication(processIdentifier: pid)?.activate()
+        }
+        // Every request first raises the window so WezTerm's prompts and confirmations are visible.
+        let send: (Int?, String?, Int?) -> Void = { [weak self] id, action, index in
+            raise()
+            self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: id, action: action, index: index),
+                        name: "activate-\(snapshot.key).json")
+        }
+        handlers = TabStrip.Handlers(
+            activate: { send($0.id, nil, nil) },
+            close: { send($0.id, "close_tab", nil) },
+            move: { send($0.id, "move_tab", $1) },
+            action: { send($0.id, $1, nil) },
+            newTab: { send(nil, "new_tab", nil) })
+        clockBadge.onClick = raise
+        clockBadge.onWindowDrag = { [weak self] phase, mouse in self?.dragWindow(phase, mouse, window: window, raise: raise) }
+        guard let (_, clockFrame) = place(frame: frame) else { hideBadges(); return }
+        tabsPanel.show(above: number, focused: focused, order: order)
+        fade(focused: focused)
+        if clockFrame != nil { clockPanel.show(above: number, focused: focused, order: order) } else { clockPanel.orderOut(nil) }
+        heartbeat(snapshot.title)
+    }
+
+    // Lays the strip and clock over a window frame (bottom-left origin); nil when there is no room above it.
+    @discardableResult
+    func place(frame: CGRect) -> (CGRect, CGRect?)? {
+        guard let snapshot, let handlers,
+              let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
+        else { return nil }
         // Prefer named tabs; fall back to numbers when labels would crowd out the clock.
         let wide = frame.width >= 900
         let clockWidth: CGFloat = wide ? 116 : 88
@@ -869,34 +926,65 @@ final class WindowOverlay {
             width = TabStrip.totalWidth(TabStrip.widths(snapshot.tabs, compact: true))
             placed = placement(frame: frame, visible: screen.visibleFrame, tabWidth: width, clockWidth: clockWidth)
         }
-        guard let (tabFrame, clockFrame) = placed else { hideBadges(); return }
-        // Every request first raises the window so WezTerm's prompts and confirmations are visible.
-        let send: (Int?, String?, Int?) -> Void = { [weak self] id, action, index in
-            _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
-            NSRunningApplication(processIdentifier: pid)?.activate()
-            self?.write(Reply(title: snapshot.title, updated: Date().timeIntervalSince1970, tab_id: id, action: action, index: index),
-                        name: "activate-\(snapshot.key).json")
-        }
-        strip.update(tabs: snapshot.tabs, compact: compact, handlers: TabStrip.Handlers(
-            activate: { send($0.id, nil, nil) },
-            close: { send($0.id, "close_tab", nil) },
-            move: { send($0.id, "move_tab", $1) },
-            action: { send($0.id, $1, nil) },
-            newTab: { send(nil, "new_tab", nil) }))
+        guard let (tabFrame, clockFrame) = placed else { return nil }
+        strip.update(tabs: snapshot.tabs, compact: compact, handlers: handlers)
         if tabsPanel.contentView !== scroll { tabsPanel.contentView = scroll }
         if tabsPanel.frame != tabFrame { tabsPanel.setFrame(tabFrame, display: true) }
-        tabsPanel.show(above: number, focused: focused, order: order)
-        fade(focused: focused)
         if let clockFrame {
-            let seconds = Calendar.current.component(.second, from: Date())
-            let date = clockPanel.frame.contains(NSEvent.mouseLocation)
-            clockBadge.setClock(date ? dateFormatter.string(from: Date()) : (wide ? wideFormatter : formatter).string(from: Date()),
-                                colonVisible: seconds % 2 == 0)
+            let now = Date()
+            // Hovering shows the date, except mid-drag where the time stays put.
+            let date = clockPanel.frame.contains(NSEvent.mouseLocation) && dragOrigin == nil
+            let text = date ? dateFormatter.string(from: now) : (wide ? wideFormatter : formatter).string(from: now)
+            let colonVisible = Calendar.current.component(.second, from: now) % 2 == 0
+            if shownClock != "\(text)\(colonVisible)" {
+                shownClock = "\(text)\(colonVisible)"
+                clockBadge.setClock(text, colonVisible: colonVisible)
+            }
             if clockPanel.contentView !== clockBadge { clockPanel.contentView = clockBadge }
             if clockPanel.frame != clockFrame { clockPanel.setFrame(clockFrame, display: true) }
-            clockPanel.show(above: number, focused: focused, order: order)
         } else { clockPanel.orderOut(nil) }
-        heartbeat(snapshot.title)
+        return placed
+    }
+
+    // Keeps the panels on a window the system is moving or resizing, from its live CoreGraphics bounds.
+    func follow(_ bounds: CGRect) {
+        windowBounds = bounds
+        lastSeen = Date().timeIntervalSince1970
+        let top = NSScreen.screens.first?.frame.maxY ?? 0
+        let frame = CGRect(x: bounds.minX, y: top - bounds.maxY, width: bounds.width, height: bounds.height)
+        guard let number = windowNumber, let (_, clockFrame) = place(frame: frame) else {
+            // No room above the window right now; the refresh after the gesture decides about native tabs.
+            for panel in [tabsPanel, clockPanel] { panel.orderOut(nil) }
+            return
+        }
+        let focused = dimmed == false
+        if !tabsPanel.isVisible { tabsPanel.show(above: number, focused: focused, order: []) }
+        if clockFrame != nil && !clockPanel.isVisible { clockPanel.show(above: number, focused: focused, order: []) }
+    }
+
+    // Dragging the clock moves its window through Accessibility; the panels move in the same step.
+    func dragWindow(_ phase: DragPhase, _ mouse: CGPoint, window: AXUIElement, raise: () -> Void) {
+        switch phase {
+        case .began:
+            var position = CGPoint.zero
+            guard let value = attribute(window, kAXPositionAttribute), CFGetTypeID(value) == AXValueGetTypeID(),
+                  AXValueGetValue(unsafeBitCast(value, to: AXValue.self), .cgPoint, &position) else { return }
+            // A busy WezTerm must not stall the pointer for the default six-second timeout.
+            AXUIElementSetMessagingTimeout(window, 0.1)
+            dragOrigin = (mouse, position)
+            raise()
+        case .moved:
+            guard let (start, position) = dragOrigin else { return }
+            // AX positions use a top-left origin, so a pointer moving up moves the window's y down.
+            var point = CGPoint(x: (position.x + mouse.x - start.x).rounded(), y: (position.y - mouse.y + start.y).rounded())
+            guard let value = AXValueCreate(.cgPoint, &point),
+                  AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, value) == .success else { return }
+            if let size = windowBounds?.size { follow(CGRect(origin: point, size: size)) }
+            onChange(true)
+        case .ended:
+            dragOrigin = nil
+            onChange(true)
+        }
     }
 
     func heartbeat(_ title: String) {
@@ -928,6 +1016,9 @@ final class Companion: NSObject, NSApplicationDelegate {
     var stateWatcher: DispatchSourceFileSystemObject?
     var motionTimer: Timer?
     var refreshing = false
+    var followLink: CADisplayLink?
+    var followUntil = Date.distantPast
+    var dragMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -939,6 +1030,11 @@ final class Companion: NSObject, NSApplicationDelegate {
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in self?.refresh() }
         for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification] {
             NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(workspaceChanged), name: name, object: nil)
+        }
+        // Native title-bar drags and edge resizes start live following before AX reports any move.
+        dragMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDragged) { [weak self] _ in
+            let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
+            if self?.overlays.values.contains(where: { $0.observedPID == front }) == true { self?.follow() }
         }
         refresh()
     }
@@ -965,6 +1061,35 @@ final class Companion: NSObject, NSApplicationDelegate {
         for overlay in overlays.values where overlay.observedPID != frontPID && overlay.tabsPanel.isVisible {
             if let number = overlay.windowNumber, displaced(overlay.windowBounds, bounds[number]) { overlay.park() }
         }
+    }
+
+    // Section: Live following during moves and resizes
+    // AX reports moves late and sparsely, so read the window's on-screen bounds every display frame instead.
+    func follow() {
+        followUntil = Date().addingTimeInterval(followSeconds)
+        guard followLink == nil, let link = NSScreen.main?.displayLink(target: self, selector: #selector(followFrame)) else { return }
+        link.add(to: .main, forMode: .common)
+        followLink = link
+    }
+
+    @objc func followFrame(_ link: CADisplayLink) {
+        let now = Date()
+        // Only the frontmost app's windows are dragged; others that move were displaced by the system.
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        for overlay in overlays.values where overlay.observedPID == frontPID {
+            guard let number = overlay.windowNumber,
+                  let bounds = windowBounds(CGWindowListCopyWindowInfo(.optionIncludingWindow, CGWindowID(number))
+                      as? [[String: Any]] ?? [])[number],
+                  bounds != overlay.windowBounds else { continue }
+            overlay.follow(bounds)
+            followUntil = now.addingTimeInterval(followSeconds)
+        }
+        // A held button keeps watching, since a drag can pause without ending.
+        if NSEvent.pressedMouseButtons & 1 != 0 { followUntil = max(followUntil, now.addingTimeInterval(followSeconds)) }
+        guard now >= followUntil else { return }
+        link.invalidate()
+        followLink = nil
+        refresh()
     }
 
     @objc func refresh() {
@@ -1025,7 +1150,9 @@ final class Companion: NSObject, NSApplicationDelegate {
                 claimed.insert(number)
                 guard let snapshot = snapshots[title] else { continue }
                 live.insert(snapshot.key)
-                let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] in self?.refresh() }
+                let overlay = overlays[snapshot.key] ?? WindowOverlay(key: snapshot.key) { [weak self] moved in
+                    if moved { self?.follow() } else { self?.refresh() }
+                }
                 overlays[snapshot.key] = overlay
                 overlay.windowNumber = number
                 overlay.windowBounds = bounds[number]
@@ -1034,7 +1161,8 @@ final class Companion: NSObject, NSApplicationDelegate {
                     number: number, focused: focused, order: order)
             }
         }
-        guard overlays.count > live.count else { return }
+        // Mid-gesture, AX frames lag the on-screen bounds; live following owns those overlays until it settles.
+        guard overlays.count > live.count, followLink == nil else { return }
         // Unlike the on-screen list, this includes windows on other Spaces, hidden, or minimized.
         let existing = Set((CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? [])
             .compactMap { $0[kCGWindowNumber as String] as? Int })
@@ -1178,6 +1306,22 @@ if CommandLine.arguments.contains("--render-strip") {
         }
     }
     precondition(clicks == 1, "Only a release inside the pill clicks it")
+    // Dragging the clock reports a full window-drag gesture instead of a click.
+    var phases: [DragPhase] = []
+    let clockButton = Badge(kind: .clock)
+    clockButton.frame = CGRect(x: 0, y: 0, width: 88, height: panelHeight)
+    clockButton.onClick = { clicks += 1 }
+    clockButton.onWindowDrag = { phase, _ in phases.append(phase) }
+    for type in [NSEvent.EventType.leftMouseDown, .leftMouseDragged, .leftMouseDragged, .leftMouseUp] {
+        let event = NSEvent.mouseEvent(with: type, location: NSPoint(x: 10, y: 10), modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                       context: nil, eventNumber: 0, clickCount: 1, pressure: 1)!
+        switch type {
+        case .leftMouseDown: clockButton.mouseDown(with: event)
+        case .leftMouseDragged: clockButton.mouseDragged(with: event)
+        default: clockButton.mouseUp(with: event)
+        }
+    }
+    precondition(phases == [.began, .moved, .moved, .ended] && clicks == 1, "Dragging the clock moves the window without clicking")
     // Exactly stacked same-sized windows must map to distinct CoreGraphics windows.
     let stacked = [(7, CGRect(x: 10, y: 20, width: 800, height: 600)), (8, CGRect(x: 10, y: 20, width: 800, height: 600))]
     let axFrame = CGRect(x: 10, y: 1000 - 20 - 600, width: 800, height: 600)
