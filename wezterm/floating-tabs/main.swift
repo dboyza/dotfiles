@@ -141,6 +141,12 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat, clockWidth: CG
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
+// Clock drags stop where the strip still fits above the window, instead of pushing it under the menu bar.
+// Takes and returns an AX position (top-left origin); `visible` is in AppKit coordinates.
+func clampedDragPosition(_ point: CGPoint, visible: CGRect, top: CGFloat = NSScreen.screens.first?.frame.maxY ?? 0) -> CGPoint {
+    CGPoint(x: point.x, y: max(point.y, top - visible.maxY + panelHeight / 2))
+}
+
 // The macOS launch geometry from config/geometry.lua: centered at 94% by 88% of the screen.
 // Returns AX bounds (top-left origin) for a screen frame in AppKit coordinates.
 func launchBounds(screen: CGRect, top: CGFloat = NSScreen.screens.first?.frame.maxY ?? 0) -> CGRect {
@@ -965,11 +971,9 @@ final class WindowOverlay {
         lastSeen = Date().timeIntervalSince1970
         let top = NSScreen.screens.first?.frame.maxY ?? 0
         let frame = CGRect(x: bounds.minX, y: top - bounds.maxY, width: bounds.width, height: bounds.height)
-        guard let number = windowNumber, let (_, clockFrame) = place(frame: frame) else {
-            // No room above the window right now; the refresh after the gesture decides about native tabs.
-            for panel in [tabsPanel, clockPanel] { panel.orderOut(nil) }
-            return
-        }
+        // Without room above the window, fall back to native tabs at once rather than leaving WezTerm unsure.
+        guard let number = windowNumber, let snapshot, let (_, clockFrame) = place(frame: frame) else { hideBadges(); return }
+        if heartbeatTitle.isEmpty { heartbeat(snapshot.title) }
         let focused = dimmed == false
         if !tabsPanel.isVisible { tabsPanel.show(above: number, focused: focused, order: []) }
         if clockFrame != nil && !clockPanel.isVisible { clockPanel.show(above: number, focused: focused, order: []) }
@@ -1008,6 +1012,9 @@ final class WindowOverlay {
             guard let (start, position) = dragOrigin else { return }
             // AX positions use a top-left origin, so a pointer moving up moves the window's y down.
             var point = CGPoint(x: (position.x + mouse.x - start.x).rounded(), y: (position.y - mouse.y + start.y).rounded())
+            if let screen = NSScreen.screens.first(where: { $0.frame.contains(mouse) }) ?? NSScreen.main {
+                point = clampedDragPosition(point, visible: screen.visibleFrame)
+            }
             guard let value = AXValueCreate(.cgPoint, &point),
                   AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, value) == .success else { return }
             if let size = windowBounds?.size { follow(CGRect(origin: point, size: size)) }
@@ -1364,6 +1371,14 @@ if CommandLine.arguments.contains("--render-strip") {
         }
     }
     precondition(clicks == 2 && resets == 1, "Double-clicking the clock resets the window once")
+    // Clock drags stop with the strip just below the menu bar and leave lower positions alone.
+    let menuBar = CGRect(x: 0, y: 0, width: 1800, height: 1136)
+    precondition(clampedDragPosition(CGPoint(x: 40, y: 0), visible: menuBar, top: 1169) == CGPoint(x: 40, y: 33 + panelHeight / 2),
+                 "Clock drags cannot push the strip under the menu bar")
+    precondition(clampedDragPosition(CGPoint(x: 40, y: 200), visible: menuBar, top: 1169).y == 200, "Lower drags are unchanged")
+    let clamped = clampedDragPosition(CGPoint(x: 40, y: 0), visible: menuBar, top: 1169)
+    let docked = CGRect(x: 40, y: 1169 - clamped.y - 600, width: 900, height: 600)
+    precondition(placement(frame: docked, visible: menuBar, tabWidth: 92) != nil, "A window clamped by a clock drag keeps its strip")
     // Launch bounds match config/geometry.lua and center on secondary screens too.
     let launch = launchBounds(screen: CGRect(x: 0, y: 0, width: 1800, height: 1169), top: 1169)
     precondition(launch == CGRect(x: 54, y: 70, width: 1692, height: 1028), "Launch bounds are 94% by 88%, centered")

@@ -283,6 +283,7 @@ A rose dot marks a background tab where a bell rang or a command that ran for 10
 Hover a named badge to reveal an `×` that closes the tab with the usual confirmation.
 Hovering the clock swaps the time for the date, and wide windows add the weekday; the clock's colon pulses once a second.
 Click the clock to focus its window, drag it to move the window, or double-click it to restore the centered launch size.
+A clock drag stops just below the menu bar; dragging a window higher by other means switches to native tabs until there is room again.
 The badges and clock follow the window every display frame while it moves or resizes.
 Overlays fade back when their window is not focused.
 The badges follow window moves and resizes without taking keyboard focus.
