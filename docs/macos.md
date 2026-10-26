@@ -166,6 +166,7 @@ The checked-in settings capture appearance, text input, Dock and Finder behavior
 Finder opens new windows in the home folder with list view, path and status bars, and folders sorted first.
 The Dock hides automatically, omits recent apps, and uses its bottom-right hot corner for Quick Note.
 Tap-to-click and three-finger dragging are disabled; two-finger secondary click is enabled.
+Touch ID approves `sudo` through `/etc/pam.d/sudo_local`, including inside tmux and Herdr; the password prompt remains the fallback.
 
 Only explicitly declared preferences are managed.
 Unspecified preferences, including keyboard repeat timing and extension visibility, retain their existing macOS values.

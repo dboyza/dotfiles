@@ -42,6 +42,14 @@ in
     ];
   };
 
+  # Section: Touch ID for sudo
+  # Written to /etc/pam.d/sudo_local, which macOS updates leave alone. Reattach lets
+  # Touch ID reach sudo inside tmux and Herdr, whose servers outlive the login session.
+  security.pam.services.sudo_local = {
+    touchIdAuth = true;
+    reattach = true;
+  };
+
   # Section: macOS preferences and activation
   system = {
     # Explicit macOS preferences; leave unspecified settings at their existing values.

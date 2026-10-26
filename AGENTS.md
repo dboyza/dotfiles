@@ -140,6 +140,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Verify direct downloads with pinned checksums and preserve legacy Nix Apps bundles before nix-darwin cleans that directory.
   Install missing App Store apps by ID with the Homebrew-provided `mas get`; keep existing-app detection ahead of all App Store commands and leave account authentication interactive.
 
+- Enable Touch ID for `sudo` through nix-darwin's `security.pam.services.sudo_local`, which macOS updates preserve, with `reattach` so it works inside tmux and Herdr.
+
 - Keep curated macOS preferences in `system.defaults` in `nix/darwin.nix`.
   When capturing existing preferences, use supported options and explicit saved values; do not import account data, recent items, Dock application bookmarks, or window state.
   Removing a preference declaration does not reset its stored macOS value.
