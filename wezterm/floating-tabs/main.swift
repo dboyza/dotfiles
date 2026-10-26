@@ -141,6 +141,15 @@ func placement(frame: CGRect, visible: CGRect, tabWidth: CGFloat, clockWidth: CG
     return (tabs, tabs.maxX + 12 < clock.minX ? clock : nil)
 }
 
+// The macOS launch geometry from config/geometry.lua: centered at 94% by 88% of the screen.
+// Returns AX bounds (top-left origin) for a screen frame in AppKit coordinates.
+func launchBounds(screen: CGRect, top: CGFloat = NSScreen.screens.first?.frame.maxY ?? 0) -> CGRect {
+    let width = floor(screen.width * 0.94), height = floor(screen.height * 0.88)
+    let x = screen.minX + floor((screen.width - width) / 2)
+    let y = top - screen.maxY + floor((screen.height - height) / 2)
+    return CGRect(x: x, y: y, width: width, height: height)
+}
+
 // Section: Badge model and pointer plumbing
 // What a pill shows; comparing models lets the strip skip work when nothing changed.
 struct BadgeModel: Equatable {
@@ -185,6 +194,7 @@ final class Badge: NSView {
 
     let kind: Kind
     var onClick: (() -> Void)?
+    var onDoubleClick: (() -> Void)?
     var onClose: (() -> Void)?
     var onDrag: ((DragPhase, CGFloat) -> Void)?
     // The clock drags its terminal window, reporting the pointer in screen coordinates.
@@ -476,7 +486,9 @@ final class Badge: NSView {
         if dragging && kind == .clock {
             onWindowDrag?(.ended, NSEvent.mouseLocation)
             (bounds.contains(convert(event.locationInWindow, from: nil)) ? NSCursor.openHand : NSCursor.arrow).set()
-        } else if dragging { onDrag?(.ended, 0) } else if pressed && bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
+        } else if dragging { onDrag?(.ended, 0) } else if pressed && bounds.contains(convert(event.locationInWindow, from: nil)) {
+            if event.clickCount == 2, let onDoubleClick { onDoubleClick() } else { onClick?() }
+        }
     }
     // Middle-click closes a tab with the usual confirmation.
     override func otherMouseUp(with event: NSEvent) {
@@ -901,6 +913,7 @@ final class WindowOverlay {
             action: { send($0.id, $1, nil) },
             newTab: { send(nil, "new_tab", nil) })
         clockBadge.onClick = raise
+        clockBadge.onDoubleClick = { [weak self] in self?.resetWindow(window, raise: raise) }
         clockBadge.onWindowDrag = { [weak self] phase, mouse in self?.dragWindow(phase, mouse, window: window, raise: raise) }
         guard let (_, clockFrame) = place(frame: frame) else { hideBadges(); return }
         tabsPanel.show(above: number, focused: focused, order: order)
@@ -960,6 +973,24 @@ final class WindowOverlay {
         let focused = dimmed == false
         if !tabsPanel.isVisible { tabsPanel.show(above: number, focused: focused, order: []) }
         if clockFrame != nil && !clockPanel.isVisible { clockPanel.show(above: number, focused: focused, order: []) }
+    }
+
+    // Double-clicking the clock restores the launch size, centered on the window's current screen.
+    func resetWindow(_ window: AXUIElement, raise: () -> Void) {
+        guard let current = windowBounds, let top = NSScreen.screens.first?.frame.maxY else { return }
+        let frame = CGRect(x: current.minX, y: top - current.maxY, width: current.width, height: current.height)
+        guard let screen = NSScreen.screens.max(by: { $0.frame.intersection(frame).area < $1.frame.intersection(frame).area })
+        else { return }
+        var target = launchBounds(screen: screen.frame, top: top)
+        var size = target.size, origin = target.origin
+        // Resize first so the window never extends past the screen edge while it moves.
+        guard let sizeValue = AXValueCreate(.cgSize, &size), let originValue = AXValueCreate(.cgPoint, &origin),
+              AXUIElementSetAttributeValue(window, kAXSizeAttribute as CFString, sizeValue) == .success,
+              AXUIElementSetAttributeValue(window, kAXPositionAttribute as CFString, originValue) == .success else { return }
+        raise()
+        target.origin = origin
+        follow(target)
+        onChange(true)
     }
 
     // Dragging the clock moves its window through Accessibility; the panels move in the same step.
@@ -1322,6 +1353,22 @@ if CommandLine.arguments.contains("--render-strip") {
         }
     }
     precondition(phases == [.began, .moved, .moved, .ended] && clicks == 1, "Dragging the clock moves the window without clicking")
+    // A double click resets the window instead of clicking twice.
+    var resets = 0
+    clockButton.onDoubleClick = { resets += 1 }
+    for count in [1, 2] {
+        for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+            let event = NSEvent.mouseEvent(with: type, location: NSPoint(x: 10, y: 10), modifierFlags: [], timestamp: 0, windowNumber: 0,
+                                           context: nil, eventNumber: 0, clickCount: count, pressure: 1)!
+            if type == .leftMouseDown { clockButton.mouseDown(with: event) } else { clockButton.mouseUp(with: event) }
+        }
+    }
+    precondition(clicks == 2 && resets == 1, "Double-clicking the clock resets the window once")
+    // Launch bounds match config/geometry.lua and center on secondary screens too.
+    let launch = launchBounds(screen: CGRect(x: 0, y: 0, width: 1800, height: 1169), top: 1169)
+    precondition(launch == CGRect(x: 54, y: 70, width: 1692, height: 1028), "Launch bounds are 94% by 88%, centered")
+    let side = launchBounds(screen: CGRect(x: 1800, y: 200, width: 1000, height: 800), top: 1169)
+    precondition(side.minX == 1830 && side.minY == 1169 - 1000 + 48, "Launch bounds center on the window's own screen")
     // Exactly stacked same-sized windows must map to distinct CoreGraphics windows.
     let stacked = [(7, CGRect(x: 10, y: 20, width: 800, height: 600)), (8, CGRect(x: 10, y: 20, width: 800, height: 600))]
     let axFrame = CGRect(x: 10, y: 1000 - 20 - 600, width: 800, height: 600)

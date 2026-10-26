@@ -4,6 +4,7 @@ return function(wezterm, platform)
 
   -- Section: Bounded sizes and centering
   -- macOS leaves desktop margins; other platforms cap the size on very large displays.
+  -- The floating-tabs clock's double-click reset (launchBounds in main.swift) mirrors the macOS size.
   local function launch_size(screen)
     if is_macos then
       return math.max(1, math.floor(screen.width * 0.94)), math.max(1, math.floor(screen.height * 0.88))

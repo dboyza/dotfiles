@@ -229,6 +229,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Offer on macOS badges drag-to-reorder, middle-click close, a right-click menu, a path tooltip, and a progress ring; Windows gets branches, progress rings, and middle-click close.
   Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, hover close buttons, and a fade when the window is unfocused; Windows keeps the same behavior without blur, shadows, or animation.
   Let the macOS clock focus its window on click and move it on drag through Accessibility, placing the panels in the same step.
+  Double-clicking the clock restores the launch geometry centered on the window's screen; keep `launchBounds` in step with `config/geometry.lua`.
   Follow native moves and resizes from CoreGraphics bounds every display frame while the mouse is held, then resync with a full refresh.
   Keep a + button after the last floating tab on macOS and Windows, sharing the portable new-tab shortcut's domain and working directory.
   Consume click requests before acting so new-tab requests cannot replay.
