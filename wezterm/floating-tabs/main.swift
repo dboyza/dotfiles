@@ -840,6 +840,13 @@ final class WindowOverlay {
     let wideFormatter = WindowOverlay.formatter("EEE h:mm a")
     let dateFormatter = WindowOverlay.formatter("EEE MMM d")
 
+    // Moves visible panels to their focus level at once, ahead of the slower Accessibility refresh.
+    func setFocused(_ focused: Bool) {
+        guard self.focused != focused, let number = windowNumber else { return }
+        self.focused = focused
+        for panel in [tabsPanel, clockPanel] where panel.isVisible { panel.show(above: number, focused: focused, order: []) }
+    }
+
     func write(_ reply: Reply, name: String) {
         guard let data = try? JSONEncoder().encode(reply) else { return }
         try? data.write(to: stateDirectory.appendingPathComponent(name), options: .atomic)
@@ -1047,6 +1054,7 @@ final class Companion: NSObject, NSApplicationDelegate {
     var followLink: CADisplayLink?
     var followUntil = Date.distantPast
     var dragMonitor: Any?
+    var clickMonitor: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -1064,6 +1072,12 @@ final class Companion: NSObject, NSApplicationDelegate {
             let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
             if self?.overlays.values.contains(where: { $0.observedPID == front }) == true { self?.follow() }
         }
+        clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDown) { [weak self] _ in
+            let height = NSScreen.screens.first?.frame.maxY ?? 0
+            let mouse = NSEvent.mouseLocation
+            let point = CGPoint(x: mouse.x, y: height - mouse.y)
+            self?.promote { bounds, _ in bounds.contains(point) }
+        }
         refresh()
     }
 
@@ -1071,7 +1085,10 @@ final class Companion: NSObject, NSApplicationDelegate {
 
     // Clicking the wallpaper activates Finder, then Show Desktop slides windows away without AX notice.
     // Check on-screen bounds every frame meanwhile so the badges hide as soon as the slide starts.
-    @objc func workspaceChanged() {
+    @objc func workspaceChanged(_ notification: Notification) {
+        if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+            promote { _, pid in pid == app.processIdentifier }
+        }
         refresh()
         motionTimer?.invalidate()
         let until = Date().addingTimeInterval(motionWatchSeconds)
@@ -1079,6 +1096,24 @@ final class Companion: NSObject, NSApplicationDelegate {
             guard let self, Date() < until else { timer.invalidate(); return }
             self.parkDisplaced()
         }
+    }
+
+    // A clicked or activated window rises before AX reports focus, which can time out meanwhile;
+    // raise its panels now so the window never covers them.
+    func promote(where matches: (CGRect, Int) -> Bool) {
+        let own = Int(ProcessInfo.processInfo.processIdentifier)
+        let visible = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] ?? []
+        let bounds = windowBounds(visible)
+        guard let front = visible.first(where: { info in
+                  guard let number = info[kCGWindowNumber as String] as? Int, let rect = bounds[number],
+                        let pid = info[kCGWindowOwnerPID as String] as? Int, pid != own,
+                        (info[kCGWindowLayer as String] as? Int) == 0 else { return false }
+                  return matches(rect, pid)
+              })?[kCGWindowNumber as String] as? Int,
+              let target = overlays.values.first(where: { $0.windowNumber == front }) else { return }
+        for overlay in overlays.values where overlay !== target { overlay.setFocused(false) }
+        target.setFocused(true)
     }
 
     func parkDisplaced() {
