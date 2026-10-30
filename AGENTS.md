@@ -248,7 +248,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep panels bound to their window's Space rather than joining all Spaces, so desktop switches slide them with the window.
   Keep snapshots, acknowledgments, click requests, and overlay panels isolated per GUI process and window; preserve native window stacking order.
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
-  Promote a window's overlay on mouse-down or app activation from CoreGraphics order, before Accessibility confirms focus, so the rising window never covers it.
+  Promote a window's overlay on mouse-down or app activation from CoreGraphics order, before Accessibility confirms focus; a brief flash on refocus remains.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
   Keep the one-pixel muted lavender border and macOS overlays identical whether or not the window is focused.
