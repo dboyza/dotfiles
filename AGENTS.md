@@ -229,7 +229,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Make every tab action (`close_tab`, `move_tab`, `rename_tab`, `duplicate_tab`, `detach_tab`) activate the tab first, and make `close_tab` run the confirmed close action, never close silently.
   Keep tab labels, git branches, paths, and progress described once in `wezterm/config/tab_info.lua` through a shared cache, reading branches from repository files rather than child processes.
   Offer on macOS badges drag-to-reorder, middle-click close, a right-click menu, a path tooltip, and a progress ring; Windows gets branches, progress rings, and middle-click close.
-  Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, hover close buttons, and a fade when the window is unfocused; Windows keeps the same behavior without blur, shadows, or animation.
+  Style macOS badges as frosted-glass pills with fades and slides, labels that fall back to numbers when they would crowd out the clock, rose alert dots for background bells and long commands, and hover close buttons; Windows keeps the same behavior without blur, shadows, or animation.
   Let the macOS clock focus its window on click and move it on drag through Accessibility, placing the panels in the same step.
   Stop clock drags where the strip still fits below the menu bar; Accessibility moves are not clamped by the system.
   Double-clicking the clock restores the launch geometry centered on the window's screen; keep `launchBounds` in step with `config/geometry.lua`.
@@ -250,7 +250,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   Keep focused-window overlays at floating level so clicks cannot raise the terminal over them; background overlays stay at normal level and follow their own window.
   Keep the native numbered tab bar and centered clock as the Linux default and macOS/Windows fallback.
   Center the native clock using the full window pixel width and terminal cell width, including the padded area.
-  Keep a one-pixel muted lavender border that dims with window focus, retaining unrelated per-window overrides.
+  Keep the one-pixel muted lavender border and macOS overlays identical whether or not the window is focused.
   Reserve the bright lavender badge fill for the active tab; use subdued inactive badges and a neutral 12-hour `h:mm AM/PM` clock in both companions and the native fallback.
   Outline the companion clocks in the window border's `subtle` lavender.
   Square the macOS window corners with WezTerm nightly's `MACOS_FORCE_SQUARE_CORNERS` so the one-pixel border runs edge to edge; the helper draws no corner arcs, which would otherwise track the system corner radius.

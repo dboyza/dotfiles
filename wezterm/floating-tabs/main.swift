@@ -824,7 +824,7 @@ final class WindowOverlay {
     var lastSeen: TimeInterval = 0
     var lastHeartbeat: TimeInterval = 0
     var heartbeatTitle = ""
-    var dimmed: Bool?
+    var focused: Bool?
     // What the last refresh placed, so live following can lay out again without Accessibility reads.
     var snapshot: Snapshot?
     var handlers: TabStrip.Handlers?
@@ -839,16 +839,6 @@ final class WindowOverlay {
     let formatter = WindowOverlay.formatter("h:mm a")
     let wideFormatter = WindowOverlay.formatter("EEE h:mm a")
     let dateFormatter = WindowOverlay.formatter("EEE MMM d")
-
-    // Overlays of unfocused windows fade back so the focused terminal stays the visual anchor.
-    func fade(focused: Bool) {
-        guard dimmed != !focused else { return }
-        dimmed = !focused
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.18
-            for panel in [tabsPanel, clockPanel] { panel.animator().alphaValue = focused ? 1 : 0.62 }
-        }
-    }
 
     func write(_ reply: Reply, name: String) {
         guard let data = try? JSONEncoder().encode(reply) else { return }
@@ -893,12 +883,13 @@ final class WindowOverlay {
         CFRunLoopAddSource(CFRunLoopGetMain(), AXObserverGetRunLoopSource(newObserver), .commonModes)
     }
 
-    // An unreadable focus state (nil) keeps the previous one rather than dimming the overlay.
+    // An unreadable focus state (nil) keeps the previous stacking level.
     func refresh(snapshot: Snapshot, window: AXUIElement, frame: CGRect, pid: pid_t, number: Int, focused: Bool?, order: [Int]) {
         guard attribute(window, "AXFullScreen") as? Bool != true,
               attribute(window, kAXMinimizedAttribute) as? Bool != true
         else { hide(); return }
-        let focused = focused ?? (dimmed == false)
+        let focused = focused ?? (self.focused == true)
+        self.focused = focused
         lastSeen = Date().timeIntervalSince1970
         observe(pid: pid, window: window)
         self.snapshot = snapshot
@@ -923,7 +914,6 @@ final class WindowOverlay {
         clockBadge.onWindowDrag = { [weak self] phase, mouse in self?.dragWindow(phase, mouse, window: window, raise: raise) }
         guard let (_, clockFrame) = place(frame: frame) else { hideBadges(); return }
         tabsPanel.show(above: number, focused: focused, order: order)
-        fade(focused: focused)
         if clockFrame != nil { clockPanel.show(above: number, focused: focused, order: order) } else { clockPanel.orderOut(nil) }
         heartbeat(snapshot.title)
     }
@@ -974,7 +964,7 @@ final class WindowOverlay {
         // Without room above the window, fall back to native tabs at once rather than leaving WezTerm unsure.
         guard let number = windowNumber, let snapshot, let (_, clockFrame) = place(frame: frame) else { hideBadges(); return }
         if heartbeatTitle.isEmpty { heartbeat(snapshot.title) }
-        let focused = dimmed == false
+        let focused = self.focused == true
         if !tabsPanel.isVisible { tabsPanel.show(above: number, focused: focused, order: []) }
         if clockFrame != nil && !clockPanel.isVisible { clockPanel.show(above: number, focused: focused, order: []) }
     }

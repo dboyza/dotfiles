@@ -57,7 +57,7 @@ assert(not config.tab_bar_at_bottom and not config.hide_tab_bar_if_only_one_tab)
 for _, style in ipairs({ 'active_tab', 'inactive_tab', 'inactive_tab_hover' }) do
   assert(config.colors.tab_bar[style].bg_color == config.colors.tab_bar.background)
 end
--- Section: Focus borders and clock placement
+-- Section: Window border and clock placement
 local original_strftime = wezterm.strftime
 wezterm.strftime = function(format)
   assert(format == '%I:%M %p', 'the clock should display 12-hour time with AM/PM')
@@ -72,21 +72,9 @@ local border_window = {
 local is_windows = wezterm.target_triple:find('windows') ~= nil
 assert(config.window_frame.border_left_width == (is_windows and '0px' or '1px'),
   'Windows must retain its native rounded frame without a rectangular inner border')
-for _, focus in ipairs({ true, false, true }) do
-  focused = focus
-  callbacks['window-focus-changed'](border_window)
-  if is_windows then
-    assert(writes == 0, 'the native companion must control the Windows frame')
-  else
-    assert(overrides.window_frame.border_left_color == (focus and '#908caa' or '#393552'))
-    assert(overrides.window_frame.border_left_width == config.window_frame.border_left_width,
-      'focus changes must retain the base frame configuration')
-  end
-  assert(overrides.font_size == 17 and overrides.window_frame.font_size == 14,
-    'focus changes must preserve unrelated overrides')
-  local previous = writes
-  callbacks['window-focus-changed'](border_window)
-  assert(writes == previous, 'unchanged focus must not trigger configuration reloads')
+assert(callbacks['window-focus-changed'] == nil, 'focus changes must not restyle the window')
+for _, side in ipairs({ 'left', 'right', 'top', 'bottom' }) do
+  assert(config.window_frame['border_' .. side .. '_color'] == '#908caa', 'the outline keeps one color')
 end
 for _, cols in ipairs({ 12, 20, 40, 79, 80, 100, 139, 160 }) do
   for _, count in ipairs({ 1, 3, 10, 30 }) do

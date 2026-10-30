@@ -187,7 +187,7 @@ return function(wezterm, config, platform, protocol, palette, tab_info)
     return ' '
   end)
 
-  -- Section: Native tab rendering and focus border
+  -- Section: Native tab rendering
   -- Numbered capsule tabs keep the top-left corner compact without a plugin.
   local bar_background = palette.deep
   local function capsule(text, foreground, background, active)
@@ -228,30 +228,6 @@ return function(wezterm, config, platform, protocol, palette, tab_info)
       tab.is_active and palette.iris or (hover and palette.overlay or palette.base), tab.is_active)
   end)
 
-  local function update_window_border(window)
-    -- The Windows companion styles the actual rounded DWM frame.
-    if is_windows then return end
-    local color = window:is_focused() and palette.subtle or palette.overlay
-    local overrides = window:get_config_overrides() or {}
-    local frame = overrides.window_frame or {}
-    local sides = { 'border_left_color', 'border_right_color', 'border_top_color', 'border_bottom_color' }
-    local changed = false
-    for _, side in ipairs(sides) do
-      if frame[side] ~= color then changed = true end
-    end
-    if not changed then return end
-    -- Nested overrides replace the whole frame; retain platform fonts and any
-    -- unrelated per-window customization when changing the outline.
-    local merged = {}
-    for key, value in pairs(config.window_frame) do merged[key] = value end
-    for key, value in pairs(frame) do merged[key] = value end
-    for _, side in ipairs(sides) do merged[side] = color end
-    overrides.window_frame = merged
-    window:set_config_overrides(overrides)
-  end
-
-  wezterm.on('window-focus-changed', update_window_border)
-
   -- Section: Fast input ticks and slower clock maintenance
   wezterm.on('update-status', function(window)
     if overlay_available and consume_floating_tab_request(window) then
@@ -267,7 +243,6 @@ return function(wezterm, config, platform, protocol, palette, tab_info)
       if previous and now >= previous and now - previous < overlay_status_interval then return end
       overlay_status_updated[id] = now
     end
-    update_window_border(window)
     update_floating_tabs(window)
     local size = window:active_tab():get_size()
     -- The tab bar spans the full window, including terminal padding.
