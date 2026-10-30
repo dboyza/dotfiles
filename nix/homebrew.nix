@@ -13,6 +13,7 @@
     "btop"
     "curl"
     "direnv"
+    "fastfetch"
     "fzf"
     "gh"
     "git"

@@ -149,6 +149,7 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Install JetBrains Mono Nerd Font through Homebrew on macOS and through Home Manager on Linux so each platform has one font owner.
 
 - On macOS, Homebrew owns the remaining user command-line packages and Node.js; keep Codex, Claude Code, Pi, opencode, and Herdr out of its package lists.
+  The exception is inv, the macOS-only install inventory, which Home Manager builds from the `inv` flake input (`github:dboyza/inv`) on Darwin only.
   Keep Homebrew activation install-only with no cleanup, resolve paths from `homebrew.prefix`, and use Brew's `mas` for App Store installation.
   Declare HashiCorp's Terraform tap as trusted for Homebrew 6 activation; do not disable tap-trust checks globally.
   Keep GNU make's `libexec/gnubin` and Brew curl/unzip paths in the macOS session PATH.

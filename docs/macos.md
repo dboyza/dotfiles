@@ -85,6 +85,9 @@ Each launcher checks for updates and installs a new release before starting the 
 See [agent-tool updates and migration](operations.md#update-agent-tools-at-launch) for storage paths, bypass controls, and manual update commands.
 Existing credentials, settings, and sessions are preserved.
 
+Home Manager builds `inv` from the `inv` flake input; run `inv` to see every custom install, compare it against these declarations, and upgrade or remove packages.
+Updating flake inputs during bootstrap also updates inv.
+
 Run `brew update` and then `brew upgrade <package>` for package updates.
 Activation installs missing packages without upgrading existing ones or removing other Homebrew packages.
 The Mac App Store still handles Amphetamine through Homebrew's `mas`; Wallper retains its verified direct-download installer.

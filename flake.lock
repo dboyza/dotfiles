@@ -21,6 +21,26 @@
         "type": "github"
       }
     },
+    "inv": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1793376994,
+        "narHash": "sha256-S18ZTiF/6SFm7zpyyahl3DmSLWyCo+hUvXfLnYo4opo=",
+        "owner": "dboyza",
+        "repo": "inv",
+        "rev": "97ab2b999378b3bcc0b48ec95ee624ab9bd06720",
+        "type": "github"
+      },
+      "original": {
+        "owner": "dboyza",
+        "repo": "inv",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -61,6 +81,7 @@
     "root": {
       "inputs": {
         "home-manager": "home-manager",
+        "inv": "inv",
         "nix-darwin": "nix-darwin",
         "nixpkgs": "nixpkgs",
         "tmux-assistant-resurrect": "tmux-assistant-resurrect",

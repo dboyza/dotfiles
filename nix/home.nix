@@ -1,4 +1,4 @@
-# Declare Linux packages and the canonical inventory of managed home files.
+# Declare Linux packages, flake-built macOS tools, and the canonical inventory of managed home files.
 {
   config,
   repoDirectory,
@@ -35,7 +35,7 @@ let
   });
 in
 {
-  # Section: User identity, PATH, and Linux packages
+  # Section: User identity, PATH, and packages
   home = {
     inherit homeDirectory username;
     stateVersion = "24.11";
@@ -55,6 +55,7 @@ in
         btop
         curl
         direnv
+        fastfetch
         fzf
         gh
         git
@@ -93,6 +94,10 @@ in
       ]
       ++ lib.optionals (pkgs.stdenv.isLinux && !isWSL) [
         wezterm
+      ]
+      # inv inventories macOS installs, so it is built from its flake only on Darwin.
+      ++ lib.optionals pkgs.stdenv.isDarwin [
+        inputs.inv.packages.${pkgs.stdenv.hostPlatform.system}.default
       ];
   };
 

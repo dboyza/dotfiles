@@ -16,6 +16,12 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
+    # macOS inventory TUI for every custom install; its package is Darwin-only.
+    inv = {
+      url = "github:dboyza/inv";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
     tmux-resurrect = {
       url = "github:tmux-plugins/tmux-resurrect";
       flake = false;
