@@ -15,8 +15,10 @@ week=$(jq -r '.rate_limits.seven_day.used_percentage // empty | round' <<<"$inpu
 # Section: Usage coloring
 # Green below 50%, yellow below 80%, red from 80%.
 color() {
-  if (( $1 >= 80 )); then printf '\033[31m'
-  elif (( $1 >= 50 )); then printf '\033[33m'
+  if (($1 >= 80)); then
+    printf '\033[31m'
+  elif (($1 >= 50)); then
+    printf '\033[33m'
   else printf '\033[32m'; fi
 }
 
