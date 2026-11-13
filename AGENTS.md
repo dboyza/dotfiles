@@ -271,6 +271,8 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
 - Treat `tests/fixtures/floating-tabs.json` as the shared Lua/Swift/C# snapshot contract.
   Keep freshness in seconds, input timing in milliseconds, byte limits explicit, and requests consumed before execution.
 
+- Exit both floating-tab helpers once no WezTerm GUI is running; WezTerm launches them detached, and starts them again with its next window.
+
 ## Shell, clipboard, and multiplexers
 
 - Keep the default Zsh `ls` alias in its normal listing layout without `-m`, preserving platform-specific color flags.

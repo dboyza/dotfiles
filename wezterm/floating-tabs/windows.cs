@@ -449,6 +449,8 @@ internal sealed class Companion : ApplicationContext {
     private readonly Dictionary<IntPtr, Overlay> overlays = new Dictionary<IntPtr, Overlay>();
     private readonly Dictionary<string, Snapshot> snapshots = new Dictionary<string, Snapshot>();
     private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 100 };
+    // The helper lives only as long as some WezTerm GUI does; WezTerm relaunches it on its next window.
+    private readonly System.Windows.Forms.Timer lifetime = new System.Windows.Forms.Timer { Interval = 2000 };
     private readonly Control dispatcher = new Control();
     private readonly FileSystemWatcher watcher;
     private bool refreshing;
@@ -464,7 +466,14 @@ internal sealed class Companion : ApplicationContext {
         watcher.EnableRaisingEvents = true;
         timer.Tick += delegate { Refresh(); };
         timer.Start();
+        lifetime.Tick += delegate { if (!WezTermRunning()) ExitThread(); };
+        lifetime.Start();
         Refresh();
+    }
+    private static bool WezTermRunning() {
+        var processes = Process.GetProcessesByName("wezterm-gui");
+        foreach (var process in processes) process.Dispose();
+        return processes.Length > 0;
     }
     private void QueueRefresh() {
         if (Interlocked.Exchange(ref queued, 1) != 0) return;
@@ -527,7 +536,7 @@ internal sealed class Companion : ApplicationContext {
     }
     protected override void Dispose(bool disposing) {
         if (disposing) {
-            timer.Dispose(); watcher.Dispose(); dispatcher.Dispose();
+            timer.Dispose(); lifetime.Dispose(); watcher.Dispose(); dispatcher.Dispose();
             foreach (var overlay in overlays.Values) overlay.Dispose();
         }
         base.Dispose(disposing);

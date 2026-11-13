@@ -42,6 +42,12 @@ let cleanupAfterSeconds: Double = 30
 let motionWatchSeconds: Double = 0.6
 // How long live following continues after a window's on-screen bounds stop changing.
 let followSeconds: Double = 0.3
+let weztermBundleIdentifiers: Set<String> = ["org.wezfurlong.wezterm", "com.github.wez.wezterm"]
+
+// The helper lives only as long as some WezTerm GUI does; WezTerm relaunches it on its next window.
+func weztermRunning() -> Bool {
+    NSWorkspace.shared.runningApplications.contains { weztermBundleIdentifiers.contains($0.bundleIdentifier ?? "") }
+}
 
 func validSnapshot(_ snapshot: Snapshot, filename: String, now: Double) -> Bool {
     let validKey = snapshot.key.range(of: "^[A-Za-z0-9]+-[0-9]+$", options: .regularExpression) != nil
@@ -1067,6 +1073,8 @@ final class Companion: NSObject, NSApplicationDelegate {
         for name in [NSWorkspace.didActivateApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification] {
             NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(workspaceChanged), name: name, object: nil)
         }
+        NSWorkspace.shared.notificationCenter.addObserver(self, selector: #selector(applicationTerminated),
+            name: NSWorkspace.didTerminateApplicationNotification, object: nil)
         // Native title-bar drags and edge resizes start live following before AX reports any move.
         dragMonitor = NSEvent.addGlobalMonitorForEvents(matching: .leftMouseDragged) { [weak self] _ in
             let front = NSWorkspace.shared.frontmostApplication?.processIdentifier
@@ -1082,6 +1090,10 @@ final class Companion: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) { overlays.removeAll() }
+
+    @objc func applicationTerminated(_ notification: Notification) {
+        if !weztermRunning() { NSApp.terminate(nil) }
+    }
 
     // Clicking the wallpaper activates Finder, then Show Desktop slides windows away without AX notice.
     // Check on-screen bounds every frame meanwhile so the badges hide as soon as the slide starts.
@@ -1159,7 +1171,6 @@ final class Companion: NSObject, NSApplicationDelegate {
         guard !refreshing else { return }
         refreshing = true
         defer { refreshing = false }
-        let identifiers = ["org.wezfurlong.wezterm", "com.github.wez.wezterm"]
         guard AXIsProcessTrusted() else {
             for overlay in overlays.values { overlay.hide() }
             return
@@ -1189,7 +1200,7 @@ final class Companion: NSObject, NSApplicationDelegate {
         var live = Set<String>()
         // Processes whose AX reads timed out, as WezTerm's often do while focus changes.
         var unreadable = Set<pid_t>()
-        for app in NSWorkspace.shared.runningApplications where identifiers.contains(app.bundleIdentifier ?? "") {
+        for app in NSWorkspace.shared.runningApplications where weztermBundleIdentifiers.contains(app.bundleIdentifier ?? "") {
             let pid = app.processIdentifier
             let application = AXUIElementCreateApplication(pid)
             AXUIElementSetMessagingTimeout(application, 0.1)
