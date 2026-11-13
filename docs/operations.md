@@ -106,6 +106,24 @@ node scripts/dotfiles-tool.mjs --update-only codex
 Pi runs with factory defaults.
 Previous customizations are retained under `pi/archive/`; their optional checks run with `./tests/run.sh --archive`.
 
+## Enable the Claude Code status line
+
+Activation links `claude/statusline.sh` to `~/.claude/statusline.sh`, so edits in the checkout apply on the next refresh.
+The line shows the model, effort or thinking state, current folder, context used, and the 5-hour and 7-day usage limits.
+Claude Code rewrites `~/.claude/settings.json` itself, so that file stays unmanaged.
+Point it at the script once on each machine:
+
+```json
+{
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.claude/statusline.sh\""
+  }
+}
+```
+
+The script needs `jq`, which the setup already installs.
+
 ## Run automated tests
 
 Run:

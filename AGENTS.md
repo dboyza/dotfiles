@@ -128,6 +128,9 @@ Use [the code map](docs/code-map.md) to find the relevant entry points and verif
   On native Windows, back up same-name executables and PowerShell scripts before installing `.cmd` launchers so command precedence cannot bypass updates.
   Use opencode baseline builds on x64 for older CPUs; Pi standalone Linux builds require glibc.
 
+- Keep the Claude Code status line in `claude/statusline.sh`, live-linked to `~/.claude/statusline.sh`.
+  Leave `~/.claude/settings.json` unmanaged because Claude Code and plugin installers rewrite it; document required settings in the operations guide instead.
+
 - Keep post-activation verification aligned with the managed links, launcher syntax, Pi settings, tmux prefix, WezTerm configuration, and macOS symbolic hotkeys.
 
 ## Nix and macOS deployment

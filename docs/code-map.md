@@ -22,6 +22,7 @@ Tiny files and configuration tables use their existing structure instead of arti
 | Shell, prompt, multiplexers | `zsh/`, `starship/starship.toml`, `tmux/.tmux.conf`, `herdr/*.toml` | `tests/compatibility.sh`, `tests/tmux-plugins.sh`, `tests/keyboard-routing.py` |
 | Reviewr installation | `scripts/install-herdr-plugins.mjs`, `herdr/reviewr.toml` | `tests/herdr-plugins.test.mjs`, `tests/bootstrap-latest.sh` |
 | Active Pi settings and archived customization | `pi/settings.json`, `pi/DEFAULTS.md`, `pi/archive/README.md` | `./tests/run.sh --archive` for archived unit checks |
+| Claude Code status line | `claude/statusline.sh`, linked to `~/.claude/statusline.sh` | `tests/claude-statusline.sh` |
 | Agent instructions and authored skills | Root `AGENTS.md` for this repo; `agents/global/AGENTS.md` for shared policy; `agents/skills/` for skills | Review deployed links and the skill's own instructions |
 | Test selection and pass/fail reporting | `tests/run.py`, `tests/run-lua.lua`, `scripts/lib/check-wezterm.lua` | `tests/check-runner.py`, `tests/check-verdicts.sh` |
 

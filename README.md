@@ -142,6 +142,7 @@ Use the [code map and editing guide](docs/code-map.md) to locate behavior, under
 | `scripts/dotfiles-tool.mjs` | Checks and installs agent-tool releases at launch. |
 | `agents/` | Stores shared coding-agent instructions and skills. |
 | `pi/` | Stores active default settings and a separate inactive customization archive. |
+| `claude/` | Stores the Claude Code status line script. |
 | `herdr/`, `nvim/`, `starship/`, `tmux/`, `wezterm/`, `zsh/` | Store application configuration. |
 | `scripts/` | Contains shared clipboard dispatch, WSL transport, and Windows integration helpers. |
 | `tests/` | Contains bootstrap, compatibility, platform evaluation, and integration checks. |

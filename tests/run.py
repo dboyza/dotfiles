@@ -27,6 +27,7 @@ def main():
         ('WSL clipboard', ['bash', 'tests/wsl-clipboard.sh']),
         ('clipboard routing', ['bash', 'tests/clipboard.sh']),
         ('tmux plugins', ['bash', 'tests/tmux-plugins.sh']),
+        ('Claude status line', ['bash', 'tests/claude-statusline.sh']),
         ('keyboard PTY routing', ['python3', '-B', 'tests/keyboard-routing.py']),
         ('configuration compatibility', ['bash', 'tests/compatibility.sh']),
         ('floating tabs', ['bash', 'tests/wezterm-floating-tabs.sh']),

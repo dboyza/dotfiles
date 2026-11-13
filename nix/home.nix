@@ -139,6 +139,7 @@ in
     ".agents/skills" = live "agents/skills";
 
     ".pi/agent/settings.json" = live "pi/settings.json";
+    ".claude/statusline.sh" = live "claude/statusline.sh";
 
     ".tmux/plugins/tmux-resurrect" = managed inputs.tmux-resurrect;
     ".tmux/plugins/tmux-continuum" = managed inputs.tmux-continuum;
